@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gurudev Skoda — Stock Viewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-deep:       #0a1f0e;
+    --bg-card:       #112a15;
+    --bg-surface:    #163b1c;
+    --accent:        #4caf6e;
+    --accent-soft:   #a8d5b5;
+    --accent-glow:   rgba(76,175,110,0.15);
+    --text-primary:  #e6f4ea;
+    --text-muted:    #7dab8a;
+    --text-dim:      #4a7a57;
+    --border:        rgba(76,175,110,0.18);
+    --border-strong: rgba(76,175,110,0.35);
+    --radius:        8px;
+    --font-display:  'Rajdhani', sans-serif;
+    --font-body:     'DM Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 14px;
+    min-height: 100vh;
+    background-image: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(76,175,110,0.12) 0%, transparent 70%);
+  }
+  header {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border-strong);
+    padding: 0 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px; position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-mark { width: 38px; height: 38px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 22px; height: 22px; }
+  .logo-text { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 0.04em; line-height: 1; }
+  .logo-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .live-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
+  .live-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(76,175,110,.5)} 50%{opacity:.7;box-shadow:0 0 0 5px rgba(76,175,110,0)} }
+  .last-updated { font-size: 11px; color: var(--text-dim); }
+  .refresh-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 14px; color: var(--text-muted); font-family: var(--font-body); font-size: 12px; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 5px; }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tabs-bar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; }
+  .tab-btn { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: .05em; padding: 14px 28px; background: none; border: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; text-transform: uppercase; position: relative; top: 1px; }
+  .tab-btn:hover { color: var(--accent-soft); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-count { display: inline-flex; align-items: center; justify-content: center; background: var(--accent-glow); color: var(--accent); border-radius: 10px; font-size: 10px; font-family: var(--font-body); font-weight: 500; min-width: 20px; height: 18px; padding: 0 6px; margin-left: 8px; }
+  .toolbar { padding: 14px 28px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; background: var(--bg-deep); border-bottom: 1px solid var(--border); }
+  .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 260px; }
+  .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--text-dim); pointer-events: none; }
+  .search-input { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px 8px 32px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color .2s; }
+  .search-input::placeholder { color: var(--text-dim); }
+  .search-input:focus { border-color: var(--accent); }
+  .filter-wrap { display: flex; flex-direction: column; gap: 3px; }
+  .filter-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; padding-left: 2px; }
+  .filter-select { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 30px 8px 12px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234a7a57' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: border-color .2s; min-width: 140px; }
+  .filter-select:focus { border-color: var(--accent); }
+  .filter-select option { background: var(--bg-card); color: var(--text-primary); }
+  .clear-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 16px; color: var(--text-muted); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all .2s; }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .results-info { margin-left: auto; font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+  .table-wrap { padding: 20px 28px 60px; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  th { font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); padding: 11px 16px; text-align: left; cursor: pointer; user-select: none; white-space: nowrap; transition: color .15s; }
+  th:hover { color: var(--accent); }
+  th .si { display: inline-block; margin-left: 4px; opacity: .35; font-size: 10px; }
+  th.sorted { color: var(--accent); }
+  th.sorted .si { opacity: 1; }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; animation: rowIn .16s ease both; }
+  tbody tr:hover { background: var(--accent-glow); }
+  td { padding: 12px 16px; color: var(--text-primary); vertical-align: middle; white-space: nowrap; }
+  td.dim { color: var(--text-muted); }
+  .cc { display: flex; align-items: center; gap: 8px; }
+  .cd { width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(255,255,255,.18); flex-shrink: 0; }
+  .state-box { text-align: center; padding: 70px 20px; color: var(--text-dim); }
+  .state-box svg { width: 38px; height: 38px; stroke: var(--text-dim); display: block; margin: 0 auto 14px; }
+  .state-box strong { display: block; font-size: 15px; color: var(--text-muted); margin-bottom: 6px; }
+  .state-box p { font-size: 13px; line-height: 1.6; }
+  .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .75s linear infinite; display: block; margin: 0 auto 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes rowIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:translateY(0)} }
+  .err-bar { margin: 20px 28px 0; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); border-radius: var(--radius); padding: 14px 18px; color: #fca5a5; font-size: 13px; line-height: 1.7; }
+  .err-bar strong { display: block; font-size: 14px; margin-bottom: 3px; color: #f87171; }
+  @media(max-width:640px) {
+    header,.tabs-bar,.toolbar,.table-wrap { padding-left:14px;padding-right:14px; }
+    .tab-btn { padding:12px 16px;font-size:13px; }
+    .logo-text { font-size:18px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#0a1f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+        <path d="M2 17l10 5 10-5"/>
+        <path d="M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">GURUDEV SKODA</div>
+      <div class="logo-sub">Stock Viewer</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>Live</div>
+    <span class="last-updated" id="lastUpdated">—</span>
+    <button class="refresh-btn" onclick="loadAllSheets()">↻ Refresh</button>
+  </div>
+</header>
+
+<div class="tabs-bar">
+  <button class="tab-btn active" onclick="switchTab(0)" id="tab0">Stock <span class="tab-count" id="count0">—</span></button>
+  <button class="tab-btn"        onclick="switchTab(1)" id="tab1">Allocation <span class="tab-count" id="count1">—</span></button>
+  <button class="tab-btn"        onclick="switchTab(2)" id="tab2">Live RPO <span class="tab-count" id="count2">—</span></button>
+</div>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="search-input" id="searchInput" placeholder="Search colour, variant…" oninput="applyFilters()">
+  </div>
+  <div class="filter-wrap">
+    <span class="filter-label">Model</span>
+    <select class="filter-select" id="fModel" onchange="applyFilters()"><option value="">All Models</option></select>
+  </div>
+  <div class="filter-wrap">
+    <span class="filter-label">Variant</span>
+    <select class="filter-select" id="fVariant" onchange="applyFilters()"><option value="">All Variants</option></select>
+  </div>
+  <div class="filter-wrap">
+    <span class="filter-label">Colour</span>
+    <select class="filter-select" id="fColour" onchange="applyFilters()"><option value="">All Colours</option></select>
+  </div>
+  <div class="filter-wrap">
+    <span class="filter-label">Year</span>
+    <select class="filter-select" id="fYear" onchange="applyFilters()"><option value="">All Years</option></select>
+  </div>
+  <button class="clear-btn" onclick="clearFilters()">Clear</button>
+  <span class="results-info" id="resultsInfo"></span>
+</div>
+
+<div id="errArea"></div>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr id="tHead"></tr></thead>
+    <tbody id="tBody">
+      <tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading data…</strong><p>Connecting to Google Sheet</p></div></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const API    = 'https://script.google.com/macros/s/AKfycbwxY5LjX5bmt1dVIbencV8_VlcInPSaXm52Fke_0eISw0hZANBSPq60D2VpdlquFJ3k/exec';
+const SHEETS = ['Stock', 'Allocation', 'Live RPO'];
+const COL    = { model:'Model', variant:'INTERNAL CODE', colour:'Color', year:'VY' };
+
+let sheetData = [[], [], []];
+let activeTab = 0, sortCol = -1, sortAsc = true;
+
+const CMAP = {
+  white:'#f5f5f5',black:'#222',silver:'#b8b8b8',grey:'#888',gray:'#888',
+  red:'#e53935',blue:'#1e88e5',navy:'#0d2b6e',green:'#43a047',
+  brown:'#795548',beige:'#d4b896',gold:'#c9a227',yellow:'#fdd835',
+  orange:'#fb8c00',pearl:'#ede8e0',maroon:'#880e4f',cyan:'#00bcd4',
+  magnetic:'#4a5568',carbon:'#2d3748',steel:'#6b7f90',moon:'#d1ccc0',
+  brilliant:'#c8d0d8',crystal:'#5b9bd5',lava:'#2c4f8c',ember:'#c0392b',
+  graphite:'#4b5563',phantom:'#1f2937',aurora:'#6ee7b7',coral:'#ff6b6b'
+};
+
+function hueFor(n) {
+  if (!n) return '#556';
+  const lc = n.toLowerCase();
+  for (const [k,v] of Object.entries(CMAP)) if (lc.includes(k)) return v;
+  let h = 0;
+  for (let i = 0; i < lc.length; i++) h = lc.charCodeAt(i) + ((h<<5)-h);
+  return `hsl(${Math.abs(h)%360},38%,52%)`;
+}
+
+function findCol(headers, name) {
+  let i = headers.findIndex(h => h === name);
+  if (i >= 0) return i;
+  return headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+}
+
+function jsonpFetch(sheet) {
+  const cbName = `__cb_${sheet.replace(/\s+/g,'_')}_${Date.now()}`;
+  return new Promise((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      delete window[cbName];
+      const s = document.getElementById(cbName);
+      if (s) s.remove();
+      reject(new Error('Timed out — check Apps Script is deployed as Web App with Anyone access'));
+    }, 15000);
+
+    window[cbName] = (data) => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      resolve(data);
+    };
+
+    const script = document.createElement('script');
+    script.id  = cbName;
+    script.src = `${API}?sheet=${encodeURIComponent(sheet)}&callback=${cbName}`;
+    script.onerror = () => {
+      clearTimeout(timeout);
+      delete window[cbName];
+      script.remove();
+      reject(new Error('Could not reach Apps Script URL'));
+    };
+    document.head.appendChild(script);
+    script.onload = () => script.remove();
+  });
+}
+
+async function loadAllSheets() {
+  document.getElementById('errArea').innerHTML = '';
+  document.getElementById('lastUpdated').textContent = 'Loading…';
+  showLoading();
+  const errors = [];
+
+  for (let i = 0; i < SHEETS.length; i++) {
+    try {
+      const json = await jsonpFetch(SHEETS[i]);
+      sheetData[i] = Array.isArray(json) && json.length >= 2 ? json : [];
+      document.getElementById('count'+i).textContent = Math.max(0, sheetData[i].length - 1);
+    } catch(e) {
+      sheetData[i] = [];
+      document.getElementById('count'+i).textContent = '!';
+      errors.push({ name: SHEETS[i], msg: e.message });
+    }
+  }
+
+  if (!errors.length) {
+    document.getElementById('lastUpdated').textContent =
+      'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  } else {
+    document.getElementById('lastUpdated').textContent = 'Error';
+    document.getElementById('errArea').innerHTML = errors.map(e => `
+      <div class="err-bar">
+        <strong>Failed to load "${e.name}"</strong>
+        ${e.msg}
+      </div>`).join('');
+  }
+  renderTab();
+}
+
+function showLoading() {
+  document.getElementById('tHead').innerHTML = '';
+  document.getElementById('tBody').innerHTML =
+    '<tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading…</strong><p>Connecting to Google Sheet</p></div></td></tr>';
+}
+
+function switchTab(i) {
+  activeTab = i;
+  SHEETS.forEach((_,j) => document.getElementById('tab'+j).classList.toggle('active', j===i));
+  sortCol = -1; sortAsc = true;
+  clearFilters(false);
+  renderTab();
+}
+
+function renderTab() {
+  const rows = sheetData[activeTab];
+  if (!rows || rows.length < 2) {
+    document.getElementById('tHead').innerHTML = '';
+    document.getElementById('tBody').innerHTML = `<tr><td colspan="20">
+      <div class="state-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        <strong>No data in "${SHEETS[activeTab]}"</strong>
+        <p>Check the sheet tab is named exactly <em>${SHEETS[activeTab]}</em>.</p>
+      </div></td></tr>`;
+    document.getElementById('resultsInfo').textContent = '';
+    return;
+  }
+  const headers = rows[0].map(h => String(h).trim());
+  renderHeaders(headers);
+  populateFilters(rows, headers);
+  applyFilters();
+}
+
+function renderHeaders(headers) {
+  document.getElementById('tHead').innerHTML = headers.map((h,i) =>
+    `<th onclick="sortBy(${i})" id="th${i}">${h}<span class="si">↕</span></th>`
+  ).join('');
+}
+
+function populateFilters(rows, headers) {
+  const fill = (id, colName) => {
+    const ci  = findCol(headers, colName);
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    const opts = ci >= 0
+      ? [...new Set(rows.slice(1).map(r => String(r[ci]||'').trim()).filter(Boolean))].sort()
+      : [];
+    while (sel.options.length > 1) sel.remove(1);
+    opts.forEach(v => sel.add(new Option(v, v)));
+    if (opts.includes(cur)) sel.value = cur;
+  };
+  fill('fModel',   COL.model);
+  fill('fVariant', COL.variant);
+  fill('fColour',  COL.colour);
+  fill('fYear',    COL.year);
+}
+
+function applyFilters() {
+  const rows = sheetData[activeTab];
+  if (!rows || rows.length < 2) return;
+  const headers = rows[0].map(h => String(h).trim());
+  const body    = rows.slice(1);
+
+  const search = document.getElementById('searchInput').value.toLowerCase().trim();
+  const fModel  = document.getElementById('fModel').value;
+  const fVar    = document.getElementById('fVariant').value;
+  const fCol    = document.getElementById('fColour').value;
+  const fYear   = document.getElementById('fYear').value;
+
+  const mI = findCol(headers, COL.model);
+  const vI = findCol(headers, COL.variant);
+  const cI = findCol(headers, COL.colour);
+  const yI = findCol(headers, COL.year);
+
+  let filtered = body.filter(row => {
+    const cv = String(row[cI]||'').trim();
+    const vv = String(row[vI]||'').trim();
+    const mv = String(row[mI]||'').trim();
+    const yv = String(row[yI]||'').trim();
+    if (search && !cv.toLowerCase().includes(search) && !vv.toLowerCase().includes(search)) return false;
+    if (fModel && mv !== fModel) return false;
+    if (fVar   && vv !== fVar)   return false;
+    if (fCol   && cv !== fCol)   return false;
+    if (fYear  && yv !== fYear)  return false;
+    return true;
+  });
+
+  if (sortCol >= 0) {
+    filtered.sort((a,b) => {
+      const av = String(a[sortCol]||'').toLowerCase();
+      const bv = String(b[sortCol]||'').toLowerCase();
+      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+  }
+
+  renderRows(filtered, headers, cI);
+  document.getElementById('resultsInfo').textContent =
+    `${filtered.length} of ${body.length} record${body.length!==1?'s':''}`;
+}
+
+function renderRows(rows, headers, cI) {
+  const tbody = document.getElementById('tBody');
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="20">
+      <div class="state-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <strong>No matches found</strong><p>Try adjusting your filters or clearing the search.</p>
+      </div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map((row, ri) =>
+    `<tr style="animation-delay:${Math.min(ri*.015,.28)}s">${
+      headers.map((_,ci) => {
+        const val = String(row[ci]||'').trim();
+        if (ci === cI) return `<td><div class="cc"><div class="cd" style="background:${hueFor(val)}"></div>${val||'—'}</div></td>`;
+        return `<td ${!val?'class="dim"':''}>${val||'—'}</td>`;
+      }).join('')
+    }</tr>`
+  ).join('');
+}
+
+function sortBy(col) {
+  sortAsc = sortCol===col ? !sortAsc : true;
+  sortCol = col;
+  document.querySelectorAll('th').forEach((th,i) => {
+    th.classList.toggle('sorted', i===col);
+    const si = th.querySelector('.si');
+    if (si) si.textContent = i===col?(sortAsc?'↑':'↓'):'↕';
+  });
+  applyFilters();
+}
+
+function clearFilters(render=true) {
+  ['searchInput','fModel','fVariant','fColour','fYear']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  if (render) applyFilters();
+}
+
+loadAllSheets();
+</script>
+</body>
+</html>
