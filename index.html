@@ -34,7 +34,7 @@
   .page { display: none; }
   .page.active { display: block; }
 
-  /* LOGIN */
+  /* ── LOGIN ── */
   .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .login-box { background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 16px; padding: 48px 40px; width: 100%; max-width: 400px; text-align: center; }
   .login-logo-mark { width: 56px; height: 56px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
@@ -50,7 +50,7 @@
   .login-btn:hover { opacity: 0.88; }
   .login-err { color: #f87171; font-size: 13px; margin-top: 12px; min-height: 20px; }
 
-  /* HEADER */
+  /* ── HEADER ── */
   header { background: var(--bg-card); border-bottom: 1px solid var(--border-strong); padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100; }
   .logo { display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
   .logo-mark { width: 38px; height: 38px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
@@ -66,35 +66,33 @@
   .hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
   .user-tag { font-size: 12px; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 12px; }
 
-  /* ADMIN TABS */
+  /* ── ADMIN TABS ── */
   .tabs-bar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; overflow-x: auto; }
   .tab-btn { font-family: var(--font-display); font-size: 14px; font-weight: 600; letter-spacing: .05em; padding: 12px 22px; background: none; border: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; text-transform: uppercase; position: relative; top: 1px; white-space: nowrap; }
   .tab-btn:hover { color: var(--accent-soft); }
   .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-btn.t-free.active { color: #60a5fa; border-bottom-color: #60a5fa; }
 
-  /* STAFF FREE STOCK HEADER BAR */
+  /* ── STAFF FREE STOCK HEADER ── */
   .free-stock-bar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; }
   .free-stock-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: #60a5fa; letter-spacing: 0.05em; text-transform: uppercase; }
   .free-stock-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
 
-  /* TOOLBAR */
-  .toolbar { padding: 14px 28px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; background: var(--bg-deep); border-bottom: 1px solid var(--border); }
-  .filter-wrap { display: flex; flex-direction: column; gap: 3px; }
+  /* ── TOOLBAR ── */
+  .toolbar { padding: 16px 28px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; background: var(--bg-deep); border-bottom: 1px solid var(--border); }
+  .filter-wrap { display: flex; flex-direction: column; gap: 4px; }
   .filter-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; padding-left: 2px; }
-  .filter-select { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 30px 8px 12px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234a7a57' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: border-color .2s; min-width: 180px; }
+  .filter-select { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 32px 9px 12px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234a7a57' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: border-color .2s, opacity .2s; min-width: 180px; }
   .filter-select:focus { border-color: var(--accent); }
   .filter-select option { background: var(--bg-card); color: var(--text-primary); }
-  .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 260px; }
-  .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--text-dim); pointer-events: none; }
-  .search-input { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 12px 8px 32px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color .2s; }
-  .search-input::placeholder { color: var(--text-dim); }
-  .search-input:focus { border-color: var(--accent); }
-  .clear-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 14px; color: var(--text-muted); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all .2s; }
+  .filter-select:disabled { opacity: 0.35; cursor: not-allowed; background-color: var(--bg-deep); }
+  .filter-select.model-select { min-width: 220px; border-color: var(--border-strong); }
+  .filter-select.model-select:focus { border-color: var(--accent); }
+  .clear-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 16px; color: var(--text-muted); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all .2s; }
   .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .results-info { margin-left: auto; font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+  .results-info { margin-left: auto; font-size: 12px; color: var(--text-dim); white-space: nowrap; align-self: center; }
 
-  /* TABLE */
+  /* ── TABLE ── */
   .table-wrap { padding: 20px 28px 60px; overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   thead tr { background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
@@ -110,12 +108,25 @@
   .cc { display: flex; align-items: center; gap: 8px; }
   .cd { width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(255,255,255,.18); flex-shrink: 0; }
 
-  /* FREE STOCK YES/NO BADGE */
-  .fs-yes { display: inline-flex; align-items: center; gap: 5px; background: rgba(76,175,110,0.15); color: #4caf6e; border: 1px solid rgba(76,175,110,0.3); border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 500; }
-  .fs-no  { display: inline-flex; align-items: center; gap: 5px; background: rgba(239,68,68,0.1);  color: #f87171; border: 1px solid rgba(239,68,68,0.25);  border-radius: 20px; padding: 3px 12px; font-size: 12px; font-weight: 500; }
-  .fs-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  /* ── FREE STOCK BADGE ── */
+  .fs-yes { display: inline-flex; align-items: center; gap: 5px; background: rgba(76,175,110,0.15); color: #4caf6e; border: 1px solid rgba(76,175,110,0.3); border-radius: 20px; padding: 3px 14px; font-size: 12px; font-weight: 500; }
+  .fs-no  { display: inline-flex; align-items: center; gap: 5px; background: rgba(239,68,68,0.1);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); border-radius: 20px; padding: 3px 14px; font-size: 12px; font-weight: 500; }
+  .fs-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 
-  /* ADMIN PANEL */
+  /* ── EMPTY STATE ── */
+  .empty-prompt { text-align: center; padding: 80px 20px; color: var(--text-dim); }
+  .empty-prompt svg { width: 52px; height: 52px; stroke: var(--text-dim); display: block; margin: 0 auto 18px; opacity: 0.5; }
+  .empty-prompt strong { display: block; font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.04em; }
+  .empty-prompt p { font-size: 13px; color: var(--text-dim); }
+  .state-box { text-align: center; padding: 70px 20px; color: var(--text-dim); }
+  .state-box svg { width: 38px; height: 38px; stroke: var(--text-dim); display: block; margin: 0 auto 14px; }
+  .state-box strong { display: block; font-size: 15px; color: var(--text-muted); margin-bottom: 6px; }
+  .state-box p { font-size: 13px; line-height: 1.6; }
+  .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .75s linear infinite; display: block; margin: 0 auto 14px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes rowIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ── ADMIN PANEL ── */
   .admin-panel { padding: 28px; max-width: 860px; }
   .admin-panel h2 { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 20px; letter-spacing: 0.04em; }
   .admin-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
@@ -134,32 +145,26 @@
   .del-btn { background: none; border: 1px solid rgba(239,68,68,.3); border-radius: 4px; padding: 3px 10px; color: #f87171; font-size: 12px; cursor: pointer; transition: all .2s; }
   .del-btn:hover { background: rgba(239,68,68,.1); }
   .no-users { color: var(--text-dim); font-size: 13px; padding: 12px 0; }
+  .add-err { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 18px; }
 
-  /* STATES */
-  .state-box { text-align: center; padding: 70px 20px; color: var(--text-dim); }
-  .state-box svg { width: 38px; height: 38px; stroke: var(--text-dim); display: block; margin: 0 auto 14px; }
-  .state-box strong { display: block; font-size: 15px; color: var(--text-muted); margin-bottom: 6px; }
-  .state-box p { font-size: 13px; line-height: 1.6; }
-  .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .75s linear infinite; display: block; margin: 0 auto 14px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes rowIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:translateY(0)} }
-
-  /* PROMPT TO SELECT MODEL */
-  .select-prompt { text-align: center; padding: 60px 20px; }
-  .select-prompt svg { width: 48px; height: 48px; stroke: var(--text-dim); display: block; margin: 0 auto 16px; }
-  .select-prompt strong { display: block; font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.04em; }
-  .select-prompt p { font-size: 13px; color: var(--text-dim); }
+  /* ── ADMIN SEARCH/FILTERS ── */
+  .search-wrap { position: relative; min-width: 180px; max-width: 260px; }
+  .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--text-dim); pointer-events: none; }
+  .search-input { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px 9px 32px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color .2s; }
+  .search-input::placeholder { color: var(--text-dim); }
+  .search-input:focus { border-color: var(--accent); }
 
   @media(max-width:640px) {
     header,.toolbar,.table-wrap { padding-left:14px;padding-right:14px; }
     .logo-text { font-size:18px; }
     .login-box { padding: 32px 24px; }
+    .filter-select { min-width: 140px; }
   }
 </style>
 </head>
 <body>
 
-<!-- LOGIN PAGE -->
+<!-- ══════════ LOGIN ══════════ -->
 <div class="page active" id="pageLogin">
   <div class="login-wrap">
     <div class="login-box">
@@ -171,7 +176,7 @@
         </svg>
       </div>
       <div class="login-title">GURUDEV SKODA</div>
-      <div class="login-sub">Stock Viewer — Staff Login</div>
+      <div class="login-sub">Stock Viewer — Login</div>
       <div class="login-field">
         <label class="login-label">Username</label>
         <input class="login-input" id="loginUser" type="text" placeholder="Enter username" autocomplete="username">
@@ -186,7 +191,7 @@
   </div>
 </div>
 
-<!-- STAFF VIEW — Free Stock only -->
+<!-- ══════════ STAFF VIEW — FREE STOCK ONLY ══════════ -->
 <div class="page" id="pageStaff">
   <header>
     <div class="logo" onclick="logoClick()">
@@ -210,38 +215,58 @@
     </div>
   </header>
 
+  <!-- Free Stock header bar -->
   <div class="free-stock-bar">
     <div>
       <div class="free-stock-title">Free Stock</div>
       <div class="free-stock-sub">Select a model to view availability</div>
     </div>
-  </div>
-
-  <div class="toolbar">
-    <div class="filter-wrap">
-      <span class="filter-label">Select Model</span>
-      <select class="filter-select" id="sModelSelect" onchange="staffRenderFreeStock()" style="min-width:220px;">
-        <option value="">— Choose a model —</option>
-      </select>
-    </div>
     <span class="results-info" id="sResultsInfo"></span>
   </div>
 
+  <!-- Filters — model always enabled, rest disabled until model selected -->
+  <div class="toolbar">
+    <div class="filter-wrap">
+      <span class="filter-label">Model</span>
+      <select class="filter-select model-select" id="sModel" onchange="onModelChange()">
+        <option value="">— Select a model —</option>
+      </select>
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">Variant</span>
+      <select class="filter-select" id="sVariant" onchange="applyStaffFilters()" disabled>
+        <option value="">All Variants</option>
+      </select>
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">Colour</span>
+      <select class="filter-select" id="sColour" onchange="applyStaffFilters()" disabled>
+        <option value="">All Colours</option>
+      </select>
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">VIN Year</span>
+      <select class="filter-select" id="sYear" onchange="applyStaffFilters()" disabled>
+        <option value="">All Years</option>
+      </select>
+    </div>
+    <button class="clear-btn" id="sClearBtn" onclick="clearStaffFilters()" style="display:none">Clear</button>
+  </div>
+
+  <!-- Table area — empty until model selected -->
   <div id="sTableArea">
-    <div class="select-prompt">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
-        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-        <rect x="9" y="3" width="6" height="4" rx="1"/>
-        <line x1="9" y1="12" x2="15" y2="12"/>
-        <line x1="9" y1="16" x2="13" y2="16"/>
+    <div class="empty-prompt">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2">
+        <rect x="3" y="3" width="18" height="18" rx="2"/>
+        <path d="M3 9h18M9 21V9"/>
       </svg>
-      <strong>Select a model above</strong>
-      <p>Choose a model from the dropdown to see variant availability.</p>
+      <strong>No model selected</strong>
+      <p>Choose a model from the dropdown above to view stock availability.</p>
     </div>
   </div>
 </div>
 
-<!-- ADMIN VIEW -->
+<!-- ══════════ ADMIN VIEW ══════════ -->
 <div class="page" id="pageAdmin">
   <header>
     <div class="logo">
@@ -265,21 +290,23 @@
     </div>
   </header>
 
+  <!-- Admin tabs: Stock, Allocation, Live RPO, Free Stock, Manage Staff -->
   <div class="tabs-bar">
-    <button class="tab-btn active"  onclick="adminSwitchTab(0)" id="atab0">Stock</button>
-    <button class="tab-btn"         onclick="adminSwitchTab(1)" id="atab1">Allocation</button>
-    <button class="tab-btn"         onclick="adminSwitchTab(2)" id="atab2">Live RPO</button>
-    <button class="tab-btn t-free"  onclick="adminSwitchTab(3)" id="atab3">Free Stock</button>
-    <button class="tab-btn"         onclick="showAdminPanel()"  id="atab4">⚙ Manage Staff</button>
+    <button class="tab-btn active" onclick="adminSwitchTab(0)" id="atab0">Stock</button>
+    <button class="tab-btn"        onclick="adminSwitchTab(1)" id="atab1">Allocation</button>
+    <button class="tab-btn"        onclick="adminSwitchTab(2)" id="atab2">Live RPO</button>
+    <button class="tab-btn t-free" onclick="adminSwitchTab(3)" id="atab3">Free Stock</button>
+    <button class="tab-btn"        onclick="showAdminPanel()"  id="atab4">⚙ Manage Staff</button>
   </div>
 
+  <!-- Admin table view -->
   <div id="adminTableView">
     <div class="toolbar">
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         <input class="search-input" id="aSearch" placeholder="Search…" oninput="adminApplyFilters()">
       </div>
-      <div class="filter-wrap" id="aModelWrap">
+      <div class="filter-wrap">
         <span class="filter-label">Model</span>
         <select class="filter-select" id="aModel" onchange="adminApplyFilters()"><option value="">All Models</option></select>
       </div>
@@ -320,7 +347,7 @@
           <div class="form-field"><span class="form-label">Password</span><input class="form-input" id="newPass" placeholder="e.g. skoda123" type="password"></div>
           <button class="add-btn" onclick="addStaff()">Add Staff</button>
         </div>
-        <div class="login-err" id="addErr"></div>
+        <div class="add-err" id="addErr"></div>
       </div>
       <div class="admin-section">
         <h3>Staff List</h3>
@@ -331,25 +358,24 @@
 </div>
 
 <script>
-const API         = 'https://script.google.com/macros/s/AKfycbwxY5LjX5bmt1dVIbencV8_VlcInPSaXm52Fke_0eISw0hZANBSPq60D2VpdlquFJ3k/exec';
-const SHEETS      = ['Stock', 'Allocation', 'Live RPO', 'Product Spec'];
-const TAB_LABELS  = ['Stock', 'Allocation', 'Live RPO', 'Free Stock'];
-const COL         = { model:'Model', variant:'INTERNAL CODE', colour:'Color', year:'VY', status:'STATUS' };
-const ADMIN_PASS  = 'gurudev1008';
-const ADMIN_USER  = 'admin';
-const STORAGE_KEY = 'gs_staff_v3';
+const API        = 'https://script.google.com/macros/s/AKfycbwxY5LjX5bmt1dVIbencV8_VlcInPSaXm52Fke_0eISw0hZANBSPq60D2VpdlquFJ3k/exec';
+const SHEETS     = ['Stock', 'Allocation', 'Live RPO', 'Product Spec'];
+const ADMIN_PASS = 'gurudev1008';
+const ADMIN_USER = 'admin';
+const STORE_KEY  = 'gs_staff_v4';
+const COL        = { model:'Model', variant:'INTERNAL CODE', colour:'Color', year:'VY', status:'STATUS' };
 
-let sheetData  = [[], [], [], []];
-let adminTab   = 0;
-let aSortCol   = -1, aSortAsc = true;
-let logoClicks = 0, logoTimer = null;
+let sheetData   = [[], [], [], []];
+let adminTab    = 0;
+let aSortCol    = -1, aSortAsc = true;
+let logoClicks  = 0, logoTimer = null;
 let currentUser = null;
 
-// ── STAFF STORAGE ──
-function getStaff() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } }
-function saveStaff(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+/* ── STORAGE ── */
+function getStaff() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
+function saveStaff(l) { localStorage.setItem(STORE_KEY, JSON.stringify(l)); }
 
-// ── COLOUR ──
+/* ── COLOURS ── */
 const CMAP = {
   white:'#f5f5f5',black:'#222',silver:'#b8b8b8',grey:'#888',gray:'#888',
   red:'#e53935',blue:'#1e88e5',navy:'#0d2b6e',green:'#43a047',
@@ -367,22 +393,21 @@ function hueFor(n) {
   for (let i = 0; i < lc.length; i++) h = lc.charCodeAt(i) + ((h<<5)-h);
   return `hsl(${Math.abs(h)%360},38%,52%)`;
 }
-function findCol(headers, name) {
+function fc(headers, name) {
   let i = headers.findIndex(h => h === name);
-  if (i >= 0) return i;
-  return headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+  return i >= 0 ? i : headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
 }
 
-// ── JSONP ──
+/* ── JSONP ── */
 function jsonpFetch(sheet) {
   const cb = `__cb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => { delete window[cb]; reject(new Error('Timed out')); }, 15000);
-    window[cb] = (data) => { clearTimeout(t); delete window[cb]; resolve(data); };
+    window[cb] = d => { clearTimeout(t); delete window[cb]; resolve(d); };
     const s = document.createElement('script');
     s.src = `${API}?sheet=${encodeURIComponent(sheet)}&callback=${cb}`;
     s.onerror = () => { clearTimeout(t); delete window[cb]; s.remove(); reject(new Error('Network error')); };
-    s.onload  = () => s.remove();
+    s.onload = () => s.remove();
     document.head.appendChild(s);
   });
 }
@@ -390,23 +415,26 @@ function jsonpFetch(sheet) {
 async function loadAllSheets() {
   for (let i = 0; i < SHEETS.length; i++) {
     try {
-      const json = await jsonpFetch(SHEETS[i]);
-      sheetData[i] = Array.isArray(json) && json.length >= 2 ? json : [];
+      const j = await jsonpFetch(SHEETS[i]);
+      sheetData[i] = Array.isArray(j) && j.length >= 2 ? j : [];
     } catch { sheetData[i] = []; }
   }
-  const ts = 'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const ts = 'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   ['staffUpdated','adminUpdated'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=ts; });
-  populateStaffModelDropdown();
-  adminRenderTab();
+  if (currentUser && !currentUser.isAdmin) {
+    populateStaffModelDropdown();
+  } else {
+    adminRenderTab();
+  }
 }
 
-// ── LOGIN ──
+/* ── LOGIN ── */
 function doLogin() {
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value.trim();
   document.getElementById('loginErr').textContent = '';
   if (u === ADMIN_USER && p === ADMIN_PASS) {
-    currentUser = { username:ADMIN_USER, name:'Admin', isAdmin:true };
+    currentUser = { username: ADMIN_USER, name:'Admin', isAdmin:true };
     showPage('pageAdmin'); loadAllSheets(); return;
   }
   const found = getStaff().find(s => s.username===u && s.password===p);
@@ -420,8 +448,7 @@ function doLogin() {
 
 function doLogout() {
   currentUser = null; logoClicks = 0;
-  document.getElementById('loginUser').value = '';
-  document.getElementById('loginPass').value = '';
+  ['loginUser','loginPass'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('loginErr').textContent = '';
   showPage('pageLogin');
 }
@@ -434,7 +461,7 @@ function showPage(id) {
 function logoClick() {
   logoClicks++;
   clearTimeout(logoTimer);
-  logoTimer = setTimeout(() => { logoClicks=0; }, 2000);
+  logoTimer = setTimeout(() => logoClicks=0, 2000);
   if (logoClicks >= 5) {
     logoClicks = 0;
     const pw = prompt('Admin password:');
@@ -445,137 +472,188 @@ function logoClick() {
   }
 }
 
-// ══════════════════════════════════════
-// FREE STOCK LOGIC
-// ══════════════════════════════════════
+/* ════════════════════════════════════════
+   STAFF — FREE STOCK VIEW
+════════════════════════════════════════ */
 
-// Build a lookup map: "Model|Variant|Colour|VY" -> count of rows where STATUS = "Free" in Stock sheet
+function populateStaffModelDropdown() {
+  const rows = sheetData[3]; // Product Spec
+  const sel  = document.getElementById('sModel');
+  const cur  = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  if (!rows || rows.length < 2) return;
+  const headers = rows[0].map(h => String(h).trim());
+  const mI = fc(headers, COL.model);
+  if (mI < 0) return;
+  const models = [...new Set(rows.slice(1).map(r => String(r[mI]||'').trim()).filter(Boolean))].sort();
+  models.forEach(v => sel.add(new Option(v, v)));
+  if (models.includes(cur)) { sel.value = cur; }
+}
+
+function onModelChange() {
+  const model = document.getElementById('sModel').value;
+  const hasModel = !!model;
+
+  // Enable / disable dependent filters
+  ['sVariant','sColour','sYear'].forEach(id => {
+    const el = document.getElementById(id);
+    el.disabled = !hasModel;
+    // Reset when model cleared
+    if (!hasModel) el.value = '';
+  });
+
+  // Show/hide clear button
+  document.getElementById('sClearBtn').style.display = hasModel ? 'inline-block' : 'none';
+
+  if (!hasModel) {
+    // Reset to empty state
+    populateDependentFilters(null);
+    document.getElementById('sResultsInfo').textContent = '';
+    document.getElementById('sTableArea').innerHTML = `
+      <div class="empty-prompt">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18M9 21V9"/>
+        </svg>
+        <strong>No model selected</strong>
+        <p>Choose a model from the dropdown above to view stock availability.</p>
+      </div>`;
+    return;
+  }
+
+  populateDependentFilters(model);
+  applyStaffFilters();
+}
+
+function populateDependentFilters(model) {
+  const rows = sheetData[3];
+  if (!rows || rows.length < 2) return;
+  const headers = rows[0].map(h => String(h).trim());
+  const mI = fc(headers, COL.model);
+  const vI = fc(headers, COL.variant);
+  const cI = fc(headers, COL.colour);
+  const yI = fc(headers, COL.year);
+
+  const filtered = model
+    ? rows.slice(1).filter(r => String(r[mI]||'').trim() === model)
+    : [];
+
+  const fillSel = (id, idx) => {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    if (idx < 0 || !model) return;
+    const vals = [...new Set(filtered.map(r => String(r[idx]||'').trim()).filter(Boolean))].sort();
+    vals.forEach(v => sel.add(new Option(v, v)));
+    if (cur && vals.includes(cur)) sel.value = cur;
+  };
+
+  fillSel('sVariant', vI);
+  fillSel('sColour',  cI);
+  fillSel('sYear',    yI);
+}
+
+function applyStaffFilters() {
+  const model   = document.getElementById('sModel').value;
+  if (!model) return;
+
+  const fVariant = document.getElementById('sVariant').value;
+  const fColour  = document.getElementById('sColour').value;
+  const fYear    = document.getElementById('sYear').value;
+
+  const rows = sheetData[3];
+  if (!rows || rows.length < 2) return;
+  const headers = rows[0].map(h => String(h).trim());
+  const mI = fc(headers, COL.model);
+  const vI = fc(headers, COL.variant);
+  const cI = fc(headers, COL.colour);
+  const yI = fc(headers, COL.year);
+
+  const freeMap = buildFreeStockMap();
+
+  let filtered = rows.slice(1).filter(row => {
+    if (String(row[mI]||'').trim() !== model) return false;
+    if (fVariant && String(row[vI]||'').trim() !== fVariant) return false;
+    if (fColour  && String(row[cI]||'').trim() !== fColour)  return false;
+    if (fYear    && String(row[yI]||'').trim() !== fYear)    return false;
+    return true;
+  });
+
+  document.getElementById('sResultsInfo').textContent =
+    `${filtered.length} variant${filtered.length!==1?'s':''} shown`;
+
+  if (!filtered.length) {
+    document.getElementById('sTableArea').innerHTML = `<div class="state-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <strong>No matches</strong><p>Try adjusting your filters.</p></div>`;
+    return;
+  }
+
+  const rowsHtml = filtered.map((row, ri) => {
+    const modelVal   = String(row[mI]||'').trim();
+    const variantVal = vI>=0 ? String(row[vI]||'').trim() : '—';
+    const colourVal  = cI>=0 ? String(row[cI]||'').trim() : '—';
+    const yearVal    = yI>=0 ? String(row[yI]||'').trim() : '—';
+    const key        = [modelVal, variantVal, colourVal, yearVal].join('|');
+    const isFree     = (freeMap[key] || 0) > 0;
+    const badge      = isFree
+      ? `<span class="fs-yes"><span class="fs-dot"></span>Yes</span>`
+      : `<span class="fs-no"><span class="fs-dot"></span>No</span>`;
+    const colCell    = colourVal && colourVal!=='—'
+      ? `<div class="cc"><div class="cd" style="background:${hueFor(colourVal)}"></div>${colourVal}</div>`
+      : '—';
+    return `<tr style="animation-delay:${Math.min(ri*.015,.3)}s">
+      <td>${modelVal||'—'}</td>
+      <td>${variantVal||'—'}</td>
+      <td>${colCell}</td>
+      <td class="${!yearVal||yearVal==='—'?'dim':''}">${yearVal||'—'}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('sTableArea').innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>Model</th>
+          <th>Variant</th>
+          <th>Colour</th>
+          <th>VIN Year</th>
+          <th>Free Stock</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+}
+
+function clearStaffFilters() {
+  ['sVariant','sColour','sYear'].forEach(id => { document.getElementById(id).value = ''; });
+  applyStaffFilters();
+}
+
+/* ── FREE STOCK MAP — counts STATUS=Free in Stock sheet ── */
 function buildFreeStockMap() {
-  const stockRows = sheetData[0]; // Stock sheet
+  const stockRows = sheetData[0];
   if (!stockRows || stockRows.length < 2) return {};
-  const headers = stockRows[0].map(h => String(h).trim());
-  const mI = findCol(headers, COL.model);
-  const vI = findCol(headers, COL.variant);
-  const cI = findCol(headers, COL.colour);
-  const yI = findCol(headers, COL.year);
-  const sI = findCol(headers, COL.status);
+  const h  = stockRows[0].map(x => String(x).trim());
+  const mI = fc(h, COL.model), vI = fc(h, COL.variant),
+        cI = fc(h, COL.colour), yI = fc(h, COL.year), sI = fc(h, COL.status);
   const map = {};
   stockRows.slice(1).forEach(row => {
-    const status = String(row[sI]||'').trim().toLowerCase();
-    if (status === 'free') {
+    if (String(row[sI]||'').trim().toLowerCase() === 'free') {
       const key = [
-        String(row[mI]||'').trim(),
-        String(row[vI]||'').trim(),
-        String(row[cI]||'').trim(),
-        String(row[yI]||'').trim()
+        String(row[mI]||'').trim(), String(row[vI]||'').trim(),
+        String(row[cI]||'').trim(), String(row[yI]||'').trim()
       ].join('|');
-      map[key] = (map[key] || 0) + 1;
+      map[key] = (map[key]||0) + 1;
     }
   });
   return map;
 }
 
-// Populate model dropdown for staff from Product Spec sheet
-function populateStaffModelDropdown() {
-  const rows = sheetData[3]; // Product Spec
-  const sel  = document.getElementById('sModelSelect');
-  if (!sel) return;
-  const cur = sel.value;
-  while (sel.options.length > 1) sel.remove(1);
-  if (!rows || rows.length < 2) return;
-  const headers = rows[0].map(h => String(h).trim());
-  const mI = findCol(headers, COL.model);
-  if (mI < 0) return;
-  const models = [...new Set(rows.slice(1).map(r => String(r[mI]||'').trim()).filter(Boolean))].sort();
-  models.forEach(v => sel.add(new Option(v, v)));
-  if (models.includes(cur)) sel.value = cur;
-}
-
-// Render Free Stock table for selected model (staff view)
-function staffRenderFreeStock() {
-  const model   = document.getElementById('sModelSelect').value;
-  const area    = document.getElementById('sTableArea');
-  const infoEl  = document.getElementById('sResultsInfo');
-
-  if (!model) {
-    area.innerHTML = `<div class="select-prompt">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5">
-        <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
-        <rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
-      </svg>
-      <strong>Select a model above</strong>
-      <p>Choose a model from the dropdown to see variant availability.</p>
-    </div>`;
-    infoEl.textContent = '';
-    return;
-  }
-
-  const rows = sheetData[3]; // Product Spec
-  if (!rows || rows.length < 2) {
-    area.innerHTML = `<div class="state-box"><strong>No data in Product Spec sheet</strong></div>`;
-    return;
-  }
-
-  const headers = rows[0].map(h => String(h).trim());
-  const mI = findCol(headers, COL.model);
-  const vI = findCol(headers, COL.variant);
-  const cI = findCol(headers, COL.colour);
-  const yI = findCol(headers, COL.year);
-
-  // Filter rows matching selected model
-  const filtered = rows.slice(1).filter(r => String(r[mI]||'').trim() === model);
-  const freeMap  = buildFreeStockMap();
-
-  infoEl.textContent = `${filtered.length} variant${filtered.length!==1?'s':''} for ${model}`;
-
-  if (!filtered.length) {
-    area.innerHTML = `<div class="state-box">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <strong>No variants found</strong><p>No data for model "${model}" in Product Spec sheet.</p>
-    </div>`;
-    return;
-  }
-
-  // Build table — columns: Model, Variant, Colour, VY, Free Stock
-  const rows_html = filtered.map((row, ri) => {
-    const modelVal   = String(row[mI]||'').trim();
-    const variantVal = vI >= 0 ? String(row[vI]||'').trim() : '—';
-    const colourVal  = cI >= 0 ? String(row[cI]||'').trim() : '—';
-    const yearVal    = yI >= 0 ? String(row[yI]||'').trim() : '—';
-    const key        = [modelVal, variantVal, colourVal, yearVal].join('|');
-    const freeCount  = freeMap[key] || 0;
-    const badge      = freeCount > 0
-      ? `<span class="fs-yes"><span class="fs-dot"></span>Yes</span>`
-      : `<span class="fs-no"><span class="fs-dot"></span>No</span>`;
-    const colourCell = colourVal !== '—'
-      ? `<div class="cc"><div class="cd" style="background:${hueFor(colourVal)}"></div>${colourVal}</div>`
-      : '—';
-    return `<tr style="animation-delay:${Math.min(ri*.015,.28)}s">
-      <td>${modelVal||'—'}</td>
-      <td>${variantVal}</td>
-      <td>${colourCell}</td>
-      <td ${!yearVal||yearVal==='—'?'class="dim"':''}>${yearVal}</td>
-      <td>${badge}</td>
-    </tr>`;
-  }).join('');
-
-  area.innerHTML = `<div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>Model</th>
-        <th>Variant</th>
-        <th>Colour</th>
-        <th>VIN Year</th>
-        <th>Free Stock</th>
-      </tr></thead>
-      <tbody>${rows_html}</tbody>
-    </table>
-  </div>`;
-}
-
-// ══════════════════════════════════════
-// ADMIN TABLE
-// ══════════════════════════════════════
+/* ════════════════════════════════════════
+   ADMIN TABLE
+════════════════════════════════════════ */
 function adminSwitchTab(i) {
   adminTab = i;
   [0,1,2,3,4].forEach(j => document.getElementById('atab'+j).classList.toggle('active', j===i));
@@ -595,14 +673,11 @@ function showAdminPanel() {
 
 function adminRenderTab() {
   const isFree = adminTab === 3;
-  // For Free Stock tab in admin, show model filter only
-  const stdFilters = document.getElementById('aStdFilters');
-  if (stdFilters) {
-    Array.from(stdFilters.children).forEach(el => el.style.display = isFree ? 'none' : '');
-  }
-  document.getElementById('aSearch').placeholder = isFree ? 'Search model…' : 'Search colour, variant…';
+  // Toggle standard filters visibility for Free Stock tab
+  const stdF = document.getElementById('aStdFilters');
+  if (stdF) Array.from(stdF.children).forEach(el => el.style.display = isFree ? 'none' : '');
+  document.getElementById('aSearch').placeholder = isFree ? 'Search model…' : 'Search…';
 
-  // For Free Stock tab, use special render
   if (isFree) { adminRenderFreeStock(); return; }
 
   const rows = sheetData[adminTab];
@@ -610,17 +685,16 @@ function adminRenderTab() {
     document.getElementById('aTHead').innerHTML = '';
     document.getElementById('aTBody').innerHTML = `<tr><td colspan="20"><div class="state-box">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-      <strong>No data in "${SHEETS[adminTab]}"</strong>
-    </div></td></tr>`;
+      <strong>No data in "${SHEETS[adminTab]}"</strong></div></td></tr>`;
     return;
   }
   const headers = rows[0].map(h => String(h).trim());
   document.getElementById('aTHead').innerHTML = headers.map((h,i) =>
     `<th onclick="adminSortBy(${i})">${h}<span class="si">↕</span></th>`).join('');
-  fillSelect('aModel', rows, headers, COL.model);
-  fillSelect('aVariant', rows, headers, COL.variant);
-  fillSelect('aColour', rows, headers, COL.colour);
-  fillSelect('aYear', rows, headers, COL.year);
+  fillSel('aModel',   rows, headers, COL.model);
+  fillSel('aVariant', rows, headers, COL.variant);
+  fillSel('aColour',  rows, headers, COL.colour);
+  fillSel('aYear',    rows, headers, COL.year);
   adminApplyFilters();
 }
 
@@ -628,19 +702,18 @@ function adminRenderFreeStock() {
   const rows = sheetData[3];
   if (!rows || rows.length < 2) {
     document.getElementById('aTHead').innerHTML = '';
-    document.getElementById('aTBody').innerHTML = `<tr><td colspan="20"><div class="state-box">
+    document.getElementById('aTBody').innerHTML = `<tr><td colspan="5"><div class="state-box">
       <strong>No data in "Product Spec" sheet</strong></div></td></tr>`;
+    document.getElementById('aResultsInfo').textContent = '';
     return;
   }
   const headers = rows[0].map(h => String(h).trim());
-  fillSelect('aModel', rows, headers, COL.model);
+  fillSel('aModel', rows, headers, COL.model);
   const freeMap = buildFreeStockMap();
   const search  = document.getElementById('aSearch').value.toLowerCase().trim();
   const fModel  = document.getElementById('aModel').value;
-  const mI = findCol(headers, COL.model);
-  const vI = findCol(headers, COL.variant);
-  const cI = findCol(headers, COL.colour);
-  const yI = findCol(headers, COL.year);
+  const mI=fc(headers,COL.model), vI=fc(headers,COL.variant),
+        cI=fc(headers,COL.colour), yI=fc(headers,COL.year);
 
   let filtered = rows.slice(1).filter(row => {
     const mv = String(row[mI]||'').trim();
@@ -652,27 +725,21 @@ function adminRenderFreeStock() {
   document.getElementById('aTHead').innerHTML =
     '<th>Model</th><th>Variant</th><th>Colour</th><th>VIN Year</th><th>Free Stock</th>';
 
-  document.getElementById('aTBody').innerHTML = filtered.length ? filtered.map((row,ri) => {
-    const modelVal   = String(row[mI]||'').trim();
-    const variantVal = vI>=0 ? String(row[vI]||'').trim() : '—';
-    const colourVal  = cI>=0 ? String(row[cI]||'').trim() : '—';
-    const yearVal    = yI>=0 ? String(row[yI]||'').trim() : '—';
-    const key        = [modelVal,variantVal,colourVal,yearVal].join('|');
-    const freeCount  = freeMap[key] || 0;
-    const badge      = freeCount > 0
-      ? `<span class="fs-yes"><span class="fs-dot"></span>Yes (${freeCount})</span>`
-      : `<span class="fs-no"><span class="fs-dot"></span>No</span>`;
-    const colourCell = colourVal !== '—'
-      ? `<div class="cc"><div class="cd" style="background:${hueFor(colourVal)}"></div>${colourVal}</div>`
-      : '—';
-    return `<tr style="animation-delay:${Math.min(ri*.015,.28)}s">
-      <td>${modelVal||'—'}</td><td>${variantVal}</td>
-      <td>${colourCell}</td>
-      <td ${!yearVal||yearVal==='—'?'class="dim"':''}>${yearVal}</td>
-      <td>${badge}</td>
-    </tr>`;
-  }).join('') : `<tr><td colspan="5"><div class="state-box">
-    <strong>No matches</strong><p>Try adjusting your filter.</p></div></td></tr>`;
+  document.getElementById('aTBody').innerHTML = filtered.length
+    ? filtered.map((row,ri) => {
+        const mv=String(row[mI]||'').trim(), vv=vI>=0?String(row[vI]||'').trim():'—',
+              cv=cI>=0?String(row[cI]||'').trim():'—', yv=yI>=0?String(row[yI]||'').trim():'—';
+        const cnt = freeMap[[mv,vv,cv,yv].join('|')] || 0;
+        const badge = cnt>0
+          ? `<span class="fs-yes"><span class="fs-dot"></span>Yes (${cnt})</span>`
+          : `<span class="fs-no"><span class="fs-dot"></span>No</span>`;
+        const colCell = cv&&cv!=='—'
+          ? `<div class="cc"><div class="cd" style="background:${hueFor(cv)}"></div>${cv}</div>` : '—';
+        return `<tr style="animation-delay:${Math.min(ri*.015,.3)}s">
+          <td>${mv||'—'}</td><td>${vv}</td><td>${colCell}</td>
+          <td class="${!yv||yv==='—'?'dim':''}">${yv}</td><td>${badge}</td></tr>`;
+      }).join('')
+    : `<tr><td colspan="5"><div class="state-box"><strong>No matches</strong></div></td></tr>`;
 
   document.getElementById('aResultsInfo').textContent =
     `${filtered.length} of ${rows.length-1} records`;
@@ -685,16 +752,14 @@ function adminApplyFilters() {
   const headers = rows[0].map(h => String(h).trim());
   const body    = rows.slice(1);
   const search  = document.getElementById('aSearch').value.toLowerCase().trim();
-  const fM = document.getElementById('aModel').value;
-  const fV = document.getElementById('aVariant').value;
-  const fC = document.getElementById('aColour').value;
-  const fY = document.getElementById('aYear').value;
-  const mI=findCol(headers,COL.model), vI=findCol(headers,COL.variant),
-        cI=findCol(headers,COL.colour), yI=findCol(headers,COL.year);
+  const fM=document.getElementById('aModel').value,   fV=document.getElementById('aVariant').value,
+        fC=document.getElementById('aColour').value,  fY=document.getElementById('aYear').value;
+  const mI=fc(headers,COL.model), vI=fc(headers,COL.variant),
+        cI=fc(headers,COL.colour), yI=fc(headers,COL.year);
 
   let filtered = body.filter(row => {
-    const cv=String(row[cI]||'').trim(), vv=String(row[vI]||'').trim(), mv=String(row[mI]||'').trim();
-    if (search && !cv.toLowerCase().includes(search) && !vv.toLowerCase().includes(search) && !mv.toLowerCase().includes(search)) return false;
+    const mv=String(row[mI]||'').trim(), vv=String(row[vI]||'').trim(), cv=String(row[cI]||'').trim();
+    if (search && ![mv,vv,cv].some(v=>v.toLowerCase().includes(search))) return false;
     if (fM && mv!==fM) return false;
     if (fV && vI>=0 && vv!==fV) return false;
     if (fC && cI>=0 && cv!==fC) return false;
@@ -707,11 +772,13 @@ function adminApplyFilters() {
     return aSortAsc?av.localeCompare(bv):bv.localeCompare(av);
   });
 
-  const cIdx = findCol(headers, COL.colour);
+  document.getElementById('aTHead').innerHTML = headers.map((h,i) =>
+    `<th onclick="adminSortBy(${i})" class="${aSortCol===i?'sorted':''}">${h}<span class="si">${aSortCol===i?(aSortAsc?'↑':'↓'):'↕'}</span></th>`).join('');
+  const cIdx = fc(headers, COL.colour);
   document.getElementById('aTBody').innerHTML = filtered.length
-    ? filtered.map((row,ri) => `<tr style="animation-delay:${Math.min(ri*.015,.28)}s">${
+    ? filtered.map((row,ri) => `<tr style="animation-delay:${Math.min(ri*.015,.3)}s">${
         headers.map((_,ci) => {
-          const val = String(row[ci]||'').trim();
+          const val=String(row[ci]||'').trim();
           if (ci===cIdx) return `<td><div class="cc"><div class="cd" style="background:${hueFor(val)}"></div>${val||'—'}</div></td>`;
           return `<td ${!val?'class="dim"':''}>${val||'—'}</td>`;
         }).join('')
@@ -724,10 +791,6 @@ function adminApplyFilters() {
 
 function adminSortBy(col) {
   aSortAsc = aSortCol===col ? !aSortAsc : true; aSortCol=col;
-  document.querySelectorAll('#aTHead th').forEach((th,i) => {
-    th.classList.toggle('sorted',i===col);
-    const si=th.querySelector('.si'); if(si) si.textContent=i===col?(aSortAsc?'↑':'↓'):'↕';
-  });
   adminApplyFilters();
 }
 
@@ -736,44 +799,40 @@ function adminClearFilters() {
   adminApplyFilters();
 }
 
-function fillSelect(selId, rows, headers, colName) {
-  const ci = findCol(headers, colName);
-  const sel = document.getElementById(selId);
+function fillSel(id, rows, headers, colName) {
+  const ci=fc(headers,colName), sel=document.getElementById(id);
   if (!sel) return;
-  const cur = sel.value;
-  const opts = ci>=0 ? [...new Set(rows.slice(1).map(r=>String(r[ci]||'').trim()).filter(Boolean))].sort() : [];
+  const cur=sel.value;
+  const opts=ci>=0?[...new Set(rows.slice(1).map(r=>String(r[ci]||'').trim()).filter(Boolean))].sort():[];
   while (sel.options.length>1) sel.remove(1);
-  opts.forEach(v => sel.add(new Option(v,v)));
+  opts.forEach(v=>sel.add(new Option(v,v)));
   if (opts.includes(cur)) sel.value=cur;
 }
 
-// ── MANAGE STAFF ──
+/* ── MANAGE STAFF ── */
 function addStaff() {
   const name=document.getElementById('newName').value.trim();
   const user=document.getElementById('newUser').value.trim();
   const pass=document.getElementById('newPass').value.trim();
-  const errEl=document.getElementById('addErr');
-  errEl.textContent='';
-  if (!name||!user||!pass) { errEl.textContent='Please fill in all fields.'; return; }
-  if (user===ADMIN_USER)   { errEl.textContent='Username "admin" is reserved.'; return; }
+  const err=document.getElementById('addErr');
+  err.textContent='';
+  if (!name||!user||!pass) { err.textContent='Please fill in all fields.'; return; }
+  if (user===ADMIN_USER)   { err.textContent='Username "admin" is reserved.'; return; }
   const staff=getStaff();
-  if (staff.find(s=>s.username===user)) { errEl.textContent='Username already exists.'; return; }
+  if (staff.find(s=>s.username===user)) { err.textContent='Username already exists.'; return; }
   staff.push({name,username:user,password:pass});
   saveStaff(staff);
-  document.getElementById('newName').value='';
-  document.getElementById('newUser').value='';
-  document.getElementById('newPass').value='';
+  ['newName','newUser','newPass'].forEach(id=>document.getElementById(id).value='');
   renderStaffList();
 }
 
-function deleteStaff(username) {
-  saveStaff(getStaff().filter(s=>s.username!==username));
+function deleteStaff(u) {
+  saveStaff(getStaff().filter(s=>s.username!==u));
   renderStaffList();
 }
 
 function renderStaffList() {
-  const staff=getStaff();
-  const wrap=document.getElementById('staffListWrap');
+  const staff=getStaff(), wrap=document.getElementById('staffListWrap');
   if (!staff.length) { wrap.innerHTML='<div class="no-users">No staff added yet.</div>'; return; }
   wrap.innerHTML=`<table class="users-table">
     <thead><tr><th>Name</th><th>Username</th><th>Password</th><th></th></tr></thead>
