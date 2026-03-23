@@ -31,6 +31,52 @@
     min-height: 100vh;
     background-image: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(76,175,110,0.12) 0%, transparent 70%);
   }
+
+  /* ── PAGES ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── LOGIN PAGE ── */
+  .login-wrap {
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+  }
+  .login-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 16px;
+    padding: 48px 40px;
+    width: 100%; max-width: 400px;
+    text-align: center;
+  }
+  .login-logo-mark {
+    width: 56px; height: 56px; background: var(--accent);
+    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 20px;
+  }
+  .login-logo-mark svg { width: 32px; height: 32px; }
+  .login-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .login-sub { font-size: 12px; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 36px; }
+  .login-field { margin-bottom: 16px; text-align: left; }
+  .login-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 6px; }
+  .login-input {
+    width: 100%; background: var(--bg-surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 11px 14px; color: var(--text-primary);
+    font-family: var(--font-body); font-size: 14px; outline: none; transition: border-color .2s;
+  }
+  .login-input:focus { border-color: var(--accent); }
+  .login-input::placeholder { color: var(--text-dim); }
+  .login-btn {
+    width: 100%; background: var(--accent); color: #0a1f0e;
+    border: none; border-radius: var(--radius); padding: 12px;
+    font-family: var(--font-display); font-size: 16px; font-weight: 700;
+    letter-spacing: 0.06em; cursor: pointer; transition: opacity .2s; margin-top: 8px;
+  }
+  .login-btn:hover { opacity: 0.88; }
+  .login-err { color: #f87171; font-size: 13px; margin-top: 12px; min-height: 20px; }
+
+  /* ── HEADER ── */
   header {
     background: var(--bg-card);
     border-bottom: 1px solid var(--border-strong);
@@ -38,23 +84,28 @@
     display: flex; align-items: center; justify-content: space-between;
     height: 64px; position: sticky; top: 0; z-index: 100;
   }
-  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo { display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
   .logo-mark { width: 38px; height: 38px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
   .logo-mark svg { width: 22px; height: 22px; }
   .logo-text { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 0.04em; line-height: 1; }
   .logo-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; }
-  .header-right { display: flex; align-items: center; gap: 16px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
   .live-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
   .live-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
   @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(76,175,110,.5)} 50%{opacity:.7;box-shadow:0 0 0 5px rgba(76,175,110,0)} }
   .last-updated { font-size: 11px; color: var(--text-dim); }
-  .refresh-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 14px; color: var(--text-muted); font-family: var(--font-body); font-size: 12px; cursor: pointer; transition: all .2s; display: flex; align-items: center; gap: 5px; }
-  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .tabs-bar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; }
-  .tab-btn { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: .05em; padding: 14px 28px; background: none; border: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; text-transform: uppercase; position: relative; top: 1px; }
+  .hdr-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 14px; color: var(--text-muted); font-family: var(--font-body); font-size: 12px; cursor: pointer; transition: all .2s; }
+  .hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .user-tag { font-size: 12px; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 12px; }
+
+  /* ── ADMIN TABS (only visible to admin) ── */
+  .admin-tabs { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; }
+  .tab-btn { font-family: var(--font-display); font-size: 14px; font-weight: 600; letter-spacing: .05em; padding: 12px 22px; background: none; border: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; text-transform: uppercase; position: relative; top: 1px; }
   .tab-btn:hover { color: var(--accent-soft); }
   .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-count { display: inline-flex; align-items: center; justify-content: center; background: var(--accent-glow); color: var(--accent); border-radius: 10px; font-size: 10px; font-family: var(--font-body); font-weight: 500; min-width: 20px; height: 18px; padding: 0 6px; margin-left: 8px; }
+  .tab-count { display: inline-flex; align-items: center; justify-content: center; background: var(--accent-glow); color: var(--accent); border-radius: 10px; font-size: 10px; font-family: var(--font-body); font-weight: 500; min-width: 18px; height: 17px; padding: 0 5px; margin-left: 7px; }
+
+  /* ── TOOLBAR ── */
   .toolbar { padding: 14px 28px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; background: var(--bg-deep); border-bottom: 1px solid var(--border); }
   .search-wrap { position: relative; flex: 1; min-width: 180px; max-width: 260px; }
   .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--text-dim); pointer-events: none; }
@@ -63,12 +114,14 @@
   .search-input:focus { border-color: var(--accent); }
   .filter-wrap { display: flex; flex-direction: column; gap: 3px; }
   .filter-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; padding-left: 2px; }
-  .filter-select { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 30px 8px 12px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234a7a57' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: border-color .2s; min-width: 140px; }
+  .filter-select { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 30px 8px 12px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234a7a57' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: border-color .2s; min-width: 130px; }
   .filter-select:focus { border-color: var(--accent); }
   .filter-select option { background: var(--bg-card); color: var(--text-primary); }
-  .clear-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 16px; color: var(--text-muted); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all .2s; }
+  .clear-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 14px; color: var(--text-muted); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all .2s; }
   .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
   .results-info { margin-left: auto; font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+
+  /* ── TABLE ── */
   .table-wrap { padding: 20px 28px 60px; overflow-x: auto; }
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   thead tr { background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
@@ -83,6 +136,31 @@
   td.dim { color: var(--text-muted); }
   .cc { display: flex; align-items: center; gap: 8px; }
   .cd { width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(255,255,255,.18); flex-shrink: 0; }
+
+  /* ── ADMIN PANEL ── */
+  .admin-panel { padding: 28px; max-width: 860px; }
+  .admin-panel h2 { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 20px; letter-spacing: 0.04em; }
+  .admin-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+  .admin-section h3 { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--text-muted); margin-bottom: 16px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .add-user-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .form-field { display: flex; flex-direction: column; gap: 4px; }
+  .form-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.07em; }
+  .form-input { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 13px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color .2s; min-width: 160px; }
+  .form-input:focus { border-color: var(--accent); }
+  .add-btn { background: var(--accent); color: #0a1f0e; border: none; border-radius: var(--radius); padding: 9px 20px; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.05em; cursor: pointer; transition: opacity .2s; }
+  .add-btn:hover { opacity: 0.85; }
+  .users-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .users-table th { font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-dim); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
+  .users-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+  .users-table tr:last-child td { border-bottom: none; }
+  .del-btn { background: none; border: 1px solid rgba(239,68,68,.3); border-radius: 4px; padding: 3px 10px; color: #f87171; font-size: 12px; cursor: pointer; transition: all .2s; }
+  .del-btn:hover { background: rgba(239,68,68,.1); }
+  .no-users { color: var(--text-dim); font-size: 13px; padding: 12px 0; }
+  .tab-switch-selector { display: flex; gap: 10px; }
+  .tab-switch-selector label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); cursor: pointer; }
+  .tab-switch-selector input[type=radio] { accent-color: var(--accent); }
+
+  /* ── STATES ── */
   .state-box { text-align: center; padding: 70px 20px; color: var(--text-dim); }
   .state-box svg { width: 38px; height: 38px; stroke: var(--text-dim); display: block; margin: 0 auto 14px; }
   .state-box strong { display: block; font-size: 15px; color: var(--text-muted); margin-bottom: 6px; }
@@ -90,88 +168,250 @@
   .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .75s linear infinite; display: block; margin: 0 auto 14px; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes rowIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:translateY(0)} }
-  .err-bar { margin: 20px 28px 0; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); border-radius: var(--radius); padding: 14px 18px; color: #fca5a5; font-size: 13px; line-height: 1.7; }
-  .err-bar strong { display: block; font-size: 14px; margin-bottom: 3px; color: #f87171; }
+
+  .err-bar { margin: 16px 28px 0; background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25); border-radius: var(--radius); padding: 12px 16px; color: #fca5a5; font-size: 13px; }
+  .err-bar strong { display: block; font-size: 14px; margin-bottom: 2px; color: #f87171; }
+
+  .sheet-label { padding: 10px 28px 0; font-size: 12px; color: var(--text-dim); letter-spacing: 0.06em; text-transform: uppercase; }
+
   @media(max-width:640px) {
-    header,.tabs-bar,.toolbar,.table-wrap { padding-left:14px;padding-right:14px; }
-    .tab-btn { padding:12px 16px;font-size:13px; }
+    header,.toolbar,.table-wrap { padding-left:14px;padding-right:14px; }
     .logo-text { font-size:18px; }
+    .login-box { padding: 32px 24px; }
   }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="logo">
-    <div class="logo-mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="#0a1f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-        <path d="M2 17l10 5 10-5"/>
-        <path d="M2 12l10 5 10-5"/>
-      </svg>
-    </div>
-    <div>
-      <div class="logo-text">GURUDEV SKODA</div>
-      <div class="logo-sub">Stock Viewer</div>
+<!-- ════════════════════════════════ LOGIN PAGE ════════════════════════════════ -->
+<div class="page active" id="pageLogin">
+  <div class="login-wrap">
+    <div class="login-box">
+      <div class="login-logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0a1f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div class="login-title">GURUDEV SKODA</div>
+      <div class="login-sub">Stock Viewer — Staff Login</div>
+      <div class="login-field">
+        <label class="login-label">Username</label>
+        <input class="login-input" id="loginUser" type="text" placeholder="Enter username" autocomplete="username">
+      </div>
+      <div class="login-field">
+        <label class="login-label">Password</label>
+        <input class="login-input" id="loginPass" type="password" placeholder="Enter password" autocomplete="current-password">
+      </div>
+      <button class="login-btn" onclick="doLogin()">Sign In</button>
+      <div class="login-err" id="loginErr"></div>
     </div>
   </div>
-  <div class="header-right">
-    <div class="live-badge"><div class="live-dot"></div>Live</div>
-    <span class="last-updated" id="lastUpdated">—</span>
-    <button class="refresh-btn" onclick="loadAllSheets()">↻ Refresh</button>
-  </div>
-</header>
-
-<div class="tabs-bar">
-  <button class="tab-btn active" onclick="switchTab(0)" id="tab0">Stock <span class="tab-count" id="count0">—</span></button>
-  <button class="tab-btn"        onclick="switchTab(1)" id="tab1">Allocation <span class="tab-count" id="count1">—</span></button>
-  <button class="tab-btn"        onclick="switchTab(2)" id="tab2">Live RPO <span class="tab-count" id="count2">—</span></button>
 </div>
 
-<div class="toolbar">
-  <div class="search-wrap">
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input class="search-input" id="searchInput" placeholder="Search colour, variant…" oninput="applyFilters()">
+<!-- ════════════════════════════════ STAFF VIEW ════════════════════════════════ -->
+<div class="page" id="pageStaff">
+  <header>
+    <div class="logo" onclick="logoClick()">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0a1f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">GURUDEV SKODA</div>
+        <div class="logo-sub">Stock Viewer</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="live-dot"></div>Live</div>
+      <span class="last-updated" id="staffUpdated">—</span>
+      <span class="user-tag" id="staffUserTag"></span>
+      <button class="hdr-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </header>
+
+  <div class="sheet-label" id="staffSheetLabel"></div>
+
+  <div class="toolbar">
+    <div class="search-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" id="sSearch" placeholder="Search colour, variant…" oninput="applyFilters()">
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">Model</span>
+      <select class="filter-select" id="sModel" onchange="applyFilters()"><option value="">All Models</option></select>
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">Variant</span>
+      <select class="filter-select" id="sVariant" onchange="applyFilters()"><option value="">All Variants</option></select>
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">Colour</span>
+      <select class="filter-select" id="sColour" onchange="applyFilters()"><option value="">All Colours</option></select>
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">Year</span>
+      <select class="filter-select" id="sYear" onchange="applyFilters()"><option value="">All Years</option></select>
+    </div>
+    <button class="clear-btn" onclick="clearFilters()">Clear</button>
+    <span class="results-info" id="sResultsInfo"></span>
   </div>
-  <div class="filter-wrap">
-    <span class="filter-label">Model</span>
-    <select class="filter-select" id="fModel" onchange="applyFilters()"><option value="">All Models</option></select>
+
+  <div id="sErrArea"></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr id="sTHead"></tr></thead>
+      <tbody id="sTBody">
+        <tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading…</strong></div></td></tr>
+      </tbody>
+    </table>
   </div>
-  <div class="filter-wrap">
-    <span class="filter-label">Variant</span>
-    <select class="filter-select" id="fVariant" onchange="applyFilters()"><option value="">All Variants</option></select>
-  </div>
-  <div class="filter-wrap">
-    <span class="filter-label">Colour</span>
-    <select class="filter-select" id="fColour" onchange="applyFilters()"><option value="">All Colours</option></select>
-  </div>
-  <div class="filter-wrap">
-    <span class="filter-label">Year</span>
-    <select class="filter-select" id="fYear" onchange="applyFilters()"><option value="">All Years</option></select>
-  </div>
-  <button class="clear-btn" onclick="clearFilters()">Clear</button>
-  <span class="results-info" id="resultsInfo"></span>
 </div>
 
-<div id="errArea"></div>
+<!-- ════════════════════════════════ ADMIN VIEW ════════════════════════════════ -->
+<div class="page" id="pageAdmin">
+  <header>
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0a1f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">GURUDEV SKODA</div>
+        <div class="logo-sub">Admin Panel</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="live-badge"><div class="live-dot"></div>Live</div>
+      <span class="last-updated" id="adminUpdated">—</span>
+      <button class="hdr-btn" onclick="showStockView()">Stock View</button>
+      <button class="hdr-btn" onclick="doLogout()">Sign out</button>
+    </div>
+  </header>
 
-<div class="table-wrap">
-  <table>
-    <thead><tr id="tHead"></tr></thead>
-    <tbody id="tBody">
-      <tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading data…</strong><p>Connecting to Google Sheet</p></div></td></tr>
-    </tbody>
-  </table>
+  <!-- Admin tabs for switching sheets -->
+  <div class="admin-tabs">
+    <button class="tab-btn active" onclick="adminSwitchTab(0)" id="atab0">Stock <span class="tab-count" id="acount0">—</span></button>
+    <button class="tab-btn"        onclick="adminSwitchTab(1)" id="atab1">Allocation <span class="tab-count" id="acount1">—</span></button>
+    <button class="tab-btn"        onclick="adminSwitchTab(2)" id="atab2">Live RPO <span class="tab-count" id="acount2">—</span></button>
+    <button class="tab-btn"        onclick="showAdminPanel()" id="atab3">⚙ Manage Staff</button>
+  </div>
+
+  <!-- Admin stock table -->
+  <div id="adminTableView">
+    <div class="toolbar">
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" id="aSearch" placeholder="Search colour, variant…" oninput="adminApplyFilters()">
+      </div>
+      <div class="filter-wrap">
+        <span class="filter-label">Model</span>
+        <select class="filter-select" id="aModel" onchange="adminApplyFilters()"><option value="">All Models</option></select>
+      </div>
+      <div class="filter-wrap">
+        <span class="filter-label">Variant</span>
+        <select class="filter-select" id="aVariant" onchange="adminApplyFilters()"><option value="">All Variants</option></select>
+      </div>
+      <div class="filter-wrap">
+        <span class="filter-label">Colour</span>
+        <select class="filter-select" id="aColour" onchange="adminApplyFilters()"><option value="">All Colours</option></select>
+      </div>
+      <div class="filter-wrap">
+        <span class="filter-label">Year</span>
+        <select class="filter-select" id="aYear" onchange="adminApplyFilters()"><option value="">All Years</option></select>
+      </div>
+      <button class="clear-btn" onclick="adminClearFilters()">Clear</button>
+      <span class="results-info" id="aResultsInfo"></span>
+    </div>
+    <div id="aErrArea"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr id="aTHead"></tr></thead>
+        <tbody id="aTBody">
+          <tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading…</strong></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Manage Staff panel -->
+  <div id="adminPanel" style="display:none">
+    <div class="admin-panel">
+      <h2>Manage Staff Accounts</h2>
+
+      <div class="admin-section">
+        <h3>Add New Staff</h3>
+        <div class="add-user-form">
+          <div class="form-field">
+            <span class="form-label">Name</span>
+            <input class="form-input" id="newName" placeholder="e.g. Ravi Kumar">
+          </div>
+          <div class="form-field">
+            <span class="form-label">Username</span>
+            <input class="form-input" id="newUser" placeholder="e.g. ravi">
+          </div>
+          <div class="form-field">
+            <span class="form-label">Password</span>
+            <input class="form-input" id="newPass" placeholder="e.g. skoda123" type="password">
+          </div>
+          <div class="form-field">
+            <span class="form-label">Default sheet to show</span>
+            <select class="form-input" id="newSheet">
+              <option value="0">Stock</option>
+              <option value="1">Allocation</option>
+              <option value="2">Live RPO</option>
+            </select>
+          </div>
+          <button class="add-btn" onclick="addStaff()">Add Staff</button>
+        </div>
+        <div class="login-err" id="addErr"></div>
+      </div>
+
+      <div class="admin-section">
+        <h3>Staff List</h3>
+        <div id="staffListWrap">
+          <div class="no-users">No staff added yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
 const API    = 'https://script.google.com/macros/s/AKfycbwxY5LjX5bmt1dVIbencV8_VlcInPSaXm52Fke_0eISw0hZANBSPq60D2VpdlquFJ3k/exec';
 const SHEETS = ['Stock', 'Allocation', 'Live RPO'];
 const COL    = { model:'Model', variant:'INTERNAL CODE', colour:'Color', year:'VY' };
+const ADMIN_PASS = 'gurudev1008';
+const ADMIN_USER = 'admin';
+const STORAGE_KEY = 'gs_staff_v1';
 
-let sheetData = [[], [], []];
-let activeTab = 0, sortCol = -1, sortAsc = true;
+let sheetData   = [[], [], []];
+let adminTab    = 0;
+let staffTab    = 0;
+let sortCol     = -1;
+let sortAsc     = true;
+let aSortCol    = -1;
+let aSortAsc    = true;
+let logoClicks  = 0;
+let logoTimer   = null;
+let currentUser = null;
 
+// ── STAFF STORAGE (localStorage) ──
+function getStaff() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; }
+}
+function saveStaff(list) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
+// ── COLOUR ──
 const CMAP = {
   white:'#f5f5f5',black:'#222',silver:'#b8b8b8',grey:'#888',gray:'#888',
   red:'#e53935',blue:'#1e88e5',navy:'#0d2b6e',green:'#43a047',
@@ -181,7 +421,6 @@ const CMAP = {
   brilliant:'#c8d0d8',crystal:'#5b9bd5',lava:'#2c4f8c',ember:'#c0392b',
   graphite:'#4b5563',phantom:'#1f2937',aurora:'#6ee7b7',coral:'#ff6b6b'
 };
-
 function hueFor(n) {
   if (!n) return '#556';
   const lc = n.toLowerCase();
@@ -190,118 +429,262 @@ function hueFor(n) {
   for (let i = 0; i < lc.length; i++) h = lc.charCodeAt(i) + ((h<<5)-h);
   return `hsl(${Math.abs(h)%360},38%,52%)`;
 }
-
 function findCol(headers, name) {
   let i = headers.findIndex(h => h === name);
   if (i >= 0) return i;
   return headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
 }
 
+// ── JSONP ──
 function jsonpFetch(sheet) {
-  const cbName = `__cb_${sheet.replace(/\s+/g,'_')}_${Date.now()}`;
+  const cb = `__cb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      delete window[cbName];
-      const s = document.getElementById(cbName);
-      if (s) s.remove();
-      reject(new Error('Timed out — check Apps Script is deployed as Web App with Anyone access'));
-    }, 15000);
-
-    window[cbName] = (data) => {
-      clearTimeout(timeout);
-      delete window[cbName];
-      resolve(data);
-    };
-
-    const script = document.createElement('script');
-    script.id  = cbName;
-    script.src = `${API}?sheet=${encodeURIComponent(sheet)}&callback=${cbName}`;
-    script.onerror = () => {
-      clearTimeout(timeout);
-      delete window[cbName];
-      script.remove();
-      reject(new Error('Could not reach Apps Script URL'));
-    };
-    document.head.appendChild(script);
-    script.onload = () => script.remove();
+    const t = setTimeout(() => { delete window[cb]; reject(new Error('Timed out')); }, 15000);
+    window[cb] = (data) => { clearTimeout(t); delete window[cb]; resolve(data); };
+    const s = document.createElement('script');
+    s.src = `${API}?sheet=${encodeURIComponent(sheet)}&callback=${cb}`;
+    s.onerror = () => { clearTimeout(t); delete window[cb]; s.remove(); reject(new Error('Network error')); };
+    s.onload  = () => s.remove();
+    document.head.appendChild(s);
   });
 }
 
 async function loadAllSheets() {
-  document.getElementById('errArea').innerHTML = '';
-  document.getElementById('lastUpdated').textContent = 'Loading…';
-  showLoading();
-  const errors = [];
-
   for (let i = 0; i < SHEETS.length; i++) {
     try {
       const json = await jsonpFetch(SHEETS[i]);
       sheetData[i] = Array.isArray(json) && json.length >= 2 ? json : [];
-      document.getElementById('count'+i).textContent = Math.max(0, sheetData[i].length - 1);
-    } catch(e) {
-      sheetData[i] = [];
-      document.getElementById('count'+i).textContent = '!';
-      errors.push({ name: SHEETS[i], msg: e.message });
+    } catch { sheetData[i] = []; }
+    const cnt = Math.max(0, sheetData[i].length - 1);
+    const el0 = document.getElementById('acount'+i);
+    if (el0) el0.textContent = cnt;
+  }
+  const ts = 'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  ['staffUpdated','adminUpdated'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = ts;
+  });
+  renderStaffTable();
+  adminRenderTab();
+}
+
+// ── LOGIN ──
+function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value.trim();
+  document.getElementById('loginErr').textContent = '';
+
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    currentUser = { username: ADMIN_USER, name: 'Admin', isAdmin: true, sheet: 0 };
+    showPage('pageAdmin');
+    loadAllSheets();
+    return;
+  }
+
+  const staff = getStaff();
+  const found = staff.find(s => s.username === u && s.password === p);
+  if (found) {
+    currentUser = { ...found, isAdmin: false };
+    staffTab = parseInt(found.sheet) || 0;
+    document.getElementById('staffUserTag').textContent = found.name || found.username;
+    document.getElementById('staffSheetLabel').textContent = SHEETS[staffTab];
+    showPage('pageStaff');
+    loadAllSheets();
+    return;
+  }
+
+  document.getElementById('loginErr').textContent = 'Incorrect username or password.';
+}
+
+function doLogout() {
+  currentUser = null;
+  logoClicks = 0;
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('loginErr').textContent = '';
+  showPage('pageLogin');
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── LOGO SECRET (click 5 times to go to admin from staff view) ──
+function logoClick() {
+  logoClicks++;
+  clearTimeout(logoTimer);
+  logoTimer = setTimeout(() => { logoClicks = 0; }, 2000);
+  if (logoClicks >= 5) {
+    logoClicks = 0;
+    // prompt admin password
+    const pw = prompt('Admin password:');
+    if (pw === ADMIN_PASS) {
+      currentUser = { username: ADMIN_USER, name: 'Admin', isAdmin: true, sheet: 0 };
+      showPage('pageAdmin');
+      adminRenderTab();
     }
   }
-
-  if (!errors.length) {
-    document.getElementById('lastUpdated').textContent =
-      'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  } else {
-    document.getElementById('lastUpdated').textContent = 'Error';
-    document.getElementById('errArea').innerHTML = errors.map(e => `
-      <div class="err-bar">
-        <strong>Failed to load "${e.name}"</strong>
-        ${e.msg}
-      </div>`).join('');
-  }
-  renderTab();
 }
 
-function showLoading() {
-  document.getElementById('tHead').innerHTML = '';
-  document.getElementById('tBody').innerHTML =
-    '<tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading…</strong><p>Connecting to Google Sheet</p></div></td></tr>';
-}
-
-function switchTab(i) {
-  activeTab = i;
-  SHEETS.forEach((_,j) => document.getElementById('tab'+j).classList.toggle('active', j===i));
-  sortCol = -1; sortAsc = true;
-  clearFilters(false);
-  renderTab();
-}
-
-function renderTab() {
-  const rows = sheetData[activeTab];
+// ── STAFF TABLE ──
+function renderStaffTable() {
+  if (!currentUser || currentUser.isAdmin) return;
+  const rows = sheetData[staffTab];
   if (!rows || rows.length < 2) {
-    document.getElementById('tHead').innerHTML = '';
-    document.getElementById('tBody').innerHTML = `<tr><td colspan="20">
-      <div class="state-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-        <strong>No data in "${SHEETS[activeTab]}"</strong>
-        <p>Check the sheet tab is named exactly <em>${SHEETS[activeTab]}</em>.</p>
-      </div></td></tr>`;
-    document.getElementById('resultsInfo').textContent = '';
+    document.getElementById('sTHead').innerHTML = '';
+    document.getElementById('sTBody').innerHTML = `<tr><td colspan="20"><div class="state-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      <strong>No data available</strong><p>Please contact your administrator.</p>
+    </div></td></tr>`;
     return;
   }
   const headers = rows[0].map(h => String(h).trim());
-  renderHeaders(headers);
-  populateFilters(rows, headers);
+  renderTableHeaders('sTHead', headers, 'sortBy');
+  populateFilterOpts(rows, headers, 'sModel', 'sVariant', 'sColour', 'sYear');
   applyFilters();
 }
 
-function renderHeaders(headers) {
-  document.getElementById('tHead').innerHTML = headers.map((h,i) =>
-    `<th onclick="sortBy(${i})" id="th${i}">${h}<span class="si">↕</span></th>`
+function applyFilters() {
+  const rows = sheetData[staffTab];
+  if (!rows || rows.length < 2) return;
+  const headers = rows[0].map(h => String(h).trim());
+  const body = rows.slice(1);
+  const search = document.getElementById('sSearch').value.toLowerCase().trim();
+  const fM = document.getElementById('sModel').value;
+  const fV = document.getElementById('sVariant').value;
+  const fC = document.getElementById('sColour').value;
+  const fY = document.getElementById('sYear').value;
+  const mI=findCol(headers,COL.model), vI=findCol(headers,COL.variant),
+        cI=findCol(headers,COL.colour), yI=findCol(headers,COL.year);
+
+  let filtered = body.filter(row => {
+    const cv=String(row[cI]||'').trim(), vv=String(row[vI]||'').trim();
+    const mv=String(row[mI]||'').trim(), yv=String(row[yI]||'').trim();
+    if (search && !cv.toLowerCase().includes(search) && !vv.toLowerCase().includes(search)) return false;
+    if (fM && mv !== fM) return false;
+    if (fV && vv !== fV) return false;
+    if (fC && cv !== fC) return false;
+    if (fY && yv !== fY) return false;
+    return true;
+  });
+
+  if (sortCol >= 0) filtered.sort((a,b) => {
+    const av=String(a[sortCol]||'').toLowerCase(), bv=String(b[sortCol]||'').toLowerCase();
+    return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+
+  renderTableRows('sTBody', filtered, headers, findCol(headers, COL.colour));
+  document.getElementById('sResultsInfo').textContent =
+    `${filtered.length} of ${body.length} record${body.length!==1?'s':''}`;
+}
+
+function sortBy(col) {
+  sortAsc = sortCol===col ? !sortAsc : true; sortCol = col;
+  updateSortIcons('sTHead', col, sortAsc);
+  applyFilters();
+}
+
+function clearFilters() {
+  ['sSearch','sModel','sVariant','sColour','sYear'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  applyFilters();
+}
+
+// ── ADMIN TABLE ──
+function adminSwitchTab(i) {
+  adminTab = i;
+  [0,1,2,3].forEach(j => document.getElementById('atab'+j).classList.toggle('active', j===i));
+  document.getElementById('adminTableView').style.display = 'block';
+  document.getElementById('adminPanel').style.display = 'none';
+  aSortCol = -1; aSortAsc = true;
+  adminApplyFilters();
+  adminClearFilters();
+}
+
+function showAdminPanel() {
+  [0,1,2,3].forEach(j => document.getElementById('atab'+j).classList.toggle('active', j===3));
+  document.getElementById('adminTableView').style.display = 'none';
+  document.getElementById('adminPanel').style.display = 'block';
+  renderStaffList();
+}
+
+function showStockView() {
+  adminSwitchTab(adminTab);
+}
+
+function adminRenderTab() {
+  const rows = sheetData[adminTab];
+  if (!rows || rows.length < 2) {
+    document.getElementById('aTHead').innerHTML = '';
+    document.getElementById('aTBody').innerHTML = `<tr><td colspan="20"><div class="state-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      <strong>No data in "${SHEETS[adminTab]}"</strong>
+    </div></td></tr>`;
+    return;
+  }
+  const headers = rows[0].map(h => String(h).trim());
+  renderTableHeaders('aTHead', headers, 'adminSortBy');
+  populateFilterOpts(rows, headers, 'aModel', 'aVariant', 'aColour', 'aYear');
+  adminApplyFilters();
+}
+
+function adminApplyFilters() {
+  const rows = sheetData[adminTab];
+  if (!rows || rows.length < 2) return;
+  const headers = rows[0].map(h => String(h).trim());
+  const body = rows.slice(1);
+  const search = document.getElementById('aSearch').value.toLowerCase().trim();
+  const fM = document.getElementById('aModel').value;
+  const fV = document.getElementById('aVariant').value;
+  const fC = document.getElementById('aColour').value;
+  const fY = document.getElementById('aYear').value;
+  const mI=findCol(headers,COL.model), vI=findCol(headers,COL.variant),
+        cI=findCol(headers,COL.colour), yI=findCol(headers,COL.year);
+
+  let filtered = body.filter(row => {
+    const cv=String(row[cI]||'').trim(), vv=String(row[vI]||'').trim();
+    const mv=String(row[mI]||'').trim(), yv=String(row[yI]||'').trim();
+    if (search && !cv.toLowerCase().includes(search) && !vv.toLowerCase().includes(search)) return false;
+    if (fM && mv !== fM) return false;
+    if (fV && vv !== fV) return false;
+    if (fC && cv !== fC) return false;
+    if (fY && yv !== fY) return false;
+    return true;
+  });
+
+  if (aSortCol >= 0) filtered.sort((a,b) => {
+    const av=String(a[aSortCol]||'').toLowerCase(), bv=String(b[aSortCol]||'').toLowerCase();
+    return aSortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+
+  renderTableRows('aTBody', filtered, headers, findCol(headers, COL.colour));
+  document.getElementById('aResultsInfo').textContent =
+    `${filtered.length} of ${body.length} record${body.length!==1?'s':''}`;
+}
+
+function adminSortBy(col) {
+  aSortAsc = aSortCol===col ? !aSortAsc : true; aSortCol = col;
+  updateSortIcons('aTHead', col, aSortAsc);
+  adminApplyFilters();
+}
+
+function adminClearFilters() {
+  ['aSearch','aModel','aVariant','aColour','aYear'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  adminApplyFilters();
+}
+
+// ── SHARED RENDER HELPERS ──
+function renderTableHeaders(tbodyId, headers, sortFn) {
+  document.getElementById(tbodyId).innerHTML = headers.map((h,i) =>
+    `<th onclick="${sortFn}(${i})" id="${tbodyId}th${i}">${h}<span class="si">↕</span></th>`
   ).join('');
 }
 
-function populateFilters(rows, headers) {
-  const fill = (id, colName) => {
-    const ci  = findCol(headers, colName);
-    const sel = document.getElementById(id);
+function populateFilterOpts(rows, headers, mId, vId, cId, yId) {
+  const fill = (selId, colName) => {
+    const ci = findCol(headers, colName);
+    const sel = document.getElementById(selId);
+    if (!sel) return;
     const cur = sel.value;
     const opts = ci >= 0
       ? [...new Set(rows.slice(1).map(r => String(r[ci]||'').trim()).filter(Boolean))].sort()
@@ -310,94 +693,94 @@ function populateFilters(rows, headers) {
     opts.forEach(v => sel.add(new Option(v, v)));
     if (opts.includes(cur)) sel.value = cur;
   };
-  fill('fModel',   COL.model);
-  fill('fVariant', COL.variant);
-  fill('fColour',  COL.colour);
-  fill('fYear',    COL.year);
+  fill(mId, COL.model); fill(vId, COL.variant);
+  fill(cId, COL.colour); fill(yId, COL.year);
 }
 
-function applyFilters() {
-  const rows = sheetData[activeTab];
-  if (!rows || rows.length < 2) return;
-  const headers = rows[0].map(h => String(h).trim());
-  const body    = rows.slice(1);
-
-  const search = document.getElementById('searchInput').value.toLowerCase().trim();
-  const fModel  = document.getElementById('fModel').value;
-  const fVar    = document.getElementById('fVariant').value;
-  const fCol    = document.getElementById('fColour').value;
-  const fYear   = document.getElementById('fYear').value;
-
-  const mI = findCol(headers, COL.model);
-  const vI = findCol(headers, COL.variant);
-  const cI = findCol(headers, COL.colour);
-  const yI = findCol(headers, COL.year);
-
-  let filtered = body.filter(row => {
-    const cv = String(row[cI]||'').trim();
-    const vv = String(row[vI]||'').trim();
-    const mv = String(row[mI]||'').trim();
-    const yv = String(row[yI]||'').trim();
-    if (search && !cv.toLowerCase().includes(search) && !vv.toLowerCase().includes(search)) return false;
-    if (fModel && mv !== fModel) return false;
-    if (fVar   && vv !== fVar)   return false;
-    if (fCol   && cv !== fCol)   return false;
-    if (fYear  && yv !== fYear)  return false;
-    return true;
-  });
-
-  if (sortCol >= 0) {
-    filtered.sort((a,b) => {
-      const av = String(a[sortCol]||'').toLowerCase();
-      const bv = String(b[sortCol]||'').toLowerCase();
-      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
-    });
-  }
-
-  renderRows(filtered, headers, cI);
-  document.getElementById('resultsInfo').textContent =
-    `${filtered.length} of ${body.length} record${body.length!==1?'s':''}`;
-}
-
-function renderRows(rows, headers, cI) {
-  const tbody = document.getElementById('tBody');
+function renderTableRows(tbodyId, rows, headers, cI) {
+  const tbody = document.getElementById(tbodyId);
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="20">
-      <div class="state-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <strong>No matches found</strong><p>Try adjusting your filters or clearing the search.</p>
-      </div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="20"><div class="state-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <strong>No matches found</strong><p>Try adjusting your filters.</p>
+    </div></td></tr>`;
     return;
   }
-  tbody.innerHTML = rows.map((row, ri) =>
+  tbody.innerHTML = rows.map((row,ri) =>
     `<tr style="animation-delay:${Math.min(ri*.015,.28)}s">${
       headers.map((_,ci) => {
         const val = String(row[ci]||'').trim();
-        if (ci === cI) return `<td><div class="cc"><div class="cd" style="background:${hueFor(val)}"></div>${val||'—'}</div></td>`;
+        if (ci===cI) return `<td><div class="cc"><div class="cd" style="background:${hueFor(val)}"></div>${val||'—'}</div></td>`;
         return `<td ${!val?'class="dim"':''}>${val||'—'}</td>`;
       }).join('')
     }</tr>`
   ).join('');
 }
 
-function sortBy(col) {
-  sortAsc = sortCol===col ? !sortAsc : true;
-  sortCol = col;
-  document.querySelectorAll('th').forEach((th,i) => {
+function updateSortIcons(headId, col, asc) {
+  document.querySelectorAll(`#${headId} th`).forEach((th,i) => {
     th.classList.toggle('sorted', i===col);
     const si = th.querySelector('.si');
-    if (si) si.textContent = i===col?(sortAsc?'↑':'↓'):'↕';
+    if (si) si.textContent = i===col?(asc?'↑':'↓'):'↕';
   });
-  applyFilters();
 }
 
-function clearFilters(render=true) {
-  ['searchInput','fModel','fVariant','fColour','fYear']
-    .forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  if (render) applyFilters();
+// ── MANAGE STAFF ──
+function addStaff() {
+  const name = document.getElementById('newName').value.trim();
+  const user = document.getElementById('newUser').value.trim();
+  const pass = document.getElementById('newPass').value.trim();
+  const sheet = document.getElementById('newSheet').value;
+  const errEl = document.getElementById('addErr');
+  errEl.textContent = '';
+
+  if (!name || !user || !pass) { errEl.textContent = 'Please fill in all fields.'; return; }
+  if (user === ADMIN_USER) { errEl.textContent = 'Username "admin" is reserved.'; return; }
+
+  const staff = getStaff();
+  if (staff.find(s => s.username === user)) { errEl.textContent = 'Username already exists.'; return; }
+
+  staff.push({ name, username: user, password: pass, sheet });
+  saveStaff(staff);
+  document.getElementById('newName').value = '';
+  document.getElementById('newUser').value = '';
+  document.getElementById('newPass').value = '';
+  renderStaffList();
 }
 
-loadAllSheets();
+function deleteStaff(username) {
+  const staff = getStaff().filter(s => s.username !== username);
+  saveStaff(staff);
+  renderStaffList();
+}
+
+function renderStaffList() {
+  const staff = getStaff();
+  const wrap = document.getElementById('staffListWrap');
+  if (!staff.length) { wrap.innerHTML = '<div class="no-users">No staff added yet.</div>'; return; }
+  wrap.innerHTML = `<table class="users-table">
+    <thead><tr>
+      <th>Name</th><th>Username</th><th>Password</th><th>Default Sheet</th><th></th>
+    </tr></thead>
+    <tbody>${staff.map(s => `<tr>
+      <td>${s.name}</td>
+      <td>${s.username}</td>
+      <td>${s.password}</td>
+      <td>${SHEETS[parseInt(s.sheet)||0]}</td>
+      <td><button class="del-btn" onclick="deleteStaff('${s.username}')">Remove</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ── ENTER KEY on login ──
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('pageLogin').classList.contains('active')) {
+    doLogin();
+  }
+});
+
+// Load data immediately (for admin who logs in first)
+// Staff data loaded after login
 </script>
 </body>
 </html>
