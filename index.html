@@ -7,172 +7,139 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg-deep:       #0a1f0e;
-    --bg-card:       #112a15;
-    --bg-surface:    #163b1c;
-    --accent:        #4caf6e;
-    --accent-soft:   #a8d5b5;
-    --accent-glow:   rgba(76,175,110,0.15);
-    --text-primary:  #e6f4ea;
-    --text-muted:    #7dab8a;
-    --text-dim:      #4a7a57;
-    --border:        rgba(76,175,110,0.18);
-    --border-strong: rgba(76,175,110,0.35);
-    --radius:        8px;
-    --font-display:  'Rajdhani', sans-serif;
-    --font-body:     'DM Sans', sans-serif;
+    --bg-deep:#0a1f0e;--bg-card:#112a15;--bg-surface:#163b1c;
+    --accent:#4caf6e;--accent-soft:#a8d5b5;--accent-glow:rgba(76,175,110,0.15);
+    --text-primary:#e6f4ea;--text-muted:#7dab8a;--text-dim:#4a7a57;
+    --border:rgba(76,175,110,0.18);--border-strong:rgba(76,175,110,0.35);
+    --radius:8px;--font-display:'Rajdhani',sans-serif;--font-body:'DM Sans',sans-serif;
   }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg-deep);
-    color: var(--text-primary);
-    font-family: var(--font-body);
-    font-size: 14px;
-    min-height: 100vh;
-    background-image: radial-gradient(ellipse 60% 40% at 50% -10%, rgba(76,175,110,0.12) 0%, transparent 70%);
-  }
-  .page { display: none; }
-  .page.active { display: block; }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg-deep);color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;background-image:radial-gradient(ellipse 60% 40% at 50% -10%,rgba(76,175,110,0.12) 0%,transparent 70%)}
+  .page{display:none}.page.active{display:block}
 
-  /* ── LOGIN ── */
-  .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .login-box { background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 16px; padding: 48px 40px; width: 100%; max-width: 400px; text-align: center; }
-  .login-logo-mark { width: 56px; height: 56px; background: var(--accent); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; }
-  .login-logo-mark svg { width: 32px; height: 32px; }
-  .login-title { font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: 0.04em; margin-bottom: 4px; }
-  .login-sub { font-size: 12px; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 36px; }
-  .login-field { margin-bottom: 16px; text-align: left; }
-  .login-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 6px; }
-  .login-input { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 11px 14px; color: var(--text-primary); font-family: var(--font-body); font-size: 14px; outline: none; transition: border-color .2s; }
-  .login-input:focus { border-color: var(--accent); }
-  .login-input::placeholder { color: var(--text-dim); }
-  .login-btn { width: 100%; background: var(--accent); color: #0a1f0e; border: none; border-radius: var(--radius); padding: 12px; font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; transition: opacity .2s; margin-top: 8px; }
-  .login-btn:hover { opacity: 0.88; }
-  .login-err { color: #f87171; font-size: 13px; margin-top: 12px; min-height: 20px; }
+  /* LOGIN */
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .login-box{background:var(--bg-card);border:1px solid var(--border-strong);border-radius:16px;padding:48px 40px;width:100%;max-width:400px;text-align:center}
+  .login-logo-mark{width:56px;height:56px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+  .login-logo-mark svg{width:32px;height:32px}
+  .login-title{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:.04em;margin-bottom:4px}
+  .login-sub{font-size:12px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:36px}
+  .login-field{margin-bottom:16px;text-align:left}
+  .login-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px}
+  .login-input{width:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;color:var(--text-primary);font-family:var(--font-body);font-size:14px;outline:none;transition:border-color .2s}
+  .login-input:focus{border-color:var(--accent)}.login-input::placeholder{color:var(--text-dim)}
+  .login-btn{width:100%;background:var(--accent);color:#0a1f0e;border:none;border-radius:var(--radius);padding:12px;font-family:var(--font-display);font-size:16px;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:opacity .2s;margin-top:8px}
+  .login-btn:hover{opacity:.88}.login-err{color:#f87171;font-size:13px;margin-top:12px;min-height:20px}
 
-  /* ── HEADER ── */
-  header { background: var(--bg-card); border-bottom: 1px solid var(--border-strong); padding: 0 28px; display: flex; align-items: center; justify-content: space-between; height: 64px; position: sticky; top: 0; z-index: 100; }
-  .logo { display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
-  .logo-mark { width: 38px; height: 38px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
-  .logo-mark svg { width: 22px; height: 22px; }
-  .logo-text { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: 0.04em; line-height: 1; }
-  .logo-sub { font-size: 11px; color: var(--text-muted); letter-spacing: 0.12em; text-transform: uppercase; margin-top: 2px; }
-  .header-right { display: flex; align-items: center; gap: 12px; }
-  .live-badge { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 500; }
-  .live-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; animation: pulse 2s ease-in-out infinite; }
-  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(76,175,110,.5)} 50%{opacity:.7;box-shadow:0 0 0 5px rgba(76,175,110,0)} }
-  .last-updated { font-size: 11px; color: var(--text-dim); }
-  .hdr-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 14px; color: var(--text-muted); font-family: var(--font-body); font-size: 12px; cursor: pointer; transition: all .2s; }
-  .hdr-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .user-tag { font-size: 12px; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px 12px; }
+  /* HEADER */
+  header{background:var(--bg-card);border-bottom:1px solid var(--border-strong);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100}
+  .logo{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none}
+  .logo-mark{width:38px;height:38px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center}
+  .logo-mark svg{width:22px;height:22px}
+  .logo-text{font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:.04em;line-height:1}
+  .logo-sub{font-size:11px;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:2px}
+  .header-right{display:flex;align-items:center;gap:12px}
+  .live-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;font-weight:500}
+  .live-dot{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:pulse 2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(76,175,110,.5)}50%{opacity:.7;box-shadow:0 0 0 5px rgba(76,175,110,0)}}
+  .last-updated{font-size:11px;color:var(--text-dim)}
+  .hdr-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:6px 14px;color:var(--text-muted);font-family:var(--font-body);font-size:12px;cursor:pointer;transition:all .2s}
+  .hdr-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .user-tag{font-size:12px;color:var(--text-muted);background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:5px 12px}
 
-  /* ── ADMIN TABS ── */
-  .tabs-bar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 0 28px; display: flex; overflow-x: auto; }
-  .tab-btn { font-family: var(--font-display); font-size: 14px; font-weight: 600; letter-spacing: .05em; padding: 12px 22px; background: none; border: none; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; text-transform: uppercase; position: relative; top: 1px; white-space: nowrap; }
-  .tab-btn:hover { color: var(--accent-soft); }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .tab-btn.t-free.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+  /* TABS */
+  .tabs-bar{background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 28px;display:flex;overflow-x:auto}
+  .tab-btn{font-family:var(--font-display);font-size:14px;font-weight:600;letter-spacing:.05em;padding:12px 22px;background:none;border:none;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;text-transform:uppercase;position:relative;top:1px;white-space:nowrap}
+  .tab-btn:hover{color:var(--accent-soft)}.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+  .tab-btn.t-free.active{color:#60a5fa;border-bottom-color:#60a5fa}
 
-  /* ── STAFF FREE STOCK HEADER ── */
-  .free-stock-bar { background: var(--bg-card); border-bottom: 1px solid var(--border); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; }
-  .free-stock-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; color: #60a5fa; letter-spacing: 0.05em; text-transform: uppercase; }
-  .free-stock-sub { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+  /* FREE STOCK STAFF HEADER */
+  .section-bar{background:var(--bg-card);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;justify-content:space-between}
+  .section-title{font-family:var(--font-display);font-size:17px;font-weight:700;color:#60a5fa;letter-spacing:.05em;text-transform:uppercase}
+  .section-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
 
-  /* ── TOOLBAR ── */
-  .toolbar { padding: 16px 28px; display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; background: var(--bg-deep); border-bottom: 1px solid var(--border); }
-  .filter-wrap { display: flex; flex-direction: column; gap: 4px; }
-  .filter-label { font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; padding-left: 2px; }
-  .filter-select { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 32px 9px 12px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234a7a57' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; transition: border-color .2s, opacity .2s; min-width: 180px; }
-  .filter-select:focus { border-color: var(--accent); }
-  .filter-select option { background: var(--bg-card); color: var(--text-primary); }
-  .filter-select:disabled { opacity: 0.35; cursor: not-allowed; background-color: var(--bg-deep); }
-  .filter-select.model-select { min-width: 220px; border-color: var(--border-strong); }
-  .filter-select.model-select:focus { border-color: var(--accent); }
-  .clear-btn { background: none; border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 16px; color: var(--text-muted); font-family: var(--font-body); font-size: 13px; cursor: pointer; transition: all .2s; }
-  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .results-info { margin-left: auto; font-size: 12px; color: var(--text-dim); white-space: nowrap; align-self: center; }
+  /* SHARED TOOLBAR */
+  .toolbar{padding:14px 28px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--bg-deep);border-bottom:1px solid var(--border)}
+  .search-wrap{position:relative;min-width:180px;max-width:240px;flex:1}
+  .search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text-dim);pointer-events:none}
+  .search-input{width:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px 9px 32px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color .2s}
+  .search-input::placeholder{color:var(--text-dim)}.search-input:focus{border-color:var(--accent)}
+  .filter-wrap{display:flex;flex-direction:column;gap:3px}
+  .filter-label{font-size:10px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;padding-left:2px}
+  .filter-select{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 30px 9px 12px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234a7a57' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border-color .2s,opacity .2s;min-width:160px}
+  .filter-select:focus{border-color:var(--accent)}.filter-select option{background:var(--bg-card);color:var(--text-primary)}
+  .filter-select:disabled{opacity:.3;cursor:not-allowed}
+  .clear-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:9px 16px;color:var(--text-muted);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s}
+  .clear-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .results-info{margin-left:auto;font-size:12px;color:var(--text-dim);white-space:nowrap;align-self:center}
 
-  /* ── TABLE ── */
-  .table-wrap { padding: 20px 28px 60px; overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  thead tr { background: var(--bg-surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
-  th { font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--text-muted); padding: 11px 16px; text-align: left; cursor: pointer; user-select: none; white-space: nowrap; transition: color .15s; }
-  th:hover { color: var(--accent); }
-  th .si { display: inline-block; margin-left: 4px; opacity: .35; font-size: 10px; }
-  th.sorted { color: var(--accent); }
-  th.sorted .si { opacity: 1; }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; animation: rowIn .16s ease both; }
-  tbody tr:hover { background: var(--accent-glow); }
-  td { padding: 12px 16px; color: var(--text-primary); vertical-align: middle; white-space: nowrap; }
-  td.dim { color: var(--text-muted); }
-  .cc { display: flex; align-items: center; gap: 8px; }
-  .cd { width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgba(255,255,255,.18); flex-shrink: 0; }
+  /* SHARED TABLE */
+  .table-wrap{padding:20px 28px 60px;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead tr{background:var(--bg-surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  th{font-family:var(--font-display);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:11px 16px;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;transition:color .15s}
+  th:hover{color:var(--accent)}.th .si{display:inline-block;margin-left:4px;opacity:.35;font-size:10px}
+  th.sorted{color:var(--accent)}
+  tbody tr{border-bottom:1px solid var(--border);transition:background .12s;animation:rowIn .16s ease both}
+  tbody tr:hover{background:var(--accent-glow)}
+  td{padding:12px 16px;color:var(--text-primary);vertical-align:middle;white-space:nowrap}
+  td.dim{color:var(--text-muted)}
+  .cc{display:flex;align-items:center;gap:8px}
+  .cd{width:11px;height:11px;border-radius:50%;border:1px solid rgba(255,255,255,.18);flex-shrink:0}
+  .fs-yes{display:inline-flex;align-items:center;gap:5px;background:rgba(76,175,110,.15);color:#4caf6e;border:1px solid rgba(76,175,110,.3);border-radius:20px;padding:3px 14px;font-size:12px;font-weight:500}
+  .fs-no{display:inline-flex;align-items:center;gap:5px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.25);border-radius:20px;padding:3px 14px;font-size:12px;font-weight:500}
+  .fs-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
 
-  /* ── FREE STOCK BADGE ── */
-  .fs-yes { display: inline-flex; align-items: center; gap: 5px; background: rgba(76,175,110,0.15); color: #4caf6e; border: 1px solid rgba(76,175,110,0.3); border-radius: 20px; padding: 3px 14px; font-size: 12px; font-weight: 500; }
-  .fs-no  { display: inline-flex; align-items: center; gap: 5px; background: rgba(239,68,68,0.1);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); border-radius: 20px; padding: 3px 14px; font-size: 12px; font-weight: 500; }
-  .fs-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+  /* STATES */
+  .empty-prompt{text-align:center;padding:80px 20px;color:var(--text-dim)}
+  .empty-prompt svg{width:52px;height:52px;stroke:var(--text-dim);display:block;margin:0 auto 18px;opacity:.5}
+  .empty-prompt strong{display:block;font-family:var(--font-display);font-size:18px;font-weight:600;color:var(--text-muted);margin-bottom:8px;letter-spacing:.04em}
+  .empty-prompt p{font-size:13px;color:var(--text-dim)}
+  .state-box{text-align:center;padding:70px 20px;color:var(--text-dim)}
+  .state-box svg{width:38px;height:38px;stroke:var(--text-dim);display:block;margin:0 auto 14px}
+  .state-box strong{display:block;font-size:15px;color:var(--text-muted);margin-bottom:6px}
+  .state-box p{font-size:13px;line-height:1.6}
+  .spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite;display:block;margin:0 auto 14px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @keyframes rowIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 
-  /* ── EMPTY STATE ── */
-  .empty-prompt { text-align: center; padding: 80px 20px; color: var(--text-dim); }
-  .empty-prompt svg { width: 52px; height: 52px; stroke: var(--text-dim); display: block; margin: 0 auto 18px; opacity: 0.5; }
-  .empty-prompt strong { display: block; font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.04em; }
-  .empty-prompt p { font-size: 13px; color: var(--text-dim); }
-  .state-box { text-align: center; padding: 70px 20px; color: var(--text-dim); }
-  .state-box svg { width: 38px; height: 38px; stroke: var(--text-dim); display: block; margin: 0 auto 14px; }
-  .state-box strong { display: block; font-size: 15px; color: var(--text-muted); margin-bottom: 6px; }
-  .state-box p { font-size: 13px; line-height: 1.6; }
-  .spinner { width: 28px; height: 28px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .75s linear infinite; display: block; margin: 0 auto 14px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes rowIn { from{opacity:0;transform:translateY(3px)} to{opacity:1;transform:translateY(0)} }
+  /* ADMIN PANEL */
+  .admin-panel{padding:28px;max-width:860px}
+  .admin-panel h2{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--accent);margin-bottom:20px;letter-spacing:.04em}
+  .admin-section{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px}
+  .admin-section h3{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--text-muted);margin-bottom:16px;letter-spacing:.05em;text-transform:uppercase}
+  .add-user-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+  .form-field{display:flex;flex-direction:column;gap:4px}
+  .form-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em}
+  .form-input{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 13px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color .2s;min-width:150px}
+  .form-input:focus{border-color:var(--accent)}
+  .add-btn{background:var(--accent);color:#0a1f0e;border:none;border-radius:var(--radius);padding:9px 20px;font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:.05em;cursor:pointer;transition:opacity .2s}
+  .add-btn:hover{opacity:.85}
+  .users-table{width:100%;border-collapse:collapse;font-size:13px}
+  .users-table th{font-family:var(--font-display);font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-dim);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+  .users-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text-primary)}
+  .users-table tr:last-child td{border-bottom:none}
+  .del-btn{background:none;border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:3px 10px;color:#f87171;font-size:12px;cursor:pointer;transition:all .2s}
+  .del-btn:hover{background:rgba(239,68,68,.1)}
+  .no-users{color:var(--text-dim);font-size:13px;padding:12px 0}
+  .add-err{color:#f87171;font-size:13px;margin-top:10px;min-height:18px}
 
-  /* ── ADMIN PANEL ── */
-  .admin-panel { padding: 28px; max-width: 860px; }
-  .admin-panel h2 { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--accent); margin-bottom: 20px; letter-spacing: 0.04em; }
-  .admin-section { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-  .admin-section h3 { font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--text-muted); margin-bottom: 16px; letter-spacing: 0.05em; text-transform: uppercase; }
-  .add-user-form { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
-  .form-field { display: flex; flex-direction: column; gap: 4px; }
-  .form-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.07em; }
-  .form-input { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 13px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color .2s; min-width: 150px; }
-  .form-input:focus { border-color: var(--accent); }
-  .add-btn { background: var(--accent); color: #0a1f0e; border: none; border-radius: var(--radius); padding: 9px 20px; font-family: var(--font-display); font-size: 14px; font-weight: 700; letter-spacing: 0.05em; cursor: pointer; transition: opacity .2s; }
-  .add-btn:hover { opacity: 0.85; }
-  .users-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .users-table th { font-family: var(--font-display); font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--text-dim); padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--border); }
-  .users-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-primary); }
-  .users-table tr:last-child td { border-bottom: none; }
-  .del-btn { background: none; border: 1px solid rgba(239,68,68,.3); border-radius: 4px; padding: 3px 10px; color: #f87171; font-size: 12px; cursor: pointer; transition: all .2s; }
-  .del-btn:hover { background: rgba(239,68,68,.1); }
-  .no-users { color: var(--text-dim); font-size: 13px; padding: 12px 0; }
-  .add-err { color: #f87171; font-size: 13px; margin-top: 10px; min-height: 18px; }
-
-  /* ── ADMIN SEARCH/FILTERS ── */
-  .search-wrap { position: relative; min-width: 180px; max-width: 260px; }
-  .search-wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; stroke: var(--text-dim); pointer-events: none; }
-  .search-input { width: 100%; background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 9px 12px 9px 32px; color: var(--text-primary); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color .2s; }
-  .search-input::placeholder { color: var(--text-dim); }
-  .search-input:focus { border-color: var(--accent); }
-
-  @media(max-width:640px) {
-    header,.toolbar,.table-wrap { padding-left:14px;padding-right:14px; }
-    .logo-text { font-size:18px; }
-    .login-box { padding: 32px 24px; }
-    .filter-select { min-width: 140px; }
+  @media(max-width:640px){
+    header,.toolbar,.table-wrap{padding-left:14px;padding-right:14px}
+    .logo-text{font-size:18px}.login-box{padding:32px 24px}
+    .filter-select{min-width:130px}
   }
 </style>
 </head>
 <body>
 
-<!-- ══════════ LOGIN ══════════ -->
+<!-- LOGIN -->
 <div class="page active" id="pageLogin">
   <div class="login-wrap">
     <div class="login-box">
       <div class="login-logo-mark">
         <svg viewBox="0 0 24 24" fill="none" stroke="#0a1f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
         </svg>
       </div>
       <div class="login-title">GURUDEV SKODA</div>
@@ -191,151 +158,79 @@
   </div>
 </div>
 
-<!-- ══════════ STAFF VIEW — FREE STOCK ONLY ══════════ -->
-<div class="page" id="pageStaff">
+<!-- MAIN APP -->
+<div class="page" id="pageApp">
   <header>
     <div class="logo" onclick="logoClick()">
       <div class="logo-mark">
         <svg viewBox="0 0 24 24" fill="none" stroke="#0a1f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
         </svg>
       </div>
       <div>
         <div class="logo-text">GURUDEV SKODA</div>
-        <div class="logo-sub">Stock Viewer</div>
+        <div class="logo-sub" id="appSubtitle">Stock Viewer</div>
       </div>
     </div>
     <div class="header-right">
       <div class="live-badge"><div class="live-dot"></div>Live</div>
-      <span class="last-updated" id="staffUpdated">—</span>
-      <span class="user-tag" id="staffUserTag"></span>
-      <button class="hdr-btn" onclick="doLogout()">Sign out</button>
-    </div>
-  </header>
-
-  <!-- Free Stock header bar -->
-  <div class="free-stock-bar">
-    <div>
-      <div class="free-stock-title">Free Stock</div>
-      <div class="free-stock-sub">Select a model to view availability</div>
-    </div>
-    <span class="results-info" id="sResultsInfo"></span>
-  </div>
-
-  <!-- Filters — model always enabled, rest disabled until model selected -->
-  <div class="toolbar">
-    <div class="filter-wrap">
-      <span class="filter-label">Model</span>
-      <select class="filter-select model-select" id="sModel" onchange="onModelChange()">
-        <option value="">— Select a model —</option>
-      </select>
-    </div>
-    <div class="filter-wrap">
-      <span class="filter-label">Variant</span>
-      <select class="filter-select" id="sVariant" onchange="onVariantChange()" disabled>
-        <option value="">All Variants</option>
-      </select>
-    </div>
-    <div class="filter-wrap">
-      <span class="filter-label">Colour</span>
-      <select class="filter-select" id="sColour" onchange="onColourChange()" disabled>
-        <option value="">All Colours</option>
-      </select>
-    </div>
-    <div class="filter-wrap">
-      <span class="filter-label">VIN Year</span>
-      <select class="filter-select" id="sYear" onchange="applyStaffFilters()" disabled>
-        <option value="">All Years</option>
-      </select>
-    </div>
-    <button class="clear-btn" id="sClearBtn" onclick="clearStaffFilters()" style="display:none">Clear</button>
-  </div>
-
-  <!-- Table area — empty until model selected -->
-  <div id="sTableArea">
-    <div class="empty-prompt">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2">
-        <rect x="3" y="3" width="18" height="18" rx="2"/>
-        <path d="M3 9h18M9 21V9"/>
-      </svg>
-      <strong>No model selected</strong>
-      <p>Choose a model from the dropdown above to view stock availability.</p>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════ ADMIN VIEW ══════════ -->
-<div class="page" id="pageAdmin">
-  <header>
-    <div class="logo">
-      <div class="logo-mark">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#0a1f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-          <path d="M2 17l10 5 10-5"/>
-          <path d="M2 12l10 5 10-5"/>
-        </svg>
-      </div>
-      <div>
-        <div class="logo-text">GURUDEV SKODA</div>
-        <div class="logo-sub">Admin Panel</div>
-      </div>
-    </div>
-    <div class="header-right">
-      <div class="live-badge"><div class="live-dot"></div>Live</div>
-      <span class="last-updated" id="adminUpdated">—</span>
+      <span class="last-updated" id="appUpdated">—</span>
+      <span class="user-tag" id="appUserTag"></span>
       <button class="hdr-btn" onclick="loadAllSheets()">↻ Refresh</button>
       <button class="hdr-btn" onclick="doLogout()">Sign out</button>
     </div>
   </header>
 
-  <!-- Admin tabs: Stock, Allocation, Live RPO, Free Stock, Manage Staff -->
-  <div class="tabs-bar">
-    <button class="tab-btn active" onclick="adminSwitchTab(0)" id="atab0">Stock</button>
-    <button class="tab-btn"        onclick="adminSwitchTab(1)" id="atab1">Allocation</button>
-    <button class="tab-btn"        onclick="adminSwitchTab(2)" id="atab2">Live RPO</button>
-    <button class="tab-btn t-free" onclick="adminSwitchTab(3)" id="atab3">Free Stock</button>
-    <button class="tab-btn"        onclick="showAdminPanel()"  id="atab4">⚙ Manage Staff</button>
+  <!-- ADMIN TABS (hidden for staff) -->
+  <div class="tabs-bar" id="adminTabsBar" style="display:none">
+    <button class="tab-btn active" onclick="switchTab(0)" id="tab0">Stock</button>
+    <button class="tab-btn"        onclick="switchTab(1)" id="tab1">Allocation</button>
+    <button class="tab-btn"        onclick="switchTab(2)" id="tab2">Live RPO</button>
+    <button class="tab-btn t-free" onclick="switchTab(3)" id="tab3">Free Stock</button>
+    <button class="tab-btn"        onclick="showAdminPanel()" id="tab4">⚙ Manage Staff</button>
   </div>
 
-  <!-- Admin table view -->
-  <div id="adminTableView">
-    <div class="toolbar">
-      <div class="search-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input class="search-input" id="aSearch" placeholder="Search…" oninput="adminApplyFilters()">
-      </div>
-      <div class="filter-wrap">
-        <span class="filter-label">Model</span>
-        <select class="filter-select" id="aModel" onchange="adminApplyFilters()"><option value="">All Models</option></select>
-      </div>
-      <div id="aStdFilters" style="display:contents">
-        <div class="filter-wrap">
-          <span class="filter-label">Variant</span>
-          <select class="filter-select" id="aVariant" onchange="adminApplyFilters()"><option value="">All Variants</option></select>
-        </div>
-        <div class="filter-wrap">
-          <span class="filter-label">Colour</span>
-          <select class="filter-select" id="aColour" onchange="adminApplyFilters()"><option value="">All Colours</option></select>
-        </div>
-        <div class="filter-wrap">
-          <span class="filter-label">Year</span>
-          <select class="filter-select" id="aYear" onchange="adminApplyFilters()"><option value="">All Years</option></select>
-        </div>
-      </div>
-      <button class="clear-btn" onclick="adminClearFilters()">Clear</button>
-      <span class="results-info" id="aResultsInfo"></span>
+  <!-- STAFF FREE STOCK LABEL (hidden for admin) -->
+  <div class="section-bar" id="staffSectionBar" style="display:none">
+    <div>
+      <div class="section-title">Free Stock</div>
+      <div class="section-sub">Select a model to view availability</div>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr id="aTHead"></tr></thead>
-        <tbody id="aTBody"><tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading…</strong></div></td></tr></tbody>
-      </table>
-    </div>
+    <span class="results-info" id="staffResultsInfo"></span>
   </div>
 
-  <!-- Manage Staff panel -->
+  <!-- SHARED TOOLBAR — identical for admin & staff -->
+  <div class="toolbar">
+    <div class="search-wrap" id="searchWrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" id="fSearch" placeholder="Search…" oninput="applyFilters()">
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">Model</span>
+      <select class="filter-select" id="fModel" onchange="onModelChange()" style="min-width:200px;"></select>
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">Variant</span>
+      <select class="filter-select" id="fVariant" onchange="onVariantChange()"><option value="">All Variants</option></select>
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">Colour</span>
+      <select class="filter-select" id="fColour" onchange="onColourChange()"><option value="">All Colours</option></select>
+    </div>
+    <div class="filter-wrap">
+      <span class="filter-label">VIN Year</span>
+      <select class="filter-select" id="fYear" onchange="applyFilters()"><option value="">All Years</option></select>
+    </div>
+    <button class="clear-btn" onclick="clearFilters()">Clear</button>
+    <span class="results-info" id="resultsInfo"></span>
+  </div>
+
+  <!-- SHARED CONTENT AREA -->
+  <div id="mainContent">
+    <div class="state-box"><div class="spinner"></div><strong>Loading…</strong></div>
+  </div>
+
+  <!-- ADMIN MANAGE STAFF -->
   <div id="adminPanel" style="display:none">
     <div class="admin-panel">
       <h2>Manage Staff Accounts</h2>
@@ -359,550 +254,296 @@
 
 <script>
 const API        = 'https://script.google.com/macros/s/AKfycbwxY5LjX5bmt1dVIbencV8_VlcInPSaXm52Fke_0eISw0hZANBSPq60D2VpdlquFJ3k/exec';
-const SHEETS     = ['Stock', 'Allocation', 'Live RPO', 'Product Spec'];
+const SHEETS     = ['Stock','Allocation','Live RPO','Product Spec'];
 const ADMIN_PASS = 'gurudev1008';
 const ADMIN_USER = 'admin';
-const STORE_KEY  = 'gs_staff_v4';
-const COL        = { model:'Model', variant:'INTERNAL CODE', colour:'Color', year:'VY', status:'STATUS' };
+const STORE_KEY  = 'gs_staff_v5';
+const COL        = {model:'Model',variant:'INTERNAL CODE',colour:'Color',year:'VY',status:'STATUS'};
 
-let sheetData   = [[], [], [], []];
-let adminTab    = 0;
-let aSortCol    = -1, aSortAsc = true;
-let logoClicks  = 0, logoTimer = null;
+let sheetData   = [[],[],[],[]];
 let currentUser = null;
+let activeTab   = 3;
+let isFreeTab   = true;
+let sortCol     = -1, sortAsc = true;
+let logoClicks  = 0, logoTimer = null;
 
-/* ── STORAGE ── */
-function getStaff() { try { return JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch { return []; } }
-function saveStaff(l) { localStorage.setItem(STORE_KEY, JSON.stringify(l)); }
+function getStaff(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||[];}catch{return[];}}
+function saveStaff(l){localStorage.setItem(STORE_KEY,JSON.stringify(l));}
 
-/* ── COLOURS ── */
-const CMAP = {
-  white:'#f5f5f5',black:'#222',silver:'#b8b8b8',grey:'#888',gray:'#888',
-  red:'#e53935',blue:'#1e88e5',navy:'#0d2b6e',green:'#43a047',
-  brown:'#795548',beige:'#d4b896',gold:'#c9a227',yellow:'#fdd835',
-  orange:'#fb8c00',pearl:'#ede8e0',maroon:'#880e4f',cyan:'#00bcd4',
-  magnetic:'#4a5568',carbon:'#2d3748',steel:'#6b7f90',moon:'#d1ccc0',
-  brilliant:'#c8d0d8',crystal:'#5b9bd5',lava:'#2c4f8c',ember:'#c0392b',
-  graphite:'#4b5563',phantom:'#1f2937',aurora:'#6ee7b7',coral:'#ff6b6b'
-};
-function hueFor(n) {
-  if (!n) return '#556';
-  const lc = n.toLowerCase();
-  for (const [k,v] of Object.entries(CMAP)) if (lc.includes(k)) return v;
-  let h = 0;
-  for (let i = 0; i < lc.length; i++) h = lc.charCodeAt(i) + ((h<<5)-h);
-  return `hsl(${Math.abs(h)%360},38%,52%)`;
-}
-function fc(headers, name) {
-  let i = headers.findIndex(h => h === name);
-  return i >= 0 ? i : headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
-}
+const CMAP={white:'#f5f5f5',black:'#222',silver:'#b8b8b8',grey:'#888',gray:'#888',red:'#e53935',blue:'#1e88e5',navy:'#0d2b6e',green:'#43a047',brown:'#795548',beige:'#d4b896',gold:'#c9a227',yellow:'#fdd835',orange:'#fb8c00',pearl:'#ede8e0',maroon:'#880e4f',cyan:'#00bcd4',magnetic:'#4a5568',carbon:'#2d3748',steel:'#6b7f90',moon:'#d1ccc0',brilliant:'#c8d0d8',crystal:'#5b9bd5',lava:'#2c4f8c',ember:'#c0392b',graphite:'#4b5563',phantom:'#1f2937',aurora:'#6ee7b7',coral:'#ff6b6b'};
+function hueFor(n){if(!n)return'#556';const lc=n.toLowerCase();for(const[k,v]of Object.entries(CMAP))if(lc.includes(k))return v;let h=0;for(let i=0;i<lc.length;i++)h=lc.charCodeAt(i)+((h<<5)-h);return`hsl(${Math.abs(h)%360},38%,52%)`;}
+function fc(headers,name){let i=headers.findIndex(h=>h===name);return i>=0?i:headers.findIndex(h=>h.toLowerCase()===name.toLowerCase());}
 
-/* ── JSONP ── */
-function jsonpFetch(sheet) {
-  const cb = `__cb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(() => { delete window[cb]; reject(new Error('Timed out')); }, 15000);
-    window[cb] = d => { clearTimeout(t); delete window[cb]; resolve(d); };
-    const s = document.createElement('script');
-    s.src = `${API}?sheet=${encodeURIComponent(sheet)}&callback=${encodeURIComponent(cb)}`;
-    s.onerror = () => { clearTimeout(t); delete window[cb]; s.remove(); reject(new Error('Network error')); };
-    s.onload = () => s.remove();
+function jsonpFetch(sheet){
+  const cb=`__cb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  return new Promise((resolve,reject)=>{
+    const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
+    window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
+    const s=document.createElement('script');
+    s.src=`${API}?sheet=${encodeURIComponent(sheet)}&callback=${encodeURIComponent(cb)}`;
+    s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();reject(new Error('Network error'));};
+    s.onload=()=>s.remove();
     document.head.appendChild(s);
   });
 }
 
-async function loadAllSheets() {
-  for (let i = 0; i < SHEETS.length; i++) {
-    try {
-      const j = await jsonpFetch(SHEETS[i]);
-      sheetData[i] = Array.isArray(j) && j.length >= 2 ? j : [];
-    } catch { sheetData[i] = []; }
+async function loadAllSheets(){
+  document.getElementById('appUpdated').textContent='Loading…';
+  for(let i=0;i<SHEETS.length;i++){
+    try{const j=await jsonpFetch(SHEETS[i]);sheetData[i]=Array.isArray(j)&&j.length>=2?j:[];}
+    catch{sheetData[i]=[];}
   }
-  const ts = 'Updated ' + new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  ['staffUpdated','adminUpdated'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=ts; });
-  if (currentUser && !currentUser.isAdmin) {
-    populateStaffModelDropdown();
-    // If a model was already selected, re-render
-    const selModel = document.getElementById('sModel');
-    if (selModel && selModel.value) applyStaffFilters();
-  } else {
-    adminRenderTab();
-  }
+  document.getElementById('appUpdated').textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  setupModelFilter();
+  renderCurrentTab();
 }
 
-/* ── LOGIN ── */
-function doLogin() {
-  const u = document.getElementById('loginUser').value.trim();
-  const p = document.getElementById('loginPass').value.trim();
-  document.getElementById('loginErr').textContent = '';
-  if (u === ADMIN_USER && p === ADMIN_PASS) {
-    currentUser = { username: ADMIN_USER, name:'Admin', isAdmin:true };
-    showPage('pageAdmin'); loadAllSheets(); return;
-  }
-  const found = getStaff().find(s => s.username===u && s.password===p);
-  if (found) {
-    currentUser = { ...found, isAdmin:false };
-    document.getElementById('staffUserTag').textContent = found.name || found.username;
-    showPage('pageStaff'); loadAllSheets(); return;
-  }
-  document.getElementById('loginErr').textContent = 'Incorrect username or password.';
+function doLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value.trim();
+  document.getElementById('loginErr').textContent='';
+  if(u===ADMIN_USER&&p===ADMIN_PASS){currentUser={username:ADMIN_USER,name:'Admin',isAdmin:true};setupApp();return;}
+  const found=getStaff().find(s=>s.username===u&&s.password===p);
+  if(found){currentUser={...found,isAdmin:false};setupApp();return;}
+  document.getElementById('loginErr').textContent='Incorrect username or password.';
 }
 
-function doLogout() {
-  currentUser = null; logoClicks = 0;
-  ['loginUser','loginPass'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('loginErr').textContent = '';
-  showPage('pageLogin');
+function doLogout(){
+  currentUser=null;logoClicks=0;
+  ['loginUser','loginPass'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('loginErr').textContent='';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pageLogin').classList.add('active');
 }
 
-function showPage(id) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+function setupApp(){
+  const isAdmin=currentUser.isAdmin;
+  document.getElementById('appSubtitle').textContent=isAdmin?'Admin Panel':'Stock Viewer';
+  document.getElementById('appUserTag').textContent=currentUser.name||currentUser.username;
+  document.getElementById('adminTabsBar').style.display=isAdmin?'flex':'none';
+  document.getElementById('staffSectionBar').style.display=isAdmin?'none':'flex';
+  // Search bar hidden on Free Stock tab (staff & admin free stock)
+  activeTab=isAdmin?0:3;
+  isFreeTab=(activeTab===3);
+  document.getElementById('searchWrap').style.display=isFreeTab?'none':'';
+  if(isAdmin)[0,1,2,3,4].forEach(i=>document.getElementById('tab'+i).classList.toggle('active',i===0));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pageApp').classList.add('active');
+  loadAllSheets();
 }
 
-function logoClick() {
-  logoClicks++;
-  clearTimeout(logoTimer);
-  logoTimer = setTimeout(() => logoClicks=0, 2000);
-  if (logoClicks >= 5) {
-    logoClicks = 0;
-    const pw = prompt('Admin password:');
-    if (pw === ADMIN_PASS) {
-      currentUser = { username:ADMIN_USER, name:'Admin', isAdmin:true };
-      showPage('pageAdmin'); adminRenderTab();
+function logoClick(){
+  if(currentUser&&currentUser.isAdmin)return;
+  logoClicks++;clearTimeout(logoTimer);logoTimer=setTimeout(()=>logoClicks=0,2000);
+  if(logoClicks>=5){logoClicks=0;const pw=prompt('Admin password:');if(pw===ADMIN_PASS){currentUser={username:ADMIN_USER,name:'Admin',isAdmin:true};setupApp();}}
+}
+
+function switchTab(i){
+  activeTab=i;isFreeTab=(i===3);sortCol=-1;sortAsc=true;
+  [0,1,2,3,4].forEach(j=>document.getElementById('tab'+j).classList.toggle('active',j===i));
+  document.getElementById('mainContent').style.display='block';
+  document.getElementById('adminPanel').style.display='none';
+  document.getElementById('searchWrap').style.display=isFreeTab?'none':'';
+  clearFilters();
+  setupModelFilter();
+  renderCurrentTab();
+}
+
+function showAdminPanel(){
+  [0,1,2,3,4].forEach(j=>document.getElementById('tab'+j).classList.toggle('active',j===4));
+  document.getElementById('mainContent').style.display='none';
+  document.getElementById('adminPanel').style.display='block';
+  renderStaffList();
+}
+
+/* ══ MODEL FILTER SETUP ══ */
+function setupModelFilter(){
+  const fModel=document.getElementById('fModel');
+  fModel.innerHTML='';
+  if(isFreeTab){
+    fModel.add(new Option('— Choose a model —',''));
+    const rows=sheetData[3];
+    if(rows&&rows.length>=2){
+      const h=rows[0].map(x=>String(x).trim());
+      const mI=fc(h,COL.model)>=0?fc(h,COL.model):0;
+      [...new Set(rows.slice(1).map(r=>String(r[mI]||'').trim()).filter(Boolean))].sort().forEach(v=>fModel.add(new Option(v,v)));
     }
+    ['fVariant','fColour','fYear'].forEach(id=>{const el=document.getElementById(id);el.disabled=true;el.value='';el.innerHTML='<option value="">All Variants</option>';});
+    document.getElementById('fVariant').innerHTML='<option value="">All Variants</option>';
+    document.getElementById('fColour').innerHTML='<option value="">All Colours</option>';
+    document.getElementById('fYear').innerHTML='<option value="">All Years</option>';
+  } else {
+    fModel.add(new Option('All Models',''));
+    const rows=sheetData[activeTab];
+    if(rows&&rows.length>=2){
+      const h=rows[0].map(x=>String(x).trim());
+      const mI=fc(h,COL.model);
+      if(mI>=0)[...new Set(rows.slice(1).map(r=>String(r[mI]||'').trim()).filter(Boolean))].sort().forEach(v=>fModel.add(new Option(v,v)));
+    }
+    ['fVariant','fColour','fYear'].forEach(id=>document.getElementById(id).disabled=false);
+    populateDependentFilters();
   }
 }
 
-/* ════════════════════════════════════════
-   STAFF — FREE STOCK VIEW
-════════════════════════════════════════ */
-
-function populateStaffModelDropdown() {
-  const rows = sheetData[3]; // Product Spec
-  const sel  = document.getElementById('sModel');
-  const cur  = sel.value;
-  while (sel.options.length > 1) sel.remove(1);
-  if (!rows || rows.length < 2) {
-    sel.add(new Option('⚠ No data in Product Spec sheet', ''));
-    return;
+/* ══ CASCADE FILTERS ══ */
+function onModelChange(){
+  const model=document.getElementById('fModel').value;
+  if(isFreeTab){
+    const has=!!model;
+    ['fVariant','fColour','fYear'].forEach(id=>{const el=document.getElementById(id);el.disabled=!has;if(!has)el.value='';});
+    if(!has){populateDependentFilters();showEmptyPrompt();return;}
   }
-  const headers = rows[0].map(h => String(h).trim());
+  populateDependentFilters();
+  applyFilters();
+}
+function onVariantChange(){populateDependentFilters();applyFilters();}
+function onColourChange(){populateDependentFilters();applyFilters();}
 
-  // Try exact match first, then case-insensitive, then first column as fallback
-  let mI = fc(headers, COL.model);
-  if (mI < 0) mI = 0; // fallback to first column
+function populateDependentFilters(){
+  const rows=isFreeTab?sheetData[3]:sheetData[activeTab];
+  if(!rows||rows.length<2)return;
+  const h=rows[0].map(x=>String(x).trim());
+  const mI=fc(h,COL.model),vI=fc(h,COL.variant),cI=fc(h,COL.colour),yI=fc(h,COL.year);
+  const fModel=document.getElementById('fModel').value;
+  const allRows=rows.slice(1);
+  const byModel=fModel?allRows.filter(r=>String(r[mI]||'').trim()===fModel):allRows;
 
-  const models = [...new Set(rows.slice(1).map(r => String(r[mI]||'').trim()).filter(Boolean))].sort();
-  if (!models.length) {
-    sel.add(new Option('⚠ No models found', ''));
-    return;
-  }
-  models.forEach(v => sel.add(new Option(v, v)));
-  if (models.includes(cur)) sel.value = cur;
+  const selV=document.getElementById('fVariant'),curV=selV.value;
+  while(selV.options.length>1)selV.remove(1);
+  if(vI>=0){const vals=[...new Set(byModel.map(r=>String(r[vI]||'').trim()).filter(Boolean))].sort();vals.forEach(v=>selV.add(new Option(v,v)));if(vals.includes(curV))selV.value=curV;}
+
+  const byVariant=selV.value?byModel.filter(r=>String(r[vI]||'').trim()===selV.value):byModel;
+  const selC=document.getElementById('fColour'),curC=selC.value;
+  while(selC.options.length>1)selC.remove(1);
+  if(cI>=0){const vals=[...new Set(byVariant.map(r=>String(r[cI]||'').trim()).filter(Boolean))].sort();vals.forEach(v=>selC.add(new Option(v,v)));if(vals.includes(curC))selC.value=curC;}
+
+  const byColour=selC.value?byVariant.filter(r=>String(r[cI]||'').trim()===selC.value):byVariant;
+  const selY=document.getElementById('fYear'),curY=selY.value;
+  while(selY.options.length>1)selY.remove(1);
+  if(yI>=0){const vals=[...new Set(byColour.map(r=>String(r[yI]||'').trim()).filter(Boolean))].sort();vals.forEach(v=>selY.add(new Option(v,v)));if(vals.includes(curY))selY.value=curY;}
 }
 
-function onModelChange() {
-  const model = document.getElementById('sModel').value;
-  const hasModel = !!model;
-
-  // Enable / disable dependent filters
-  ['sVariant','sColour','sYear'].forEach(id => {
-    const el = document.getElementById(id);
-    el.disabled = !hasModel;
-    if (!hasModel) el.value = '';
-  });
-
-  document.getElementById('sClearBtn').style.display = hasModel ? 'inline-block' : 'none';
-
-  if (!hasModel) {
-    populateDependentFilters(null);
-    document.getElementById('sResultsInfo').textContent = '';
-    document.getElementById('sTableArea').innerHTML = `
-      <div class="empty-prompt">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2">
-          <rect x="3" y="3" width="18" height="18" rx="2"/>
-          <path d="M3 9h18M9 21V9"/>
-        </svg>
-        <strong>No model selected</strong>
-        <p>Choose a model from the dropdown above to view stock availability.</p>
-      </div>`;
-    return;
-  }
-
-  populateDependentFilters(model);
-  applyStaffFilters();
+function clearFilters(){
+  const fSearch=document.getElementById('fSearch');if(fSearch)fSearch.value='';
+  document.getElementById('fModel').value='';
+  ['fVariant','fColour','fYear'].forEach(id=>{const el=document.getElementById(id);el.value='';});
+  if(isFreeTab){['fVariant','fColour','fYear'].forEach(id=>document.getElementById(id).disabled=true);showEmptyPrompt();return;}
+  populateDependentFilters();
+  applyFilters();
 }
 
-function onVariantChange() {
-  const model = document.getElementById('sModel').value;
-  if (!model) return;
-  // Re-cascade colour and year based on selected variant
-  populateDependentFilters(model);
-  applyStaffFilters();
+/* ══ RENDER ══ */
+function renderCurrentTab(){
+  if(isFreeTab){const m=document.getElementById('fModel').value;if(!m){showEmptyPrompt();return;}}
+  applyFilters();
 }
 
-function onColourChange() {
-  const model = document.getElementById('sModel').value;
-  if (!model) return;
-  // Re-cascade year based on selected colour
-  populateDependentFilters(model);
-  applyStaffFilters();
+function showEmptyPrompt(){
+  document.getElementById('mainContent').innerHTML=`
+    <div class="empty-prompt">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      <strong>No model selected</strong>
+      <p>Choose a model from the dropdown above to view stock availability.</p>
+    </div>`;
+  document.getElementById('resultsInfo').textContent='';
+  document.getElementById('staffResultsInfo').textContent='';
 }
 
-function populateDependentFilters(model) {
-  const rows = sheetData[3];
-  if (!rows || rows.length < 2) return;
-  const headers = rows[0].map(h => String(h).trim());
-  const mI = fc(headers, COL.model);
-  const vI = fc(headers, COL.variant);
-  const cI = fc(headers, COL.colour);
-  const yI = fc(headers, COL.year);
+function applyFilters(){isFreeTab?applyFreeStock():applyStandard();}
 
-  // All rows for selected model
-  const byModel = model
-    ? rows.slice(1).filter(r => String(r[mI]||'').trim() === model)
-    : [];
-
-  const selVariant = document.getElementById('sVariant');
-  const selColour  = document.getElementById('sColour');
-  const selYear    = document.getElementById('sYear');
-
-  const curV = selVariant.value;
-  const curC = selColour.value;
-  const curY = selYear.value;
-
-  // Variants — unique from model rows
-  while (selVariant.options.length > 1) selVariant.remove(1);
-  if (vI >= 0 && model) {
-    const variants = [...new Set(byModel.map(r => String(r[vI]||'').trim()).filter(Boolean))].sort();
-    variants.forEach(v => selVariant.add(new Option(v, v)));
-    if (variants.includes(curV)) selVariant.value = curV;
-  }
-
-  // Colours — filtered by model + selected variant (if any)
-  const selectedVariant = selVariant.value;
-  const byVariant = selectedVariant
-    ? byModel.filter(r => String(r[vI]||'').trim() === selectedVariant)
-    : byModel;
-
-  while (selColour.options.length > 1) selColour.remove(1);
-  if (cI >= 0 && model) {
-    const colours = [...new Set(byVariant.map(r => String(r[cI]||'').trim()).filter(Boolean))].sort();
-    colours.forEach(v => selColour.add(new Option(v, v)));
-    if (colours.includes(curC)) selColour.value = curC;
-  }
-
-  // Years — filtered by model + variant + colour
-  const selectedColour = selColour.value;
-  const byColour = selectedColour
-    ? byVariant.filter(r => String(r[cI]||'').trim() === selectedColour)
-    : byVariant;
-
-  while (selYear.options.length > 1) selYear.remove(1);
-  if (yI >= 0 && model) {
-    const years = [...new Set(byColour.map(r => String(r[yI]||'').trim()).filter(Boolean))].sort();
-    years.forEach(v => selYear.add(new Option(v, v)));
-    if (years.includes(curY)) selYear.value = curY;
-  }
-}
-
-function applyStaffFilters() {
-  const model   = document.getElementById('sModel').value;
-  if (!model) return;
-
-  const fVariant = document.getElementById('sVariant').value;
-  const fColour  = document.getElementById('sColour').value;
-  const fYear    = document.getElementById('sYear').value;
-
-  const rows = sheetData[3];
-  if (!rows || rows.length < 2) return;
-  const headers = rows[0].map(h => String(h).trim());
-  const mI = fc(headers, COL.model);
-  const vI = fc(headers, COL.variant);
-  const cI = fc(headers, COL.colour);
-  const yI = fc(headers, COL.year);
-
-  const freeMap = buildFreeStockMap();
-
-  let filtered = rows.slice(1).filter(row => {
-    if (String(row[mI]||'').trim() !== model) return false;
-    if (fVariant && String(row[vI]||'').trim() !== fVariant) return false;
-    if (fColour  && String(row[cI]||'').trim() !== fColour)  return false;
-    if (fYear    && String(row[yI]||'').trim() !== fYear)    return false;
+function applyFreeStock(){
+  const model=document.getElementById('fModel').value;
+  if(!model){showEmptyPrompt();return;}
+  const fV=document.getElementById('fVariant').value,fC=document.getElementById('fColour').value,fY=document.getElementById('fYear').value;
+  const rows=sheetData[3];
+  if(!rows||rows.length<2){document.getElementById('mainContent').innerHTML='<div class="state-box"><strong>No data in Product Spec sheet</strong></div>';return;}
+  const h=rows[0].map(x=>String(x).trim());
+  const mI=fc(h,COL.model),vI=fc(h,COL.variant),cI=fc(h,COL.colour),yI=fc(h,COL.year);
+  const freeMap=buildFreeStockMap();
+  let filtered=rows.slice(1).filter(r=>{
+    if(String(r[mI]||'').trim()!==model)return false;
+    if(fV&&String(r[vI]||'').trim()!==fV)return false;
+    if(fC&&String(r[cI]||'').trim()!==fC)return false;
+    if(fY&&String(r[yI]||'').trim()!==fY)return false;
     return true;
   });
-
-  document.getElementById('sResultsInfo').textContent =
-    `${filtered.length} variant${filtered.length!==1?'s':''} shown`;
-
-  if (!filtered.length) {
-    document.getElementById('sTableArea').innerHTML = `<div class="state-box">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <strong>No matches</strong><p>Try adjusting your filters.</p></div>`;
-    return;
-  }
-
-  const rowsHtml = filtered.map((row, ri) => {
-    const modelVal   = String(row[mI]||'').trim();
-    const variantVal = vI>=0 ? String(row[vI]||'').trim() : '—';
-    const colourVal  = cI>=0 ? String(row[cI]||'').trim() : '—';
-    const yearVal    = yI>=0 ? String(row[yI]||'').trim() : '—';
-    const key        = [modelVal, variantVal, colourVal, yearVal].join('|');
-    const isFree     = (freeMap[key] || 0) > 0;
-    const badge      = isFree
-      ? `<span class="fs-yes"><span class="fs-dot"></span>Yes</span>`
-      : `<span class="fs-no"><span class="fs-dot"></span>No</span>`;
-    const colCell    = colourVal && colourVal!=='—'
-      ? `<div class="cc"><div class="cd" style="background:${hueFor(colourVal)}"></div>${colourVal}</div>`
-      : '—';
-    return `<tr style="animation-delay:${Math.min(ri*.015,.3)}s">
-      <td>${modelVal||'—'}</td>
-      <td>${variantVal||'—'}</td>
-      <td>${colCell}</td>
-      <td class="${!yearVal||yearVal==='—'?'dim':''}">${yearVal||'—'}</td>
-      <td>${badge}</td>
-    </tr>`;
+  if(sortCol>=0)filtered.sort((a,b)=>{const av=String(a[sortCol]||'').toLowerCase(),bv=String(b[sortCol]||'').toLowerCase();return sortAsc?av.localeCompare(bv):bv.localeCompare(av);});
+  const cnt=`${filtered.length} variant${filtered.length!==1?'s':''}`;
+  document.getElementById('resultsInfo').textContent=cnt;
+  document.getElementById('staffResultsInfo').textContent=cnt;
+  if(!filtered.length){document.getElementById('mainContent').innerHTML='<div class="state-box"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><strong>No matches</strong><p>Try adjusting your filters.</p></div>';return;}
+  const isAdmin=currentUser&&currentUser.isAdmin;
+  const tbody=filtered.map((r,ri)=>{
+    const mv=String(r[mI]||'').trim(),vv=vI>=0?String(r[vI]||'').trim():'—',cv=cI>=0?String(r[cI]||'').trim():'—',yv=yI>=0?String(r[yI]||'').trim():'—';
+    const cnt2=freeMap[[mv,vv,cv,yv].join('|')]||0;
+    const badge=cnt2>0?`<span class="fs-yes"><span class="fs-dot"></span>Yes${isAdmin?' ('+cnt2+')':''}</span>`:`<span class="fs-no"><span class="fs-dot"></span>No</span>`;
+    const colCell=cv&&cv!=='—'?`<div class="cc"><div class="cd" style="background:${hueFor(cv)}"></div>${cv}</div>`:'—';
+    return `<tr style="animation-delay:${Math.min(ri*.015,.3)}s"><td>${mv||'—'}</td><td>${vv||'—'}</td><td>${colCell}</td><td class="${!yv||yv==='—'?'dim':''}">${yv||'—'}</td><td>${badge}</td></tr>`;
   }).join('');
-
-  document.getElementById('sTableArea').innerHTML = `
-    <div class="table-wrap">
-      <table>
-        <thead><tr>
-          <th>Model</th>
-          <th>Variant</th>
-          <th>Colour</th>
-          <th>VIN Year</th>
-          <th>Free Stock</th>
-        </tr></thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-    </div>`;
+  document.getElementById('mainContent').innerHTML=`<div class="table-wrap"><table>
+    <thead><tr>
+      <th onclick="doSort(0)">Model<span class="si">${sortCol===0?(sortAsc?'↑':'↓'):'↕'}</span></th>
+      <th onclick="doSort(1)">Variant<span class="si">${sortCol===1?(sortAsc?'↑':'↓'):'↕'}</span></th>
+      <th onclick="doSort(2)">Colour<span class="si">${sortCol===2?(sortAsc?'↑':'↓'):'↕'}</span></th>
+      <th onclick="doSort(3)">VIN Year<span class="si">${sortCol===3?(sortAsc?'↑':'↓'):'↕'}</span></th>
+      <th>Free Stock</th>
+    </tr></thead>
+    <tbody>${tbody}</tbody>
+  </table></div>`;
 }
 
-function clearStaffFilters() {
-  ['sVariant','sColour','sYear'].forEach(id => { document.getElementById(id).value = ''; });
-  const model = document.getElementById('sModel').value;
-  populateDependentFilters(model);
-  applyStaffFilters();
-}
-
-/* ── FREE STOCK MAP — counts STATUS=Free in Stock sheet ── */
-function buildFreeStockMap() {
-  const stockRows = sheetData[0];
-  if (!stockRows || stockRows.length < 2) return {};
-  const h  = stockRows[0].map(x => String(x).trim());
-  const mI = fc(h, COL.model), vI = fc(h, COL.variant),
-        cI = fc(h, COL.colour), yI = fc(h, COL.year), sI = fc(h, COL.status);
-  const map = {};
-  stockRows.slice(1).forEach(row => {
-    if (String(row[sI]||'').trim().toLowerCase() === 'free') {
-      const key = [
-        String(row[mI]||'').trim(), String(row[vI]||'').trim(),
-        String(row[cI]||'').trim(), String(row[yI]||'').trim()
-      ].join('|');
-      map[key] = (map[key]||0) + 1;
-    }
+function applyStandard(){
+  const rows=sheetData[activeTab];
+  if(!rows||rows.length<2){document.getElementById('mainContent').innerHTML=`<div class="state-box"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><strong>No data in "${SHEETS[activeTab]}"</strong><p>Check the sheet tab name or refresh.</p></div>`;return;}
+  const h=rows[0].map(x=>String(x).trim()),body=rows.slice(1);
+  const search=(document.getElementById('fSearch').value||'').toLowerCase().trim();
+  const fM=document.getElementById('fModel').value,fV=document.getElementById('fVariant').value,fC=document.getElementById('fColour').value,fY=document.getElementById('fYear').value;
+  const mI=fc(h,COL.model),vI=fc(h,COL.variant),cI=fc(h,COL.colour),yI=fc(h,COL.year);
+  let filtered=body.filter(r=>{
+    if(search&&!r.map(c=>String(c||'').toLowerCase()).join(' ').includes(search))return false;
+    if(fM&&String(r[mI]||'').trim()!==fM)return false;
+    if(fV&&vI>=0&&String(r[vI]||'').trim()!==fV)return false;
+    if(fC&&cI>=0&&String(r[cI]||'').trim()!==fC)return false;
+    if(fY&&yI>=0&&String(r[yI]||'').trim()!==fY)return false;
+    return true;
   });
+  if(sortCol>=0&&sortCol<h.length)filtered.sort((a,b)=>{const av=String(a[sortCol]||'').toLowerCase(),bv=String(b[sortCol]||'').toLowerCase();return sortAsc?av.localeCompare(bv):bv.localeCompare(av);});
+  document.getElementById('resultsInfo').textContent=`${filtered.length} of ${body.length} record${body.length!==1?'s':''}`;
+  const thead=h.map((col,i)=>`<th onclick="doSort(${i})" class="${sortCol===i?'sorted':''}">${col}<span class="si">${sortCol===i?(sortAsc?'↑':'↓'):'↕'}</span></th>`).join('');
+  const tbody=filtered.length?filtered.map((r,ri)=>`<tr style="animation-delay:${Math.min(ri*.015,.3)}s">${h.map((_,ci)=>{const v=String(r[ci]||'').trim();if(ci===cI)return`<td><div class="cc"><div class="cd" style="background:${hueFor(v)}"></div>${v||'—'}</div></td>`;return`<td ${!v?'class="dim"':''}>${v||'—'}</td>`;}).join('')}</tr>`).join(''):`<tr><td colspan="${h.length}"><div class="state-box"><strong>No matches</strong></div></td></tr>`;
+  document.getElementById('mainContent').innerHTML=`<div class="table-wrap"><table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table></div>`;
+}
+
+function buildFreeStockMap(){
+  const s=sheetData[0];if(!s||s.length<2)return{};
+  const h=s[0].map(x=>String(x).trim());
+  const mI=fc(h,COL.model),vI=fc(h,COL.variant),cI=fc(h,COL.colour),yI=fc(h,COL.year),sI=fc(h,COL.status);
+  const map={};
+  s.slice(1).forEach(r=>{if(String(r[sI]||'').trim().toLowerCase()==='free'){const k=[String(r[mI]||'').trim(),String(r[vI]||'').trim(),String(r[cI]||'').trim(),String(r[yI]||'').trim()].join('|');map[k]=(map[k]||0)+1;}});
   return map;
 }
 
-/* ════════════════════════════════════════
-   ADMIN TABLE
-════════════════════════════════════════ */
-function adminSwitchTab(i) {
-  adminTab = i;
-  [0,1,2,3,4].forEach(j => document.getElementById('atab'+j).classList.toggle('active', j===i));
-  document.getElementById('adminTableView').style.display = 'block';
-  document.getElementById('adminPanel').style.display = 'none';
-  aSortCol=-1; aSortAsc=true;
-  adminClearFilters();
-  adminRenderTab();
-}
+function doSort(col){sortAsc=sortCol===col?!sortAsc:true;sortCol=col;applyFilters();}
 
-function showAdminPanel() {
-  [0,1,2,3,4].forEach(j => document.getElementById('atab'+j).classList.toggle('active', j===4));
-  document.getElementById('adminTableView').style.display = 'none';
-  document.getElementById('adminPanel').style.display = 'block';
-  renderStaffList();
-}
-
-function adminRenderTab() {
-  const isFree = adminTab === 3;
-  // Toggle standard filters visibility for Free Stock tab
-  const stdF = document.getElementById('aStdFilters');
-  if (stdF) Array.from(stdF.children).forEach(el => el.style.display = isFree ? 'none' : '');
-  document.getElementById('aSearch').placeholder = isFree ? 'Search model…' : 'Search…';
-
-  if (isFree) { adminRenderFreeStock(); return; }
-
-  const rows = sheetData[adminTab];
-  if (!rows || rows.length < 2) {
-    document.getElementById('aTHead').innerHTML = '';
-    document.getElementById('aTBody').innerHTML = `<tr><td colspan="20"><div class="state-box">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
-      <strong>No data in "${SHEETS[adminTab]}"</strong></div></td></tr>`;
-    return;
-  }
-  const headers = rows[0].map(h => String(h).trim());
-  document.getElementById('aTHead').innerHTML = headers.map((h,i) =>
-    `<th onclick="adminSortBy(${i})">${h}<span class="si">↕</span></th>`).join('');
-  fillSel('aModel',   rows, headers, COL.model);
-  fillSel('aVariant', rows, headers, COL.variant);
-  fillSel('aColour',  rows, headers, COL.colour);
-  fillSel('aYear',    rows, headers, COL.year);
-  adminApplyFilters();
-}
-
-function adminRenderFreeStock() {
-  const rows = sheetData[3];
-  if (!rows || rows.length < 2) {
-    document.getElementById('aTHead').innerHTML = '';
-    document.getElementById('aTBody').innerHTML = `<tr><td colspan="5"><div class="state-box">
-      <strong>No data in "Product Spec" sheet</strong></div></td></tr>`;
-    document.getElementById('aResultsInfo').textContent = '';
-    return;
-  }
-  const headers = rows[0].map(h => String(h).trim());
-  fillSel('aModel', rows, headers, COL.model);
-  const freeMap = buildFreeStockMap();
-  const search  = document.getElementById('aSearch').value.toLowerCase().trim();
-  const fModel  = document.getElementById('aModel').value;
-  const mI=fc(headers,COL.model), vI=fc(headers,COL.variant),
-        cI=fc(headers,COL.colour), yI=fc(headers,COL.year);
-
-  let filtered = rows.slice(1).filter(row => {
-    const mv = String(row[mI]||'').trim();
-    if (search && !mv.toLowerCase().includes(search)) return false;
-    if (fModel && mv !== fModel) return false;
-    return true;
-  });
-
-  document.getElementById('aTHead').innerHTML =
-    '<th>Model</th><th>Variant</th><th>Colour</th><th>VIN Year</th><th>Free Stock</th>';
-
-  document.getElementById('aTBody').innerHTML = filtered.length
-    ? filtered.map((row,ri) => {
-        const mv=String(row[mI]||'').trim(), vv=vI>=0?String(row[vI]||'').trim():'—',
-              cv=cI>=0?String(row[cI]||'').trim():'—', yv=yI>=0?String(row[yI]||'').trim():'—';
-        const cnt = freeMap[[mv,vv,cv,yv].join('|')] || 0;
-        const badge = cnt>0
-          ? `<span class="fs-yes"><span class="fs-dot"></span>Yes (${cnt})</span>`
-          : `<span class="fs-no"><span class="fs-dot"></span>No</span>`;
-        const colCell = cv&&cv!=='—'
-          ? `<div class="cc"><div class="cd" style="background:${hueFor(cv)}"></div>${cv}</div>` : '—';
-        return `<tr style="animation-delay:${Math.min(ri*.015,.3)}s">
-          <td>${mv||'—'}</td><td>${vv}</td><td>${colCell}</td>
-          <td class="${!yv||yv==='—'?'dim':''}">${yv}</td><td>${badge}</td></tr>`;
-      }).join('')
-    : `<tr><td colspan="5"><div class="state-box"><strong>No matches</strong></div></td></tr>`;
-
-  document.getElementById('aResultsInfo').textContent =
-    `${filtered.length} of ${rows.length-1} records`;
-}
-
-function adminApplyFilters() {
-  if (adminTab === 3) { adminRenderFreeStock(); return; }
-  const rows = sheetData[adminTab];
-  if (!rows || rows.length < 2) return;
-  const headers = rows[0].map(h => String(h).trim());
-  const body    = rows.slice(1);
-  const search  = document.getElementById('aSearch').value.toLowerCase().trim();
-  const fM=document.getElementById('aModel').value,   fV=document.getElementById('aVariant').value,
-        fC=document.getElementById('aColour').value,  fY=document.getElementById('aYear').value;
-  const mI=fc(headers,COL.model), vI=fc(headers,COL.variant),
-        cI=fc(headers,COL.colour), yI=fc(headers,COL.year);
-
-  let filtered = body.filter(row => {
-    const mv=String(row[mI]||'').trim(), vv=String(row[vI]||'').trim(), cv=String(row[cI]||'').trim();
-    if (search && ![mv,vv,cv].some(v=>v.toLowerCase().includes(search))) return false;
-    if (fM && mv!==fM) return false;
-    if (fV && vI>=0 && vv!==fV) return false;
-    if (fC && cI>=0 && cv!==fC) return false;
-    if (fY && yI>=0 && String(row[yI]||'').trim()!==fY) return false;
-    return true;
-  });
-
-  if (aSortCol>=0) filtered.sort((a,b) => {
-    const av=String(a[aSortCol]||'').toLowerCase(), bv=String(b[aSortCol]||'').toLowerCase();
-    return aSortAsc?av.localeCompare(bv):bv.localeCompare(av);
-  });
-
-  document.getElementById('aTHead').innerHTML = headers.map((h,i) =>
-    `<th onclick="adminSortBy(${i})" class="${aSortCol===i?'sorted':''}">${h}<span class="si">${aSortCol===i?(aSortAsc?'↑':'↓'):'↕'}</span></th>`).join('');
-  const cIdx = fc(headers, COL.colour);
-  document.getElementById('aTBody').innerHTML = filtered.length
-    ? filtered.map((row,ri) => `<tr style="animation-delay:${Math.min(ri*.015,.3)}s">${
-        headers.map((_,ci) => {
-          const val=String(row[ci]||'').trim();
-          if (ci===cIdx) return `<td><div class="cc"><div class="cd" style="background:${hueFor(val)}"></div>${val||'—'}</div></td>`;
-          return `<td ${!val?'class="dim"':''}>${val||'—'}</td>`;
-        }).join('')
-      }</tr>`).join('')
-    : `<tr><td colspan="${headers.length}"><div class="state-box"><strong>No matches</strong></div></td></tr>`;
-
-  document.getElementById('aResultsInfo').textContent =
-    `${filtered.length} of ${body.length} record${body.length!==1?'s':''}`;
-}
-
-function adminSortBy(col) {
-  aSortAsc = aSortCol===col ? !aSortAsc : true; aSortCol=col;
-  adminApplyFilters();
-}
-
-function adminClearFilters() {
-  ['aSearch','aModel','aVariant','aColour','aYear'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  adminApplyFilters();
-}
-
-function fillSel(id, rows, headers, colName) {
-  const ci=fc(headers,colName), sel=document.getElementById(id);
-  if (!sel) return;
-  const cur=sel.value;
-  const opts=ci>=0?[...new Set(rows.slice(1).map(r=>String(r[ci]||'').trim()).filter(Boolean))].sort():[];
-  while (sel.options.length>1) sel.remove(1);
-  opts.forEach(v=>sel.add(new Option(v,v)));
-  if (opts.includes(cur)) sel.value=cur;
-}
-
-/* ── MANAGE STAFF ── */
-function addStaff() {
-  const name=document.getElementById('newName').value.trim();
-  const user=document.getElementById('newUser').value.trim();
-  const pass=document.getElementById('newPass').value.trim();
-  const err=document.getElementById('addErr');
-  err.textContent='';
-  if (!name||!user||!pass) { err.textContent='Please fill in all fields.'; return; }
-  if (user===ADMIN_USER)   { err.textContent='Username "admin" is reserved.'; return; }
-  const staff=getStaff();
-  if (staff.find(s=>s.username===user)) { err.textContent='Username already exists.'; return; }
-  staff.push({name,username:user,password:pass});
-  saveStaff(staff);
+/* ══ MANAGE STAFF ══ */
+function addStaff(){
+  const name=document.getElementById('newName').value.trim(),user=document.getElementById('newUser').value.trim(),pass=document.getElementById('newPass').value.trim();
+  const err=document.getElementById('addErr');err.textContent='';
+  if(!name||!user||!pass){err.textContent='Please fill in all fields.';return;}
+  if(user===ADMIN_USER){err.textContent='Username "admin" is reserved.';return;}
+  const staff=getStaff();if(staff.find(s=>s.username===user)){err.textContent='Username already exists.';return;}
+  staff.push({name,username:user,password:pass});saveStaff(staff);
   ['newName','newUser','newPass'].forEach(id=>document.getElementById(id).value='');
   renderStaffList();
 }
-
-function deleteStaff(u) {
-  saveStaff(getStaff().filter(s=>s.username!==u));
-  renderStaffList();
+function deleteStaff(u){saveStaff(getStaff().filter(s=>s.username!==u));renderStaffList();}
+function renderStaffList(){
+  const staff=getStaff(),wrap=document.getElementById('staffListWrap');
+  if(!staff.length){wrap.innerHTML='<div class="no-users">No staff added yet.</div>';return;}
+  wrap.innerHTML=`<table class="users-table"><thead><tr><th>Name</th><th>Username</th><th>Password</th><th></th></tr></thead><tbody>${staff.map(s=>`<tr><td>${s.name}</td><td>${s.username}</td><td>${s.password}</td><td><button class="del-btn" onclick="deleteStaff('${s.username}')">Remove</button></td></tr>`).join('')}</tbody></table>`;
 }
 
-function renderStaffList() {
-  const staff=getStaff(), wrap=document.getElementById('staffListWrap');
-  if (!staff.length) { wrap.innerHTML='<div class="no-users">No staff added yet.</div>'; return; }
-  wrap.innerHTML=`<table class="users-table">
-    <thead><tr><th>Name</th><th>Username</th><th>Password</th><th></th></tr></thead>
-    <tbody>${staff.map(s=>`<tr>
-      <td>${s.name}</td><td>${s.username}</td><td>${s.password}</td>
-      <td><button class="del-btn" onclick="deleteStaff('${s.username}')">Remove</button></td>
-    </tr>`).join('')}</tbody>
-  </table>`;
-}
-
-document.addEventListener('keydown', e => {
-  if (e.key==='Enter' && document.getElementById('pageLogin').classList.contains('active')) doLogin();
-});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('pageLogin').classList.contains('active'))doLogin();});
 </script>
 </body>
 </html>
