@@ -234,13 +234,13 @@
     </div>
     <div class="filter-wrap">
       <span class="filter-label">Variant</span>
-      <select class="filter-select" id="sVariant" onchange="applyStaffFilters()" disabled>
+      <select class="filter-select" id="sVariant" onchange="onVariantChange()" disabled>
         <option value="">All Variants</option>
       </select>
     </div>
     <div class="filter-wrap">
       <span class="filter-label">Colour</span>
-      <select class="filter-select" id="sColour" onchange="applyStaffFilters()" disabled>
+      <select class="filter-select" id="sColour" onchange="onColourChange()" disabled>
         <option value="">All Colours</option>
       </select>
     </div>
@@ -405,7 +405,7 @@ function jsonpFetch(sheet) {
     const t = setTimeout(() => { delete window[cb]; reject(new Error('Timed out')); }, 15000);
     window[cb] = d => { clearTimeout(t); delete window[cb]; resolve(d); };
     const s = document.createElement('script');
-    s.src = `${API}?sheet=${encodeURIComponent(sheet)}&callback=${cb}`;
+    s.src = `${API}?sheet=${encodeURIComponent(sheet)}&callback=${encodeURIComponent(cb)}`;
     s.onerror = () => { clearTimeout(t); delete window[cb]; s.remove(); reject(new Error('Network error')); };
     s.onload = () => s.remove();
     document.head.appendChild(s);
@@ -423,6 +423,9 @@ async function loadAllSheets() {
   ['staffUpdated','adminUpdated'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=ts; });
   if (currentUser && !currentUser.isAdmin) {
     populateStaffModelDropdown();
+    // If a model was already selected, re-render
+    const selModel = document.getElementById('sModel');
+    if (selModel && selModel.value) applyStaffFilters();
   } else {
     adminRenderTab();
   }
@@ -481,13 +484,23 @@ function populateStaffModelDropdown() {
   const sel  = document.getElementById('sModel');
   const cur  = sel.value;
   while (sel.options.length > 1) sel.remove(1);
-  if (!rows || rows.length < 2) return;
+  if (!rows || rows.length < 2) {
+    sel.add(new Option('⚠ No data in Product Spec sheet', ''));
+    return;
+  }
   const headers = rows[0].map(h => String(h).trim());
-  const mI = fc(headers, COL.model);
-  if (mI < 0) return;
+
+  // Try exact match first, then case-insensitive, then first column as fallback
+  let mI = fc(headers, COL.model);
+  if (mI < 0) mI = 0; // fallback to first column
+
   const models = [...new Set(rows.slice(1).map(r => String(r[mI]||'').trim()).filter(Boolean))].sort();
+  if (!models.length) {
+    sel.add(new Option('⚠ No models found', ''));
+    return;
+  }
   models.forEach(v => sel.add(new Option(v, v)));
-  if (models.includes(cur)) { sel.value = cur; }
+  if (models.includes(cur)) sel.value = cur;
 }
 
 function onModelChange() {
@@ -498,15 +511,12 @@ function onModelChange() {
   ['sVariant','sColour','sYear'].forEach(id => {
     const el = document.getElementById(id);
     el.disabled = !hasModel;
-    // Reset when model cleared
     if (!hasModel) el.value = '';
   });
 
-  // Show/hide clear button
   document.getElementById('sClearBtn').style.display = hasModel ? 'inline-block' : 'none';
 
   if (!hasModel) {
-    // Reset to empty state
     populateDependentFilters(null);
     document.getElementById('sResultsInfo').textContent = '';
     document.getElementById('sTableArea').innerHTML = `
@@ -525,6 +535,22 @@ function onModelChange() {
   applyStaffFilters();
 }
 
+function onVariantChange() {
+  const model = document.getElementById('sModel').value;
+  if (!model) return;
+  // Re-cascade colour and year based on selected variant
+  populateDependentFilters(model);
+  applyStaffFilters();
+}
+
+function onColourChange() {
+  const model = document.getElementById('sModel').value;
+  if (!model) return;
+  // Re-cascade year based on selected colour
+  populateDependentFilters(model);
+  applyStaffFilters();
+}
+
 function populateDependentFilters(model) {
   const rows = sheetData[3];
   if (!rows || rows.length < 2) return;
@@ -534,23 +560,52 @@ function populateDependentFilters(model) {
   const cI = fc(headers, COL.colour);
   const yI = fc(headers, COL.year);
 
-  const filtered = model
+  // All rows for selected model
+  const byModel = model
     ? rows.slice(1).filter(r => String(r[mI]||'').trim() === model)
     : [];
 
-  const fillSel = (id, idx) => {
-    const sel = document.getElementById(id);
-    const cur = sel.value;
-    while (sel.options.length > 1) sel.remove(1);
-    if (idx < 0 || !model) return;
-    const vals = [...new Set(filtered.map(r => String(r[idx]||'').trim()).filter(Boolean))].sort();
-    vals.forEach(v => sel.add(new Option(v, v)));
-    if (cur && vals.includes(cur)) sel.value = cur;
-  };
+  const selVariant = document.getElementById('sVariant');
+  const selColour  = document.getElementById('sColour');
+  const selYear    = document.getElementById('sYear');
 
-  fillSel('sVariant', vI);
-  fillSel('sColour',  cI);
-  fillSel('sYear',    yI);
+  const curV = selVariant.value;
+  const curC = selColour.value;
+  const curY = selYear.value;
+
+  // Variants — unique from model rows
+  while (selVariant.options.length > 1) selVariant.remove(1);
+  if (vI >= 0 && model) {
+    const variants = [...new Set(byModel.map(r => String(r[vI]||'').trim()).filter(Boolean))].sort();
+    variants.forEach(v => selVariant.add(new Option(v, v)));
+    if (variants.includes(curV)) selVariant.value = curV;
+  }
+
+  // Colours — filtered by model + selected variant (if any)
+  const selectedVariant = selVariant.value;
+  const byVariant = selectedVariant
+    ? byModel.filter(r => String(r[vI]||'').trim() === selectedVariant)
+    : byModel;
+
+  while (selColour.options.length > 1) selColour.remove(1);
+  if (cI >= 0 && model) {
+    const colours = [...new Set(byVariant.map(r => String(r[cI]||'').trim()).filter(Boolean))].sort();
+    colours.forEach(v => selColour.add(new Option(v, v)));
+    if (colours.includes(curC)) selColour.value = curC;
+  }
+
+  // Years — filtered by model + variant + colour
+  const selectedColour = selColour.value;
+  const byColour = selectedColour
+    ? byVariant.filter(r => String(r[cI]||'').trim() === selectedColour)
+    : byVariant;
+
+  while (selYear.options.length > 1) selYear.remove(1);
+  if (yI >= 0 && model) {
+    const years = [...new Set(byColour.map(r => String(r[yI]||'').trim()).filter(Boolean))].sort();
+    years.forEach(v => selYear.add(new Option(v, v)));
+    if (years.includes(curY)) selYear.value = curY;
+  }
 }
 
 function applyStaffFilters() {
@@ -628,6 +683,8 @@ function applyStaffFilters() {
 
 function clearStaffFilters() {
   ['sVariant','sColour','sYear'].forEach(id => { document.getElementById(id).value = ''; });
+  const model = document.getElementById('sModel').value;
+  populateDependentFilters(model);
   applyStaffFilters();
 }
 
