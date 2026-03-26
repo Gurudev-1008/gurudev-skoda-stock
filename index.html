@@ -706,18 +706,25 @@ function renderFreeStock(){
   const fVar=document.getElementById('fVariant').value;
   const fCol=document.getElementById('fColour').value;
   const fYear=document.getElementById('fYear').value;
-  const isAdmin=currentUser&&currentUser.isAdmin;
 
   // Get all expanded rows (model+variant+colour+vy)
-  let rows=getFreeStockRows();
+  let allRows=getFreeStockRows();
 
   // Filter
-  rows=rows.filter(r=>{
+  allRows=allRows.filter(r=>{
     if(r.model!==model)return false;
     if(fVar&&r.variant!==fVar)return false;
     if(fCol&&r.colour!==fCol)return false;
     if(fYear&&r.vy!==fYear)return false;
     return true;
+  });
+
+  // Deduplicate: unique Model+Variant+Colour+VY
+  const seen=new Set();
+  const rows=[];
+  allRows.forEach(r=>{
+    const key=`${r.model}||${r.variant}||${r.colour}||${r.vy}`;
+    if(!seen.has(key)){seen.add(key);rows.push(r);}
   });
 
   // Sort
@@ -733,7 +740,6 @@ function renderFreeStock(){
   document.getElementById('resultsInfo').textContent=
     `${rows.length} row${rows.length!==1?'s':''}`;
 
-  // Render headers
   document.getElementById('tHead').innerHTML=
     `<th onclick="doSort(0)">Model<span class="si2">${sortCol===0?(sortAsc?'↑':'↓'):'↕'}</span></th>`+
     `<th onclick="doSort(1)">Variant<span class="si2">${sortCol===1?(sortAsc?'↑':'↓'):'↕'}</span></th>`+
@@ -750,9 +756,9 @@ function renderFreeStock(){
   }
 
   document.getElementById('tBody').innerHTML=rows.map((r,ri)=>{
-    const{yes,count}=isFreeStockAvailable(r.modelCode,r.colour,r.vy);
+    const{yes}=isFreeStockAvailable(r.modelCode,r.colour,r.vy);
     const badge=yes
-      ?`<span class="fs-yes"><span class="fsdot"></span>Yes${isAdmin?` (${count})`:''}</span>`
+      ?`<span class="fs-yes"><span class="fsdot"></span>Yes</span>`
       :`<span class="fs-no"><span class="fsdot"></span>No</span>`;
     const colCell=r.colour
       ?`<div class="cc"><div class="cd" style="background:${hueFor(r.colour)}"></div>${r.colour}</div>`
