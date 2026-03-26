@@ -544,8 +544,19 @@ async function doLogin(){
   errEl.textContent='Verifying…';
   await loadStaffList();
 
-  const found=staffList.find(s=>s.username===u&&s.password===p);
-  if(!found){errEl.textContent='Incorrect username or password.';return;}
+  console.log('After load, staffList length:',staffList.length);
+  console.log('Looking for username:',JSON.stringify(u),'password:',JSON.stringify(p));
+  staffList.forEach(s=>console.log('Sheet user:',JSON.stringify(s.username),'pass:',JSON.stringify(s.password)));
+
+  const found=staffList.find(s=>
+    s.username.trim()===u.trim() && s.password.trim()===p.trim()
+  );
+  if(!found){
+    errEl.textContent=staffList.length===0
+      ?'Could not connect to user list. Please try again.'
+      :'Incorrect username or password.';
+    return;
+  }
 
   currentUser={...found,isAdmin:false};
   document.getElementById('appUser').textContent=found.name||found.username;
