@@ -7,127 +7,135 @@
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg-deep:#0a1f0e;--bg-card:#112a15;--bg-surface:#163b1c;
-    --accent:#4caf6e;--accent-soft:#a8d5b5;--accent-glow:rgba(76,175,110,0.15);
-    --text-primary:#e6f4ea;--text-muted:#7dab8a;--text-dim:#4a7a57;
-    --border:rgba(76,175,110,0.18);--border-strong:rgba(76,175,110,0.35);
-    --radius:8px;--font-display:'Rajdhani',sans-serif;--font-body:'DM Sans',sans-serif;
+    --bg-deep:#0a1f0e; --bg-card:#112a15; --bg-surface:#163b1c;
+    --accent:#4caf6e; --accent-soft:#a8d5b5; --accent-glow:rgba(76,175,110,0.15);
+    --text-primary:#e6f4ea; --text-muted:#7dab8a; --text-dim:#4a7a57;
+    --border:rgba(76,175,110,0.18); --border-strong:rgba(76,175,110,0.35);
+    --radius:8px; --font-display:'Rajdhani',sans-serif; --font-body:'DM Sans',sans-serif;
   }
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg-deep);color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;background-image:radial-gradient(ellipse 60% 40% at 50% -10%,rgba(76,175,110,0.12) 0%,transparent 70%)}
-  .page{display:none}.page.active{display:block}
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg-deep);color:var(--text-primary);font-family:var(--font-body);font-size:14px;min-height:100vh;background-image:radial-gradient(ellipse 60% 40% at 50% -10%,rgba(76,175,110,0.12) 0%,transparent 70%);}
+  .page{display:none;} .page.active{display:block;}
 
   /* LOGIN */
-  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-  .login-box{background:var(--bg-card);border:1px solid var(--border-strong);border-radius:16px;padding:48px 40px;width:100%;max-width:400px;text-align:center}
-  .login-logo-mark{width:56px;height:56px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
-  .login-logo-mark svg{width:32px;height:32px}
-  .login-title{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:.04em;margin-bottom:4px}
-  .login-sub{font-size:12px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:36px}
-  .login-field{margin-bottom:16px;text-align:left}
-  .login-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px}
-  .login-input{width:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;color:var(--text-primary);font-family:var(--font-body);font-size:14px;outline:none;transition:border-color .2s}
-  .login-input:focus{border-color:var(--accent)}.login-input::placeholder{color:var(--text-dim)}
-  .login-btn{width:100%;background:var(--accent);color:#0a1f0e;border:none;border-radius:var(--radius);padding:12px;font-family:var(--font-display);font-size:16px;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:opacity .2s;margin-top:8px}
-  .login-btn:hover{opacity:.88}.login-err{color:#f87171;font-size:13px;margin-top:12px;min-height:20px}
+  .login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .login-box{background:var(--bg-card);border:1px solid var(--border-strong);border-radius:16px;padding:48px 40px;width:100%;max-width:400px;text-align:center;}
+  .login-logo{width:56px;height:56px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+  .login-logo svg{width:32px;height:32px;}
+  .login-title{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:.04em;margin-bottom:4px;}
+  .login-sub{font-size:12px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:36px;}
+  .login-field{margin-bottom:16px;text-align:left;}
+  .login-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:6px;}
+  .login-input{width:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 14px;color:var(--text-primary);font-family:var(--font-body);font-size:14px;outline:none;transition:border-color .2s;}
+  .login-input:focus{border-color:var(--accent);}
+  .login-input::placeholder{color:var(--text-dim);}
+  .login-btn{width:100%;background:var(--accent);color:#0a1f0e;border:none;border-radius:var(--radius);padding:12px;font-family:var(--font-display);font-size:16px;font-weight:700;letter-spacing:.06em;cursor:pointer;transition:opacity .2s;margin-top:8px;}
+  .login-btn:hover{opacity:.88;}
+  .login-err{color:#f87171;font-size:13px;margin-top:12px;min-height:20px;}
 
   /* HEADER */
-  header{background:var(--bg-card);border-bottom:1px solid var(--border-strong);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100}
-  .logo{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none}
-  .logo-mark{width:38px;height:38px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center}
-  .logo-mark svg{width:22px;height:22px}
-  .logo-text{font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:.04em;line-height:1}
-  .logo-sub{font-size:11px;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:2px}
-  .header-right{display:flex;align-items:center;gap:12px}
-  .live-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;font-weight:500}
-  .live-dot{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:pulse 2s ease-in-out infinite}
+  header{background:var(--bg-card);border-bottom:1px solid var(--border-strong);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;}
+  .logo{display:flex;align-items:center;gap:12px;cursor:pointer;user-select:none;}
+  .logo-mark{width:38px;height:38px;background:var(--accent);border-radius:7px;display:flex;align-items:center;justify-content:center;}
+  .logo-mark svg{width:22px;height:22px;}
+  .logo-text{font-family:var(--font-display);font-size:22px;font-weight:700;letter-spacing:.04em;line-height:1;}
+  .logo-sub{font-size:11px;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
+  .hdr-right{display:flex;align-items:center;gap:12px;}
+  .live-badge{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;font-weight:500;}
+  .live-dot{width:7px;height:7px;background:var(--accent);border-radius:50%;animation:pulse 2s ease-in-out infinite;}
   @keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(76,175,110,.5)}50%{opacity:.7;box-shadow:0 0 0 5px rgba(76,175,110,0)}}
-  .last-updated{font-size:11px;color:var(--text-dim)}
-  .hdr-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:6px 14px;color:var(--text-muted);font-family:var(--font-body);font-size:12px;cursor:pointer;transition:all .2s}
-  .hdr-btn:hover{border-color:var(--accent);color:var(--accent)}
-  .user-tag{font-size:12px;color:var(--text-muted);background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:5px 12px}
+  .ts{font-size:11px;color:var(--text-dim);}
+  .hdr-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:6px 14px;color:var(--text-muted);font-family:var(--font-body);font-size:12px;cursor:pointer;transition:all .2s;}
+  .hdr-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .user-tag{font-size:12px;color:var(--text-muted);background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:5px 12px;}
 
   /* TABS */
-  .tabs-bar{background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 28px;display:flex;overflow-x:auto}
-  .tab-btn{font-family:var(--font-display);font-size:14px;font-weight:600;letter-spacing:.05em;padding:12px 22px;background:none;border:none;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;text-transform:uppercase;position:relative;top:1px;white-space:nowrap}
-  .tab-btn:hover{color:var(--accent-soft)}.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
-  .tab-btn.t-free.active{color:#60a5fa;border-bottom-color:#60a5fa}
+  .tabs-bar{background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 28px;display:flex;overflow-x:auto;}
+  .tab-btn{font-family:var(--font-display);font-size:14px;font-weight:600;letter-spacing:.05em;padding:12px 22px;background:none;border:none;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;text-transform:uppercase;position:relative;top:1px;white-space:nowrap;}
+  .tab-btn:hover{color:var(--accent-soft);}
+  .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+  .tab-btn.t-free.active{color:#60a5fa;border-bottom-color:#60a5fa;}
 
-  /* FREE STOCK STAFF HEADER */
-  .section-bar{background:var(--bg-card);border-bottom:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;justify-content:space-between}
-  .section-title{font-family:var(--font-display);font-size:17px;font-weight:700;color:#60a5fa;letter-spacing:.05em;text-transform:uppercase}
-  .section-sub{font-size:12px;color:var(--text-dim);margin-top:2px}
+  /* TOOLBAR */
+  .toolbar{padding:16px 28px;display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;background:var(--bg-deep);border-bottom:1px solid var(--border);}
+  .fw{display:flex;flex-direction:column;gap:4px;}
+  .fl{font-size:10px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;padding-left:2px;}
+  .fs{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 32px 9px 12px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234a7a57' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border-color .2s;min-width:170px;}
+  .fs:focus{border-color:var(--accent);}
+  .fs option{background:var(--bg-card);color:var(--text-primary);}
+  .fs:disabled{opacity:.32;cursor:not-allowed;}
+  .fs.model-sel{border-color:var(--border-strong);min-width:200px;}
+  .sw{position:relative;min-width:180px;max-width:260px;}
+  .sw svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text-dim);pointer-events:none;}
+  .si{width:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px 9px 32px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;}
+  .si::placeholder{color:var(--text-dim);}
+  .si:focus{border-color:var(--accent);}
+  .cbtn{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:9px 16px;color:var(--text-muted);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s;}
+  .cbtn:hover{border-color:var(--accent);color:var(--accent);}
+  .ri{margin-left:auto;font-size:12px;color:var(--text-dim);white-space:nowrap;align-self:center;}
 
-  /* SHARED TOOLBAR */
-  .toolbar{padding:14px 28px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;background:var(--bg-deep);border-bottom:1px solid var(--border)}
-  .search-wrap{position:relative;min-width:180px;max-width:240px;flex:1}
-  .search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:14px;height:14px;stroke:var(--text-dim);pointer-events:none}
-  .search-input{width:100%;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 12px 9px 32px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color .2s}
-  .search-input::placeholder{color:var(--text-dim)}.search-input:focus{border-color:var(--accent)}
-  .filter-wrap{display:flex;flex-direction:column;gap:3px}
-  .filter-label{font-size:10px;color:var(--text-dim);letter-spacing:.08em;text-transform:uppercase;padding-left:2px}
-  .filter-select{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 30px 9px 12px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%234a7a57' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;transition:border-color .2s,opacity .2s;min-width:160px}
-  .filter-select:focus{border-color:var(--accent)}.filter-select option{background:var(--bg-card);color:var(--text-primary)}
-  .filter-select:disabled{opacity:.3;cursor:not-allowed}
-  .clear-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);padding:9px 16px;color:var(--text-muted);font-family:var(--font-body);font-size:13px;cursor:pointer;transition:all .2s}
-  .clear-btn:hover{border-color:var(--accent);color:var(--accent)}
-  .results-info{margin-left:auto;font-size:12px;color:var(--text-dim);white-space:nowrap;align-self:center}
-
-  /* SHARED TABLE */
-  .table-wrap{padding:20px 28px 60px;overflow-x:auto}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  thead tr{background:var(--bg-surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
-  th{font-family:var(--font-display);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:11px 16px;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;transition:color .15s}
-  th:hover{color:var(--accent)}.th .si{display:inline-block;margin-left:4px;opacity:.35;font-size:10px}
-  th.sorted{color:var(--accent)}
-  tbody tr{border-bottom:1px solid var(--border);transition:background .12s;animation:rowIn .16s ease both}
-  tbody tr:hover{background:var(--accent-glow)}
-  td{padding:12px 16px;color:var(--text-primary);vertical-align:middle;white-space:nowrap}
-  td.dim{color:var(--text-muted)}
-  .cc{display:flex;align-items:center;gap:8px}
-  .cd{width:11px;height:11px;border-radius:50%;border:1px solid rgba(255,255,255,.18);flex-shrink:0}
-  .fs-yes{display:inline-flex;align-items:center;gap:5px;background:rgba(76,175,110,.15);color:#4caf6e;border:1px solid rgba(76,175,110,.3);border-radius:20px;padding:3px 14px;font-size:12px;font-weight:500}
-  .fs-no{display:inline-flex;align-items:center;gap:5px;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.25);border-radius:20px;padding:3px 14px;font-size:12px;font-weight:500}
-  .fs-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+  /* TABLE */
+  .table-wrap{padding:20px 28px 60px;overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  thead tr{background:var(--bg-surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+  th{font-family:var(--font-display);font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:11px 16px;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;transition:color .15s;}
+  th:hover{color:var(--accent);}
+  th .si2{display:inline-block;margin-left:4px;opacity:.35;font-size:10px;}
+  th.sorted{color:var(--accent);}
+  th.sorted .si2{opacity:1;}
+  tbody tr{border-bottom:1px solid var(--border);transition:background .12s;animation:rowIn .16s ease both;}
+  tbody tr:hover{background:var(--accent-glow);}
+  td{padding:12px 16px;color:var(--text-primary);vertical-align:middle;white-space:nowrap;}
+  td.dim{color:var(--text-muted);}
+  .cc{display:flex;align-items:center;gap:8px;}
+  .cd{width:11px;height:11px;border-radius:50%;border:1px solid rgba(255,255,255,.18);flex-shrink:0;}
+  .fs-yes{display:inline-flex;align-items:center;gap:5px;background:rgba(76,175,110,0.15);color:#4caf6e;border:1px solid rgba(76,175,110,0.3);border-radius:20px;padding:3px 14px;font-size:12px;font-weight:500;}
+  .fs-no{display:inline-flex;align-items:center;gap:5px;background:rgba(239,68,68,0.1);color:#f87171;border:1px solid rgba(239,68,68,0.25);border-radius:20px;padding:3px 14px;font-size:12px;font-weight:500;}
+  .fsdot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 
   /* STATES */
-  .empty-prompt{text-align:center;padding:80px 20px;color:var(--text-dim)}
-  .empty-prompt svg{width:52px;height:52px;stroke:var(--text-dim);display:block;margin:0 auto 18px;opacity:.5}
-  .empty-prompt strong{display:block;font-family:var(--font-display);font-size:18px;font-weight:600;color:var(--text-muted);margin-bottom:8px;letter-spacing:.04em}
-  .empty-prompt p{font-size:13px;color:var(--text-dim)}
-  .state-box{text-align:center;padding:70px 20px;color:var(--text-dim)}
-  .state-box svg{width:38px;height:38px;stroke:var(--text-dim);display:block;margin:0 auto 14px}
-  .state-box strong{display:block;font-size:15px;color:var(--text-muted);margin-bottom:6px}
-  .state-box p{font-size:13px;line-height:1.6}
-  .spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite;display:block;margin:0 auto 14px}
+  .empty-prompt{text-align:center;padding:80px 20px;color:var(--text-dim);}
+  .empty-prompt svg{width:52px;height:52px;stroke:var(--text-dim);display:block;margin:0 auto 18px;opacity:.5;}
+  .empty-prompt strong{display:block;font-family:var(--font-display);font-size:18px;font-weight:600;color:var(--text-muted);margin-bottom:8px;}
+  .empty-prompt p{font-size:13px;}
+  .state-box{text-align:center;padding:60px 20px;color:var(--text-dim);}
+  .state-box svg{width:38px;height:38px;stroke:var(--text-dim);display:block;margin:0 auto 14px;}
+  .state-box strong{display:block;font-size:15px;color:var(--text-muted);margin-bottom:6px;}
+  .state-box p{font-size:13px;line-height:1.6;}
+  .spinner{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .75s linear infinite;display:block;margin:0 auto 14px;}
   @keyframes spin{to{transform:rotate(360deg)}}
   @keyframes rowIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 
-  /* ADMIN PANEL */
-  .admin-panel{padding:28px;max-width:860px}
-  .admin-panel h2{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--accent);margin-bottom:20px;letter-spacing:.04em}
-  .admin-section{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px}
-  .admin-section h3{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--text-muted);margin-bottom:16px;letter-spacing:.05em;text-transform:uppercase}
-  .add-user-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
-  .form-field{display:flex;flex-direction:column;gap:4px}
-  .form-label{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em}
-  .form-input{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 13px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color .2s;min-width:150px}
-  .form-input:focus{border-color:var(--accent)}
-  .add-btn{background:var(--accent);color:#0a1f0e;border:none;border-radius:var(--radius);padding:9px 20px;font-family:var(--font-display);font-size:14px;font-weight:700;letter-spacing:.05em;cursor:pointer;transition:opacity .2s}
-  .add-btn:hover{opacity:.85}
-  .users-table{width:100%;border-collapse:collapse;font-size:13px}
-  .users-table th{font-family:var(--font-display);font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-dim);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
-  .users-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text-primary)}
-  .users-table tr:last-child td{border-bottom:none}
-  .del-btn{background:none;border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:3px 10px;color:#f87171;font-size:12px;cursor:pointer;transition:all .2s}
-  .del-btn:hover{background:rgba(239,68,68,.1)}
-  .no-users{color:var(--text-dim);font-size:13px;padding:12px 0}
-  .add-err{color:#f87171;font-size:13px;margin-top:10px;min-height:18px}
+  /* FREE STOCK HEADER BAR */
+  .fs-bar{background:var(--bg-card);border-bottom:1px solid var(--border);padding:14px 28px;}
+  .fs-bar-title{font-family:var(--font-display);font-size:18px;font-weight:700;color:#60a5fa;letter-spacing:.05em;text-transform:uppercase;}
+  .fs-bar-sub{font-size:12px;color:var(--text-dim);margin-top:2px;}
+
+  /* MANAGE STAFF */
+  .admin-panel{padding:28px;max-width:860px;}
+  .admin-panel h2{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--accent);margin-bottom:20px;}
+  .admin-section{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:24px;}
+  .admin-section h3{font-family:var(--font-display);font-size:16px;font-weight:600;color:var(--text-muted);margin-bottom:16px;letter-spacing:.05em;text-transform:uppercase;}
+  .add-form{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+  .ff{display:flex;flex-direction:column;gap:4px;}
+  .ffl{font-size:11px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;}
+  .fi{background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:9px 13px;color:var(--text-primary);font-family:var(--font-body);font-size:13px;outline:none;min-width:150px;}
+  .fi:focus{border-color:var(--accent);}
+  .add-btn{background:var(--accent);color:#0a1f0e;border:none;border-radius:var(--radius);padding:9px 20px;font-family:var(--font-display);font-size:14px;font-weight:700;cursor:pointer;}
+  .add-btn:hover{opacity:.85;}
+  .add-err{color:#f87171;font-size:13px;margin-top:10px;min-height:18px;}
+  .st{width:100%;border-collapse:collapse;font-size:13px;}
+  .st th{font-family:var(--font-display);font-size:11px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-dim);padding:8px 12px;text-align:left;border-bottom:1px solid var(--border);}
+  .st td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text-primary);}
+  .st tr:last-child td{border-bottom:none;}
+  .del-btn{background:none;border:1px solid rgba(239,68,68,.3);border-radius:4px;padding:3px 10px;color:#f87171;font-size:12px;cursor:pointer;}
+  .del-btn:hover{background:rgba(239,68,68,.1);}
+  .no-users{color:var(--text-dim);font-size:13px;padding:12px 0;}
 
   @media(max-width:640px){
-    header,.toolbar,.table-wrap{padding-left:14px;padding-right:14px}
-    .logo-text{font-size:18px}.login-box{padding:32px 24px}
-    .filter-select{min-width:130px}
+    header,.toolbar,.table-wrap,.admin-panel{padding-left:14px;padding-right:14px;}
+    .logo-text{font-size:18px;}
+    .login-box{padding:32px 24px;}
   }
 </style>
 </head>
@@ -137,7 +145,7 @@
 <div class="page active" id="pageLogin">
   <div class="login-wrap">
     <div class="login-box">
-      <div class="login-logo-mark">
+      <div class="login-logo">
         <svg viewBox="0 0 24 24" fill="none" stroke="#0a1f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
         </svg>
@@ -146,14 +154,14 @@
       <div class="login-sub">Stock Viewer — Login</div>
       <div class="login-field">
         <label class="login-label">Username</label>
-        <input class="login-input" id="loginUser" type="text" placeholder="Enter username" autocomplete="username">
+        <input class="login-input" id="liUser" type="text" placeholder="Enter username" autocomplete="username">
       </div>
       <div class="login-field">
         <label class="login-label">Password</label>
-        <input class="login-input" id="loginPass" type="password" placeholder="Enter password" autocomplete="current-password">
+        <input class="login-input" id="liPass" type="password" placeholder="Enter password" autocomplete="current-password">
       </div>
       <button class="login-btn" onclick="doLogin()">Sign In</button>
-      <div class="login-err" id="loginErr"></div>
+      <div class="login-err" id="liErr"></div>
     </div>
   </div>
 </div>
@@ -169,111 +177,142 @@
       </div>
       <div>
         <div class="logo-text">GURUDEV SKODA</div>
-        <div class="logo-sub" id="appSubtitle">Stock Viewer</div>
+        <div class="logo-sub" id="appSub">Stock Viewer</div>
       </div>
     </div>
-    <div class="header-right">
+    <div class="hdr-right">
       <div class="live-badge"><div class="live-dot"></div>Live</div>
-      <span class="last-updated" id="appUpdated">—</span>
-      <span class="user-tag" id="appUserTag"></span>
+      <span class="ts" id="appTs">—</span>
+      <span class="user-tag" id="appUser"></span>
       <button class="hdr-btn" onclick="loadAllSheets()">↻ Refresh</button>
       <button class="hdr-btn" onclick="doLogout()">Sign out</button>
     </div>
   </header>
 
-  <!-- ADMIN TABS (hidden for staff) -->
-  <div class="tabs-bar" id="adminTabsBar" style="display:none">
-    <button class="tab-btn active" onclick="switchTab(0)" id="tab0">Stock</button>
+  <!-- TABS (admin sees all, staff sees only Free Stock) -->
+  <div class="tabs-bar" id="tabsBar">
+    <button class="tab-btn"        onclick="switchTab(0)" id="tab0">Stock</button>
     <button class="tab-btn"        onclick="switchTab(1)" id="tab1">Allocation</button>
     <button class="tab-btn"        onclick="switchTab(2)" id="tab2">Live RPO</button>
     <button class="tab-btn t-free" onclick="switchTab(3)" id="tab3">Free Stock</button>
-    <button class="tab-btn"        onclick="showAdminPanel()" id="tab4">⚙ Manage Staff</button>
+    <button class="tab-btn"        onclick="switchTab(4)" id="tab4">⚙ Manage Staff</button>
   </div>
 
-  <!-- STAFF FREE STOCK LABEL (hidden for admin) -->
-  <div class="section-bar" id="staffSectionBar" style="display:none">
-    <div>
-      <div class="section-title">Free Stock</div>
-      <div class="section-sub">Select a model to view availability</div>
-    </div>
-    <span class="results-info" id="staffResultsInfo"></span>
+  <!-- FREE STOCK header bar -->
+  <div class="fs-bar" id="fsBar" style="display:none">
+    <div class="fs-bar-title">Free Stock</div>
+    <div class="fs-bar-sub">Select a model to view availability</div>
   </div>
 
-  <!-- SHARED TOOLBAR — identical for admin & staff -->
-  <div class="toolbar">
-    <div class="search-wrap" id="searchWrap">
+  <!-- SHARED TOOLBAR -->
+  <div class="toolbar" id="mainToolbar">
+    <div class="sw" id="searchWrap">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input class="search-input" id="fSearch" placeholder="Search…" oninput="applyFilters()">
+      <input class="si" id="fSearch" placeholder="Search…" oninput="applyFilters()">
     </div>
-    <div class="filter-wrap">
-      <span class="filter-label">Model</span>
-      <select class="filter-select" id="fModel" onchange="onModelChange()" style="min-width:200px;"></select>
+    <div class="fw">
+      <span class="fl">Model</span>
+      <select class="fs model-sel" id="fModel" onchange="onModelChange()"><option value="">All Models</option></select>
     </div>
-    <div class="filter-wrap">
-      <span class="filter-label">Variant</span>
-      <select class="filter-select" id="fVariant" onchange="onVariantChange()"><option value="">All Variants</option></select>
+    <div class="fw">
+      <span class="fl">Variant</span>
+      <select class="fs" id="fVariant" onchange="onVariantChange()"><option value="">All Variants</option></select>
     </div>
-    <div class="filter-wrap">
-      <span class="filter-label">Colour</span>
-      <select class="filter-select" id="fColour" onchange="onColourChange()"><option value="">All Colours</option></select>
+    <div class="fw">
+      <span class="fl">Colour</span>
+      <select class="fs" id="fColour" onchange="onColourChange()"><option value="">All Colours</option></select>
     </div>
-    <div class="filter-wrap">
-      <span class="filter-label">VIN Year</span>
-      <select class="filter-select" id="fYear" onchange="applyFilters()"><option value="">All Years</option></select>
+    <div class="fw">
+      <span class="fl">VIN Year</span>
+      <select class="fs" id="fYear" onchange="applyFilters()"><option value="">All Years</option></select>
     </div>
-    <button class="clear-btn" onclick="clearFilters()">Clear</button>
-    <span class="results-info" id="resultsInfo"></span>
+    <button class="cbtn" onclick="clearFilters()">Clear</button>
+    <span class="ri" id="resultsInfo"></span>
   </div>
 
-  <!-- SHARED CONTENT AREA -->
-  <div id="mainContent">
-    <div class="state-box"><div class="spinner"></div><strong>Loading…</strong></div>
+  <!-- TABLE AREA -->
+  <div id="tableArea">
+    <div class="table-wrap">
+      <table>
+        <thead><tr id="tHead"></tr></thead>
+        <tbody id="tBody"><tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading…</strong></div></td></tr></tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- ADMIN MANAGE STAFF -->
-  <div id="adminPanel" style="display:none">
+  <!-- MANAGE STAFF -->
+  <div id="manageArea" style="display:none">
     <div class="admin-panel">
       <h2>Manage Staff Accounts</h2>
       <div class="admin-section">
         <h3>Add New Staff</h3>
-        <div class="add-user-form">
-          <div class="form-field"><span class="form-label">Name</span><input class="form-input" id="newName" placeholder="e.g. Ravi Kumar"></div>
-          <div class="form-field"><span class="form-label">Username</span><input class="form-input" id="newUser" placeholder="e.g. ravi"></div>
-          <div class="form-field"><span class="form-label">Password</span><input class="form-input" id="newPass" placeholder="e.g. skoda123" type="password"></div>
+        <div class="add-form">
+          <div class="ff"><span class="ffl">Name</span><input class="fi" id="nName" placeholder="e.g. Ravi Kumar"></div>
+          <div class="ff"><span class="ffl">Username</span><input class="fi" id="nUser" placeholder="e.g. ravi"></div>
+          <div class="ff"><span class="ffl">Password</span><input class="fi" id="nPass" placeholder="e.g. skoda123" type="password"></div>
           <button class="add-btn" onclick="addStaff()">Add Staff</button>
         </div>
         <div class="add-err" id="addErr"></div>
       </div>
       <div class="admin-section">
         <h3>Staff List</h3>
-        <div id="staffListWrap"><div class="no-users">No staff added yet.</div></div>
+        <div id="staffWrap"><div class="no-users">No staff added yet.</div></div>
       </div>
     </div>
   </div>
 </div>
 
 <script>
+/* ═══════════════ CONFIG ═══════════════ */
 const API        = 'https://script.google.com/macros/s/AKfycbwxY5LjX5bmt1dVIbencV8_VlcInPSaXm52Fke_0eISw0hZANBSPq60D2VpdlquFJ3k/exec';
 const SHEETS     = ['Stock','Allocation','Live RPO','Product Spec'];
 const ADMIN_PASS = 'gurudev1008';
 const ADMIN_USER = 'admin';
-const STORE_KEY  = 'gs_staff_v5';
-const COL        = {model:'Model',variant:'INTERNAL CODE',colour:'Color',year:'VY',status:'STATUS'};
+const STORE_KEY  = 'gs_staff_v6';
 
-let sheetData   = [[],[],[],[]];
-let currentUser = null;
-let activeTab   = 3;
-let isFreeTab   = true;
-let sortCol     = -1, sortAsc = true;
-let logoClicks  = 0, logoTimer = null;
+// Exact column names
+const SC = { // Stock sheet columns
+  model:'Model', modelCode:'Model Code', colour:'Color',
+  year:'VY', status:'STATUS'
+};
+const PC = { // Product Spec columns
+  model:'Model', variant:'Variant', modelCode:'Model code'
+  // Colours are D-Z columns where value = "Yes"
+};
 
+/* ═══════════════ STATE ═══════════════ */
+let sheetData  = [[],[],[],[]];
+let activeTab  = 0;
+let isFree     = false;
+let sortCol    = -1, sortAsc = true;
+let currentUser= null;
+let logoClicks = 0, logoTimer = null;
+
+// Expanded rows from Product Spec: [{model, variant, modelCode, colour}]
+let specRows   = [];
+// VY lookup: modelCode -> [vy1, vy2, ...]
+let vyMap      = {};
+// Free stock map: "modelCode|colour|vy" -> count
+let freeMap    = {};
+
+/* ═══════════════ STORAGE ═══════════════ */
 function getStaff(){try{return JSON.parse(localStorage.getItem(STORE_KEY))||[];}catch{return[];}}
 function saveStaff(l){localStorage.setItem(STORE_KEY,JSON.stringify(l));}
 
+/* ═══════════════ COLOUR ═══════════════ */
 const CMAP={white:'#f5f5f5',black:'#222',silver:'#b8b8b8',grey:'#888',gray:'#888',red:'#e53935',blue:'#1e88e5',navy:'#0d2b6e',green:'#43a047',brown:'#795548',beige:'#d4b896',gold:'#c9a227',yellow:'#fdd835',orange:'#fb8c00',pearl:'#ede8e0',maroon:'#880e4f',cyan:'#00bcd4',magnetic:'#4a5568',carbon:'#2d3748',steel:'#6b7f90',moon:'#d1ccc0',brilliant:'#c8d0d8',crystal:'#5b9bd5',lava:'#2c4f8c',ember:'#c0392b',graphite:'#4b5563',phantom:'#1f2937',aurora:'#6ee7b7',coral:'#ff6b6b'};
 function hueFor(n){if(!n)return'#556';const lc=n.toLowerCase();for(const[k,v]of Object.entries(CMAP))if(lc.includes(k))return v;let h=0;for(let i=0;i<lc.length;i++)h=lc.charCodeAt(i)+((h<<5)-h);return`hsl(${Math.abs(h)%360},38%,52%)`;}
-function fc(headers,name){let i=headers.findIndex(h=>h===name);return i>=0?i:headers.findIndex(h=>h.toLowerCase()===name.toLowerCase());}
 
+/* ═══════════════ COLUMN FINDER ═══════════════ */
+function fc(headers,name){
+  const norm=s=>String(s||'').replace(/^\uFEFF/,'').replace(/\s+/g,' ').trim();
+  const n=norm(name).toLowerCase();
+  let i=headers.findIndex(h=>norm(h).toLowerCase()===n);
+  if(i>=0)return i;
+  return headers.findIndex(h=>norm(h).toLowerCase().includes(n)||n.includes(norm(h).toLowerCase()));
+}
+
+/* ═══════════════ JSONP ═══════════════ */
 function jsonpFetch(sheet){
   const cb=`__cb_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   return new Promise((resolve,reject)=>{
@@ -288,217 +327,456 @@ function jsonpFetch(sheet){
 }
 
 async function loadAllSheets(){
-  document.getElementById('appUpdated').textContent='Loading…';
+  document.getElementById('appTs').textContent='Loading…';
   for(let i=0;i<SHEETS.length;i++){
     try{const j=await jsonpFetch(SHEETS[i]);sheetData[i]=Array.isArray(j)&&j.length>=2?j:[];}
     catch{sheetData[i]=[];}
   }
-  document.getElementById('appUpdated').textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  setupModelFilter();
-  renderCurrentTab();
+  document.getElementById('appTs').textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  buildLookups();
+  setupTab();
 }
 
+/* ═══════════════ BUILD LOOKUPS FROM PRODUCT SPEC ═══════════════ */
+function buildLookups(){
+  specRows=[];
+  vyMap={};
+  freeMap={};
+
+  // ── Parse Product Spec ──
+  const psRows=sheetData[3];
+  if(psRows&&psRows.length>=2){
+    const h=psRows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+    const mI=fc(h,PC.model);
+    const vI=fc(h,PC.variant);
+    const mcI=fc(h,PC.modelCode);
+
+    // Colour columns: all columns after modelCode (index > mcI) where header is non-empty
+    // These are columns D onwards — header = colour name, value = "Yes" means applicable
+    const colourCols=[];
+    for(let ci=0;ci<h.length;ci++){
+      if(ci===mI||ci===vI||ci===mcI)continue;
+      if(h[ci]&&h[ci].length>0) colourCols.push({ci,name:h[ci]});
+    }
+
+    psRows.slice(1).forEach(row=>{
+      const model=String(row[mI]||'').trim();
+      const variant=String(row[vI]||'').trim();
+      const modelCode=String(row[mcI]||'').trim();
+      if(!model&&!variant&&!modelCode)return;
+
+      // Get applicable colours for this row
+      const colours=colourCols
+        .filter(cc=>String(row[cc.ci]||'').trim().toLowerCase()==='yes')
+        .map(cc=>cc.name);
+
+      if(colours.length===0){
+        // Row with no colour specified — add once with empty colour
+        specRows.push({model,variant,modelCode,colour:''});
+      } else {
+        colours.forEach(colour=>{
+          specRows.push({model,variant,modelCode,colour});
+        });
+      }
+    });
+  }
+
+  // ── Build VY map from Stock sheet ──
+  const stRows=sheetData[0];
+  if(stRows&&stRows.length>=2){
+    const h=stRows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+    const mcI=fc(h,SC.modelCode);
+    const yI=fc(h,SC.year);
+    const sI=fc(h,SC.status);
+    const cI=fc(h,SC.colour);
+
+    stRows.slice(1).forEach(row=>{
+      const mc=String(row[mcI]||'').trim();
+      const vy=String(row[yI]||'').trim();
+      const st=String(row[sI]||'').trim().toLowerCase();
+      const col=String(row[cI]||'').trim();
+      if(!mc)return;
+
+      // VY map: modelCode -> unique years
+      if(vy){
+        if(!vyMap[mc])vyMap[mc]=new Set();
+        vyMap[mc].add(vy);
+      }
+
+      // Free stock map: "modelCode|colour|vy" -> count
+      if(st==='free'){
+        const key=[mc,col,vy].join('|');
+        freeMap[key]=(freeMap[key]||0)+1;
+      }
+    });
+    // Convert sets to sorted arrays
+    Object.keys(vyMap).forEach(k=>{vyMap[k]=[...vyMap[k]].sort();});
+  }
+}
+
+/* ═══════════════ FREE STOCK ROWS (for display) ═══════════════ */
+// Expand specRows with VY: for each specRow, cross with VY values from vyMap
+function getFreeStockRows(){
+  const rows=[];
+  specRows.forEach(sr=>{
+    const vys=sr.modelCode?vyMap[sr.modelCode]||[]:[];
+    if(vys.length===0){
+      rows.push({...sr,vy:''});
+    } else {
+      vys.forEach(vy=>rows.push({...sr,vy}));
+    }
+  });
+  return rows;
+}
+
+function isFreeStockAvailable(modelCode,colour,vy){
+  // Check all colour variations if colour from spec doesn't match stock colour exactly
+  // First try exact match
+  const key=[modelCode,colour,vy].join('|');
+  if((freeMap[key]||0)>0)return{yes:true,count:freeMap[key]};
+  // Try case-insensitive
+  for(const k of Object.keys(freeMap)){
+    const parts=k.split('|');
+    if(parts[0]===modelCode&&parts[1].toLowerCase()===colour.toLowerCase()&&parts[2]===vy){
+      return{yes:true,count:freeMap[k]};
+    }
+  }
+  return{yes:false,count:0};
+}
+
+/* ═══════════════ LOGIN ═══════════════ */
 function doLogin(){
-  const u=document.getElementById('loginUser').value.trim();
-  const p=document.getElementById('loginPass').value.trim();
-  document.getElementById('loginErr').textContent='';
-  if(u===ADMIN_USER&&p===ADMIN_PASS){currentUser={username:ADMIN_USER,name:'Admin',isAdmin:true};setupApp();return;}
-  const found=getStaff().find(s=>s.username===u&&s.password===p);
-  if(found){currentUser={...found,isAdmin:false};setupApp();return;}
-  document.getElementById('loginErr').textContent='Incorrect username or password.';
-}
-
-function doLogout(){
-  currentUser=null;logoClicks=0;
-  ['loginUser','loginPass'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('loginErr').textContent='';
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('pageLogin').classList.add('active');
-}
-
-function setupApp(){
-  const isAdmin=currentUser.isAdmin;
-  document.getElementById('appSubtitle').textContent=isAdmin?'Admin Panel':'Stock Viewer';
-  document.getElementById('appUserTag').textContent=currentUser.name||currentUser.username;
-  document.getElementById('adminTabsBar').style.display=isAdmin?'flex':'none';
-  document.getElementById('staffSectionBar').style.display=isAdmin?'none':'flex';
-  // Search bar hidden on Free Stock tab (staff & admin free stock)
-  activeTab=isAdmin?0:3;
-  isFreeTab=(activeTab===3);
-  document.getElementById('searchWrap').style.display=isFreeTab?'none':'';
-  if(isAdmin)[0,1,2,3,4].forEach(i=>document.getElementById('tab'+i).classList.toggle('active',i===0));
+  const u=document.getElementById('liUser').value.trim();
+  const p=document.getElementById('liPass').value.trim();
+  document.getElementById('liErr').textContent='';
+  if(u===ADMIN_USER&&p===ADMIN_PASS){currentUser={username:ADMIN_USER,name:'Admin',isAdmin:true};}
+  else{
+    const found=getStaff().find(s=>s.username===u&&s.password===p);
+    if(!found){document.getElementById('liErr').textContent='Incorrect username or password.';return;}
+    currentUser={...found,isAdmin:false};
+  }
+  document.getElementById('appUser').textContent=currentUser.name||currentUser.username;
+  document.getElementById('appSub').textContent=currentUser.isAdmin?'Admin Panel':'Stock Viewer';
+  setupUI();
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.getElementById('pageApp').classList.add('active');
   loadAllSheets();
 }
 
+function doLogout(){
+  currentUser=null;logoClicks=0;
+  ['liUser','liPass'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('liErr').textContent='';
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('pageLogin').classList.add('active');
+}
+
 function logoClick(){
-  if(currentUser&&currentUser.isAdmin)return;
   logoClicks++;clearTimeout(logoTimer);logoTimer=setTimeout(()=>logoClicks=0,2000);
-  if(logoClicks>=5){logoClicks=0;const pw=prompt('Admin password:');if(pw===ADMIN_PASS){currentUser={username:ADMIN_USER,name:'Admin',isAdmin:true};setupApp();}}
+  if(logoClicks>=5){
+    logoClicks=0;
+    const pw=prompt('Admin password:');
+    if(pw===ADMIN_PASS){
+      currentUser={username:ADMIN_USER,name:'Admin',isAdmin:true};
+      document.getElementById('appUser').textContent='Admin';
+      document.getElementById('appSub').textContent='Admin Panel';
+      setupUI();loadAllSheets();
+    }
+  }
 }
 
+/* ═══════════════ UI SETUP ═══════════════ */
+function setupUI(){
+  const isAdmin=currentUser.isAdmin;
+  [0,1,2,3,4].forEach(i=>{
+    document.getElementById('tab'+i).style.display=isAdmin?'':(i===3?'':'none');
+  });
+  activeTab=isAdmin?0:3;
+  isFree=(activeTab===3);
+}
+
+/* ═══════════════ TAB SWITCHING ═══════════════ */
 function switchTab(i){
-  activeTab=i;isFreeTab=(i===3);sortCol=-1;sortAsc=true;
+  if(!currentUser.isAdmin&&i!==3)return;
+  activeTab=i;isFree=(i===3);
+  sortCol=-1;sortAsc=true;
   [0,1,2,3,4].forEach(j=>document.getElementById('tab'+j).classList.toggle('active',j===i));
-  document.getElementById('mainContent').style.display='block';
-  document.getElementById('adminPanel').style.display='none';
-  document.getElementById('searchWrap').style.display=isFreeTab?'none':'';
-  clearFilters();
-  setupModelFilter();
-  renderCurrentTab();
+  clearFilters(false);
+  setupTab();
 }
 
-function showAdminPanel(){
-  [0,1,2,3,4].forEach(j=>document.getElementById('tab'+j).classList.toggle('active',j===4));
-  document.getElementById('mainContent').style.display='none';
-  document.getElementById('adminPanel').style.display='block';
-  renderStaffList();
+function setupTab(){
+  const isManage=(activeTab===4);
+  document.getElementById('fsBar').style.display=isFree?'block':'none';
+  document.getElementById('mainToolbar').style.display=isManage?'none':'flex';
+  document.getElementById('tableArea').style.display=isManage?'none':'block';
+  document.getElementById('manageArea').style.display=isManage?'block':'none';
+  if(isManage){renderStaffList();return;}
+  document.getElementById('searchWrap').style.display=isFree?'none':'';
+  setupFilters();
+  if(isFree){showEmptyPrompt();}else{applyFilters();}
 }
 
-/* ══ MODEL FILTER SETUP ══ */
-function setupModelFilter(){
-  const fModel=document.getElementById('fModel');
-  fModel.innerHTML='';
-  if(isFreeTab){
-    fModel.add(new Option('— Choose a model —',''));
-    const rows=sheetData[3];
-    if(rows&&rows.length>=2){
-      const h=rows[0].map(x=>String(x).trim());
-      const mI=fc(h,COL.model)>=0?fc(h,COL.model):0;
-      [...new Set(rows.slice(1).map(r=>String(r[mI]||'').trim()).filter(Boolean))].sort().forEach(v=>fModel.add(new Option(v,v)));
-    }
-    ['fVariant','fColour','fYear'].forEach(id=>{const el=document.getElementById(id);el.disabled=true;el.value='';el.innerHTML='<option value="">All Variants</option>';});
-    document.getElementById('fVariant').innerHTML='<option value="">All Variants</option>';
-    document.getElementById('fColour').innerHTML='<option value="">All Colours</option>';
-    document.getElementById('fYear').innerHTML='<option value="">All Years</option>';
+/* ═══════════════ FILTER SETUP ═══════════════ */
+function setupFilters(){
+  if(isFree){
+    setupFreeFilters();
   } else {
-    fModel.add(new Option('All Models',''));
-    const rows=sheetData[activeTab];
-    if(rows&&rows.length>=2){
-      const h=rows[0].map(x=>String(x).trim());
-      const mI=fc(h,COL.model);
-      if(mI>=0)[...new Set(rows.slice(1).map(r=>String(r[mI]||'').trim()).filter(Boolean))].sort().forEach(v=>fModel.add(new Option(v,v)));
-    }
-    ['fVariant','fColour','fYear'].forEach(id=>document.getElementById(id).disabled=false);
-    populateDependentFilters();
+    setupStdFilters();
   }
 }
 
-/* ══ CASCADE FILTERS ══ */
+function setupFreeFilters(){
+  // Model dropdown from specRows unique models
+  const models=[...new Set(specRows.map(r=>r.model).filter(Boolean))].sort();
+  const mSel=document.getElementById('fModel');
+  mSel.innerHTML='';
+  mSel.add(new Option('— Select a model —',''));
+  models.forEach(v=>mSel.add(new Option(v,v)));
+  // Disable dependents
+  ['fVariant','fColour','fYear'].forEach(id=>{
+    const el=document.getElementById(id);
+    el.disabled=true;el.innerHTML='<option value="">All Variants</option>';el.value='';
+  });
+  document.getElementById('fColour').innerHTML='<option value="">All Colours</option>';
+  document.getElementById('fYear').innerHTML='<option value="">All Years</option>';
+}
+
+function setupStdFilters(){
+  const rows=sheetData[activeTab];
+  if(!rows||rows.length<2){clearAllFilters();return;}
+  const h=rows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+  const mI=fc(h,SC.model);
+  ['fVariant','fColour','fYear'].forEach(id=>document.getElementById(id).disabled=false);
+  fillDropdown('fModel',rows,h,SC.model,'All Models');
+  cascadeStd(rows,h);
+}
+
+function fillDropdown(id,rows,headers,colName,placeholder){
+  const ci=fc(headers,colName),sel=document.getElementById(id);
+  const cur=sel.value;
+  sel.innerHTML='';
+  sel.add(new Option(placeholder,''));
+  if(ci>=0){
+    const vals=[...new Set(rows.slice(1).map(r=>String(r[ci]||'').trim()).filter(Boolean))].sort();
+    vals.forEach(v=>sel.add(new Option(v,v)));
+    if([...sel.options].some(o=>o.value===cur))sel.value=cur;
+  }
+}
+
+/* ═══════════════ CASCADE FILTERS ═══════════════ */
 function onModelChange(){
-  const model=document.getElementById('fModel').value;
-  if(isFreeTab){
+  sortCol=-1;sortAsc=true;
+  if(isFree){
+    const model=document.getElementById('fModel').value;
     const has=!!model;
-    ['fVariant','fColour','fYear'].forEach(id=>{const el=document.getElementById(id);el.disabled=!has;if(!has)el.value='';});
-    if(!has){populateDependentFilters();showEmptyPrompt();return;}
+    ['fVariant','fColour','fYear'].forEach(id=>{
+      const el=document.getElementById(id);el.disabled=!has;el.value='';
+    });
+    if(!has){
+      document.getElementById('fVariant').innerHTML='<option value="">All Variants</option>';
+      document.getElementById('fColour').innerHTML='<option value="">All Colours</option>';
+      document.getElementById('fYear').innerHTML='<option value="">All Years</option>';
+      showEmptyPrompt();return;
+    }
+    cascadeFree();
+    applyFilters();
+  } else {
+    ['fVariant','fColour','fYear'].forEach(id=>document.getElementById(id).value='');
+    const rows=sheetData[activeTab];
+    if(rows&&rows.length>=2)cascadeStd(rows,rows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim()));
+    applyFilters();
   }
-  populateDependentFilters();
+}
+
+function onVariantChange(){
+  if(isFree)cascadeFree();
+  else{const rows=sheetData[activeTab];if(rows&&rows.length>=2)cascadeStd(rows,rows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim()));}
+  document.getElementById('fColour').value='';
+  document.getElementById('fYear').value='';
   applyFilters();
 }
-function onVariantChange(){populateDependentFilters();applyFilters();}
-function onColourChange(){populateDependentFilters();applyFilters();}
 
-function populateDependentFilters(){
-  const rows=isFreeTab?sheetData[3]:sheetData[activeTab];
-  if(!rows||rows.length<2)return;
-  const h=rows[0].map(x=>String(x).trim());
-  const mI=fc(h,COL.model),vI=fc(h,COL.variant),cI=fc(h,COL.colour),yI=fc(h,COL.year);
+function onColourChange(){
+  if(isFree)cascadeFree();
+  else{const rows=sheetData[activeTab];if(rows&&rows.length>=2)cascadeStd(rows,rows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim()));}
+  document.getElementById('fYear').value='';
+  applyFilters();
+}
+
+function cascadeFree(){
+  const model=document.getElementById('fModel').value;
+  const selVar=document.getElementById('fVariant').value;
+  const selCol=document.getElementById('fColour').value;
+
+  // Filtered specRows by model
+  const byModel=specRows.filter(r=>r.model===model);
+  // Variants
+  const variants=[...new Set(byModel.map(r=>r.variant).filter(Boolean))].sort();
+  refill('fVariant',variants,'All Variants',selVar);
+
+  // Colours filtered by model+variant
+  const byVariant=selVar?byModel.filter(r=>r.variant===selVar):byModel;
+  const colours=[...new Set(byVariant.map(r=>r.colour).filter(Boolean))].sort();
+  refill('fColour',colours,'All Colours',selCol);
+
+  // VIN Years filtered by model+variant+colour (via modelCode)
+  const byColour=selCol?byVariant.filter(r=>r.colour===selCol):byVariant;
+  const modelCodes=[...new Set(byColour.map(r=>r.modelCode).filter(Boolean))];
+  const years=[...new Set(modelCodes.flatMap(mc=>vyMap[mc]||[]))].sort();
+  refill('fYear',years,'All Years',document.getElementById('fYear').value);
+}
+
+function cascadeStd(rows,h){
+  const mI=fc(h,SC.model),vI=fc(h,SC.modelCode>=0?SC.modelCode:'INTERNAL CODE');
+  // Using model code column for variant in stock tabs — actually use variant-like col
+  // For stock/allocation/live rpo use available columns
   const fModel=document.getElementById('fModel').value;
-  const allRows=rows.slice(1);
-  const byModel=fModel?allRows.filter(r=>String(r[mI]||'').trim()===fModel):allRows;
+  const fVar=document.getElementById('fVariant').value;
+  const fCol=document.getElementById('fColour').value;
 
-  const selV=document.getElementById('fVariant'),curV=selV.value;
-  while(selV.options.length>1)selV.remove(1);
-  if(vI>=0){const vals=[...new Set(byModel.map(r=>String(r[vI]||'').trim()).filter(Boolean))].sort();vals.forEach(v=>selV.add(new Option(v,v)));if(vals.includes(curV))selV.value=curV;}
+  const vIdx=fc(h,'INTERNAL CODE')>=0?fc(h,'INTERNAL CODE'):fc(h,'Variant');
+  const cIdx=fc(h,SC.colour);
+  const yIdx=fc(h,SC.year);
 
-  const byVariant=selV.value?byModel.filter(r=>String(r[vI]||'').trim()===selV.value):byModel;
-  const selC=document.getElementById('fColour'),curC=selC.value;
-  while(selC.options.length>1)selC.remove(1);
-  if(cI>=0){const vals=[...new Set(byVariant.map(r=>String(r[cI]||'').trim()).filter(Boolean))].sort();vals.forEach(v=>selC.add(new Option(v,v)));if(vals.includes(curC))selC.value=curC;}
+  const all=rows.slice(1);
+  const byM=fModel?all.filter(r=>String(r[mI]||'').trim()===fModel):all;
+  const byV=fVar&&vIdx>=0?byM.filter(r=>String(r[vIdx]||'').trim()===fVar):byM;
+  const byC=fCol&&cIdx>=0?byV.filter(r=>String(r[cIdx]||'').trim()===fCol):byV;
 
-  const byColour=selC.value?byVariant.filter(r=>String(r[cI]||'').trim()===selC.value):byVariant;
-  const selY=document.getElementById('fYear'),curY=selY.value;
-  while(selY.options.length>1)selY.remove(1);
-  if(yI>=0){const vals=[...new Set(byColour.map(r=>String(r[yI]||'').trim()).filter(Boolean))].sort();vals.forEach(v=>selY.add(new Option(v,v)));if(vals.includes(curY))selY.value=curY;}
+  if(vIdx>=0){const v=[...new Set(byM.map(r=>String(r[vIdx]||'').trim()).filter(Boolean))].sort();refill('fVariant',v,'All Variants',document.getElementById('fVariant').value);}
+  if(cIdx>=0){const v=[...new Set(byV.map(r=>String(r[cIdx]||'').trim()).filter(Boolean))].sort();refill('fColour',v,'All Colours',document.getElementById('fColour').value);}
+  if(yIdx>=0){const v=[...new Set(byC.map(r=>String(r[yIdx]||'').trim()).filter(Boolean))].sort();refill('fYear',v,'All Years',document.getElementById('fYear').value);}
 }
 
-function clearFilters(){
-  const fSearch=document.getElementById('fSearch');if(fSearch)fSearch.value='';
+function refill(id,vals,placeholder,cur){
+  const sel=document.getElementById(id);
+  sel.innerHTML=`<option value="">${placeholder}</option>`;
+  vals.forEach(v=>sel.add(new Option(v,v)));
+  if(vals.includes(cur))sel.value=cur;
+}
+
+function clearFilters(render=true){
+  document.getElementById('fSearch').value='';
   document.getElementById('fModel').value='';
-  ['fVariant','fColour','fYear'].forEach(id=>{const el=document.getElementById(id);el.value='';});
-  if(isFreeTab){['fVariant','fColour','fYear'].forEach(id=>document.getElementById(id).disabled=true);showEmptyPrompt();return;}
-  populateDependentFilters();
-  applyFilters();
+  ['fVariant','fColour','fYear'].forEach(id=>{document.getElementById(id).value='';});
+  if(isFree){
+    setupFreeFilters();
+    if(render)showEmptyPrompt();
+  } else {
+    const rows=sheetData[activeTab];
+    if(rows&&rows.length>=2)cascadeStd(rows,rows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim()));
+    if(render)applyFilters();
+  }
 }
+function clearAllFilters(){['fModel','fVariant','fColour','fYear'].forEach(id=>{const el=document.getElementById(id);el.innerHTML=`<option value="">All</option>`;el.value='';});}
 
-/* ══ RENDER ══ */
-function renderCurrentTab(){
-  if(isFreeTab){const m=document.getElementById('fModel').value;if(!m){showEmptyPrompt();return;}}
-  applyFilters();
-}
-
+/* ═══════════════ SHOW EMPTY PROMPT ═══════════════ */
 function showEmptyPrompt(){
-  document.getElementById('mainContent').innerHTML=`
-    <div class="empty-prompt">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-      <strong>No model selected</strong>
-      <p>Choose a model from the dropdown above to view stock availability.</p>
-    </div>`;
+  document.getElementById('tHead').innerHTML='';
+  document.getElementById('tBody').innerHTML=`<tr><td colspan="5"><div class="empty-prompt">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+    <strong>No model selected</strong>
+    <p>Choose a model from the dropdown above to view stock availability.</p>
+  </div></td></tr>`;
   document.getElementById('resultsInfo').textContent='';
-  document.getElementById('staffResultsInfo').textContent='';
 }
 
-function applyFilters(){isFreeTab?applyFreeStock():applyStandard();}
+/* ═══════════════ APPLY FILTERS & RENDER ═══════════════ */
+function applyFilters(){
+  if(isFree)renderFreeStock();else renderStandard();
+}
 
-function applyFreeStock(){
+function renderFreeStock(){
   const model=document.getElementById('fModel').value;
   if(!model){showEmptyPrompt();return;}
-  const fV=document.getElementById('fVariant').value,fC=document.getElementById('fColour').value,fY=document.getElementById('fYear').value;
-  const rows=sheetData[3];
-  if(!rows||rows.length<2){document.getElementById('mainContent').innerHTML='<div class="state-box"><strong>No data in Product Spec sheet</strong></div>';return;}
-  const h=rows[0].map(x=>String(x).trim());
-  const mI=fc(h,COL.model),vI=fc(h,COL.variant),cI=fc(h,COL.colour),yI=fc(h,COL.year);
-  const freeMap=buildFreeStockMap();
-  let filtered=rows.slice(1).filter(r=>{
-    if(String(r[mI]||'').trim()!==model)return false;
-    if(fV&&String(r[vI]||'').trim()!==fV)return false;
-    if(fC&&String(r[cI]||'').trim()!==fC)return false;
-    if(fY&&String(r[yI]||'').trim()!==fY)return false;
+
+  const fVar=document.getElementById('fVariant').value;
+  const fCol=document.getElementById('fColour').value;
+  const fYear=document.getElementById('fYear').value;
+  const isAdmin=currentUser&&currentUser.isAdmin;
+
+  // Get all expanded rows (model+variant+colour+vy)
+  let rows=getFreeStockRows();
+
+  // Filter
+  rows=rows.filter(r=>{
+    if(r.model!==model)return false;
+    if(fVar&&r.variant!==fVar)return false;
+    if(fCol&&r.colour!==fCol)return false;
+    if(fYear&&r.vy!==fYear)return false;
     return true;
   });
-  if(sortCol>=0)filtered.sort((a,b)=>{const av=String(a[sortCol]||'').toLowerCase(),bv=String(b[sortCol]||'').toLowerCase();return sortAsc?av.localeCompare(bv):bv.localeCompare(av);});
-  const cnt=`${filtered.length} variant${filtered.length!==1?'s':''}`;
-  document.getElementById('resultsInfo').textContent=cnt;
-  document.getElementById('staffResultsInfo').textContent=cnt;
-  if(!filtered.length){document.getElementById('mainContent').innerHTML='<div class="state-box"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><strong>No matches</strong><p>Try adjusting your filters.</p></div>';return;}
-  const isAdmin=currentUser&&currentUser.isAdmin;
-  const tbody=filtered.map((r,ri)=>{
-    const mv=String(r[mI]||'').trim(),vv=vI>=0?String(r[vI]||'').trim():'—',cv=cI>=0?String(r[cI]||'').trim():'—',yv=yI>=0?String(r[yI]||'').trim():'—';
-    const cnt2=freeMap[[mv,vv,cv,yv].join('|')]||0;
-    const badge=cnt2>0?`<span class="fs-yes"><span class="fs-dot"></span>Yes${isAdmin?' ('+cnt2+')':''}</span>`:`<span class="fs-no"><span class="fs-dot"></span>No</span>`;
-    const colCell=cv&&cv!=='—'?`<div class="cc"><div class="cd" style="background:${hueFor(cv)}"></div>${cv}</div>`:'—';
-    return `<tr style="animation-delay:${Math.min(ri*.015,.3)}s"><td>${mv||'—'}</td><td>${vv||'—'}</td><td>${colCell}</td><td class="${!yv||yv==='—'?'dim':''}">${yv||'—'}</td><td>${badge}</td></tr>`;
+
+  // Sort
+  const sortKeys=['model','variant','colour','vy'];
+  if(sortCol>=0&&sortCol<sortKeys.length){
+    rows.sort((a,b)=>{
+      const av=String(a[sortKeys[sortCol]]||'').toLowerCase();
+      const bv=String(b[sortKeys[sortCol]]||'').toLowerCase();
+      return sortAsc?av.localeCompare(bv):bv.localeCompare(av);
+    });
+  }
+
+  document.getElementById('resultsInfo').textContent=
+    `${rows.length} row${rows.length!==1?'s':''}`;
+
+  // Render headers
+  document.getElementById('tHead').innerHTML=
+    `<th onclick="doSort(0)">Model<span class="si2">${sortCol===0?(sortAsc?'↑':'↓'):'↕'}</span></th>`+
+    `<th onclick="doSort(1)">Variant<span class="si2">${sortCol===1?(sortAsc?'↑':'↓'):'↕'}</span></th>`+
+    `<th onclick="doSort(2)">Colour<span class="si2">${sortCol===2?(sortAsc?'↑':'↓'):'↕'}</span></th>`+
+    `<th onclick="doSort(3)">VIN Year<span class="si2">${sortCol===3?(sortAsc?'↑':'↓'):'↕'}</span></th>`+
+    `<th>Free Stock</th>`;
+
+  if(!rows.length){
+    document.getElementById('tBody').innerHTML=`<tr><td colspan="5"><div class="state-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <strong>No matches found</strong><p>Try adjusting your filters.</p>
+    </div></td></tr>`;
+    return;
+  }
+
+  document.getElementById('tBody').innerHTML=rows.map((r,ri)=>{
+    const{yes,count}=isFreeStockAvailable(r.modelCode,r.colour,r.vy);
+    const badge=yes
+      ?`<span class="fs-yes"><span class="fsdot"></span>Yes${isAdmin?` (${count})`:''}</span>`
+      :`<span class="fs-no"><span class="fsdot"></span>No</span>`;
+    const colCell=r.colour
+      ?`<div class="cc"><div class="cd" style="background:${hueFor(r.colour)}"></div>${r.colour}</div>`
+      :'—';
+    return `<tr style="animation-delay:${Math.min(ri*.015,.3)}s">
+      <td>${r.model||'—'}</td>
+      <td>${r.variant||'—'}</td>
+      <td>${colCell}</td>
+      <td class="${!r.vy?'dim':''}">${r.vy||'—'}</td>
+      <td>${badge}</td>
+    </tr>`;
   }).join('');
-  document.getElementById('mainContent').innerHTML=`<div class="table-wrap"><table>
-    <thead><tr>
-      <th onclick="doSort(0)">Model<span class="si">${sortCol===0?(sortAsc?'↑':'↓'):'↕'}</span></th>
-      <th onclick="doSort(1)">Variant<span class="si">${sortCol===1?(sortAsc?'↑':'↓'):'↕'}</span></th>
-      <th onclick="doSort(2)">Colour<span class="si">${sortCol===2?(sortAsc?'↑':'↓'):'↕'}</span></th>
-      <th onclick="doSort(3)">VIN Year<span class="si">${sortCol===3?(sortAsc?'↑':'↓'):'↕'}</span></th>
-      <th>Free Stock</th>
-    </tr></thead>
-    <tbody>${tbody}</tbody>
-  </table></div>`;
 }
 
-function applyStandard(){
+function renderStandard(){
   const rows=sheetData[activeTab];
-  if(!rows||rows.length<2){document.getElementById('mainContent').innerHTML=`<div class="state-box"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg><strong>No data in "${SHEETS[activeTab]}"</strong><p>Check the sheet tab name or refresh.</p></div>`;return;}
-  const h=rows[0].map(x=>String(x).trim()),body=rows.slice(1);
+  if(!rows||rows.length<2){
+    document.getElementById('tHead').innerHTML='';
+    document.getElementById('tBody').innerHTML=`<tr><td colspan="20"><div class="state-box">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+      <strong>No data in "${SHEETS[activeTab]}"</strong><p>Check sheet tab name.</p>
+    </div></td></tr>`;
+    return;
+  }
+  const h=rows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+  const body=rows.slice(1);
   const search=(document.getElementById('fSearch').value||'').toLowerCase().trim();
-  const fM=document.getElementById('fModel').value,fV=document.getElementById('fVariant').value,fC=document.getElementById('fColour').value,fY=document.getElementById('fYear').value;
-  const mI=fc(h,COL.model),vI=fc(h,COL.variant),cI=fc(h,COL.colour),yI=fc(h,COL.year);
+  const fM=document.getElementById('fModel').value;
+  const fV=document.getElementById('fVariant').value;
+  const fC=document.getElementById('fColour').value;
+  const fY=document.getElementById('fYear').value;
+  const mI=fc(h,SC.model);
+  const vI=fc(h,'INTERNAL CODE')>=0?fc(h,'INTERNAL CODE'):fc(h,'Variant');
+  const cI=fc(h,SC.colour);
+  const yI=fc(h,SC.year);
+
   let filtered=body.filter(r=>{
     if(search&&!r.map(c=>String(c||'').toLowerCase()).join(' ').includes(search))return false;
     if(fM&&String(r[mI]||'').trim()!==fM)return false;
@@ -507,43 +785,55 @@ function applyStandard(){
     if(fY&&yI>=0&&String(r[yI]||'').trim()!==fY)return false;
     return true;
   });
-  if(sortCol>=0&&sortCol<h.length)filtered.sort((a,b)=>{const av=String(a[sortCol]||'').toLowerCase(),bv=String(b[sortCol]||'').toLowerCase();return sortAsc?av.localeCompare(bv):bv.localeCompare(av);});
-  document.getElementById('resultsInfo').textContent=`${filtered.length} of ${body.length} record${body.length!==1?'s':''}`;
-  const thead=h.map((col,i)=>`<th onclick="doSort(${i})" class="${sortCol===i?'sorted':''}">${col}<span class="si">${sortCol===i?(sortAsc?'↑':'↓'):'↕'}</span></th>`).join('');
-  const tbody=filtered.length?filtered.map((r,ri)=>`<tr style="animation-delay:${Math.min(ri*.015,.3)}s">${h.map((_,ci)=>{const v=String(r[ci]||'').trim();if(ci===cI)return`<td><div class="cc"><div class="cd" style="background:${hueFor(v)}"></div>${v||'—'}</div></td>`;return`<td ${!v?'class="dim"':''}>${v||'—'}</td>`;}).join('')}</tr>`).join(''):`<tr><td colspan="${h.length}"><div class="state-box"><strong>No matches</strong></div></td></tr>`;
-  document.getElementById('mainContent').innerHTML=`<div class="table-wrap"><table><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody></table></div>`;
-}
 
-function buildFreeStockMap(){
-  const s=sheetData[0];if(!s||s.length<2)return{};
-  const h=s[0].map(x=>String(x).trim());
-  const mI=fc(h,COL.model),vI=fc(h,COL.variant),cI=fc(h,COL.colour),yI=fc(h,COL.year),sI=fc(h,COL.status);
-  const map={};
-  s.slice(1).forEach(r=>{if(String(r[sI]||'').trim().toLowerCase()==='free'){const k=[String(r[mI]||'').trim(),String(r[vI]||'').trim(),String(r[cI]||'').trim(),String(r[yI]||'').trim()].join('|');map[k]=(map[k]||0)+1;}});
-  return map;
+  if(sortCol>=0&&sortCol<h.length)filtered.sort((a,b)=>{
+    const av=String(a[sortCol]||'').toLowerCase(),bv=String(b[sortCol]||'').toLowerCase();
+    return sortAsc?av.localeCompare(bv):bv.localeCompare(av);
+  });
+
+  document.getElementById('resultsInfo').textContent=`${filtered.length} of ${body.length} record${body.length!==1?'s':''}`;
+  document.getElementById('tHead').innerHTML=h.map((col,i)=>
+    `<th onclick="doSort(${i})" class="${sortCol===i?'sorted':''}">${col}<span class="si2">${sortCol===i?(sortAsc?'↑':'↓'):'↕'}</span></th>`
+  ).join('');
+  document.getElementById('tBody').innerHTML=filtered.length
+    ?filtered.map((r,ri)=>`<tr style="animation-delay:${Math.min(ri*.015,.3)}s">${
+        h.map((_,ci)=>{const v=String(r[ci]||'').trim();
+          if(ci===cI)return`<td><div class="cc"><div class="cd" style="background:${hueFor(v)}"></div>${v||'—'}</div></td>`;
+          return`<td ${!v?'class="dim"':''}>${v||'—'}</td>`;
+        }).join('')
+      }</tr>`).join('')
+    :`<tr><td colspan="${h.length}"><div class="state-box"><strong>No matches</strong></div></td></tr>`;
 }
 
 function doSort(col){sortAsc=sortCol===col?!sortAsc:true;sortCol=col;applyFilters();}
 
-/* ══ MANAGE STAFF ══ */
+/* ═══════════════ MANAGE STAFF ═══════════════ */
 function addStaff(){
-  const name=document.getElementById('newName').value.trim(),user=document.getElementById('newUser').value.trim(),pass=document.getElementById('newPass').value.trim();
+  const name=document.getElementById('nName').value.trim();
+  const user=document.getElementById('nUser').value.trim();
+  const pass=document.getElementById('nPass').value.trim();
   const err=document.getElementById('addErr');err.textContent='';
   if(!name||!user||!pass){err.textContent='Please fill in all fields.';return;}
   if(user===ADMIN_USER){err.textContent='Username "admin" is reserved.';return;}
-  const staff=getStaff();if(staff.find(s=>s.username===user)){err.textContent='Username already exists.';return;}
+  const staff=getStaff();
+  if(staff.find(s=>s.username===user)){err.textContent='Username already exists.';return;}
   staff.push({name,username:user,password:pass});saveStaff(staff);
-  ['newName','newUser','newPass'].forEach(id=>document.getElementById(id).value='');
+  ['nName','nUser','nPass'].forEach(id=>document.getElementById(id).value='');
   renderStaffList();
 }
 function deleteStaff(u){saveStaff(getStaff().filter(s=>s.username!==u));renderStaffList();}
 function renderStaffList(){
-  const staff=getStaff(),wrap=document.getElementById('staffListWrap');
+  const staff=getStaff(),wrap=document.getElementById('staffWrap');
   if(!staff.length){wrap.innerHTML='<div class="no-users">No staff added yet.</div>';return;}
-  wrap.innerHTML=`<table class="users-table"><thead><tr><th>Name</th><th>Username</th><th>Password</th><th></th></tr></thead><tbody>${staff.map(s=>`<tr><td>${s.name}</td><td>${s.username}</td><td>${s.password}</td><td><button class="del-btn" onclick="deleteStaff('${s.username}')">Remove</button></td></tr>`).join('')}</tbody></table>`;
+  wrap.innerHTML=`<table class="st"><thead><tr><th>Name</th><th>Username</th><th>Password</th><th></th></tr></thead>
+    <tbody>${staff.map(s=>`<tr><td>${s.name}</td><td>${s.username}</td><td>${s.password}</td>
+      <td><button class="del-btn" onclick="deleteStaff('${s.username}')">Remove</button></td></tr>`).join('')}
+    </tbody></table>`;
 }
 
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('pageLogin').classList.contains('active'))doLogin();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.getElementById('pageLogin').classList.contains('active'))doLogin();
+});
 </script>
 </body>
 </html>
