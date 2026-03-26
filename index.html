@@ -345,21 +345,28 @@ function buildLookups(){
 
   // ── Parse Product Spec ──
   const psRows=sheetData[3];
-  if(psRows&&psRows.length>=2){
-    const h=psRows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+  if(psRows&&psRows.length>=3){
+    // Row 1 (index 0) is title row, Row 2 (index 1) is the actual header row
+    // Find the header row — look for the row that contains 'Model' or 'Variant'
+    let headerRowIdx=0;
+    for(let ri=0;ri<Math.min(3,psRows.length);ri++){
+      const rowStr=psRows[ri].map(x=>String(x||'').trim().toLowerCase()).join(' ');
+      if(rowStr.includes('model')&&rowStr.includes('variant')){headerRowIdx=ri;break;}
+    }
+    const h=psRows[headerRowIdx].map(x=>String(x).replace(/^\uFEFF/,'').trim());
     const mI=fc(h,PC.model);
     const vI=fc(h,PC.variant);
     const mcI=fc(h,PC.modelCode);
 
-    // Colour columns: all columns after modelCode (index > mcI) where header is non-empty
-    // These are columns D onwards — header = colour name, value = "Yes" means applicable
+    // Colour columns: D onwards — header = colour name, value = "Yes" means applicable
     const colourCols=[];
     for(let ci=0;ci<h.length;ci++){
       if(ci===mI||ci===vI||ci===mcI)continue;
       if(h[ci]&&h[ci].length>0) colourCols.push({ci,name:h[ci]});
     }
 
-    psRows.slice(1).forEach(row=>{
+    // Data rows start after the header row
+    psRows.slice(headerRowIdx+1).forEach(row=>{
       const model=String(row[mI]||'').trim();
       const variant=String(row[vI]||'').trim();
       const modelCode=String(row[mcI]||'').trim();
@@ -371,7 +378,6 @@ function buildLookups(){
         .map(cc=>cc.name);
 
       if(colours.length===0){
-        // Row with no colour specified — add once with empty colour
         specRows.push({model,variant,modelCode,colour:''});
       } else {
         colours.forEach(colour=>{
@@ -384,13 +390,19 @@ function buildLookups(){
   // ── Build VY map from Stock sheet ──
   const stRows=sheetData[0];
   if(stRows&&stRows.length>=2){
-    const h=stRows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+    // Auto-detect header row
+    let headerRowIdx=0;
+    for(let ri=0;ri<Math.min(3,stRows.length);ri++){
+      const rowStr=stRows[ri].map(x=>String(x||'').trim().toLowerCase()).join(' ');
+      if(rowStr.includes('model')&&(rowStr.includes('status')||rowStr.includes('vy'))){headerRowIdx=ri;break;}
+    }
+    const h=stRows[headerRowIdx].map(x=>String(x).replace(/^\uFEFF/,'').trim());
     const mcI=fc(h,SC.modelCode);
     const yI=fc(h,SC.year);
     const sI=fc(h,SC.status);
     const cI=fc(h,SC.colour);
 
-    stRows.slice(1).forEach(row=>{
+    stRows.slice(headerRowIdx+1).forEach(row=>{
       const mc=String(row[mcI]||'').trim();
       const vy=String(row[yI]||'').trim();
       const st=String(row[sI]||'').trim().toLowerCase();
@@ -765,8 +777,14 @@ function renderStandard(){
     </div></td></tr>`;
     return;
   }
-  const h=rows[0].map(x=>String(x).replace(/^\uFEFF/,'').trim());
-  const body=rows.slice(1);
+  // Auto-detect header row
+  let headerRowIdx=0;
+  for(let ri=0;ri<Math.min(3,rows.length);ri++){
+    const rowStr=rows[ri].map(x=>String(x||'').trim().toLowerCase()).join(' ');
+    if(rowStr.includes('model')||rowStr.includes('vin')||rowStr.includes('status')){headerRowIdx=ri;break;}
+  }
+  const h=rows[headerRowIdx].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+  const body=rows.slice(headerRowIdx+1);
   const search=(document.getElementById('fSearch').value||'').toLowerCase().trim();
   const fM=document.getElementById('fModel').value;
   const fV=document.getElementById('fVariant').value;
