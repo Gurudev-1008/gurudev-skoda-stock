@@ -264,42 +264,44 @@ const API        = 'https://script.google.com/macros/s/AKfycbwxY5LjX5bmt1dVIbenc
 const SHEETS     = ['Stock','Allocation','Live RPO','Product Spec'];
 const ADMIN_PASS  = 'gurudev1008';
 const ADMIN_USER  = 'admin';
-const USERS_API   = 'https://script.google.com/macros/s/AKfycbwSdtNja7x-WUfGfetHEtDfLY94YttF3ujVgRPv6cw5Ue7vLxT3qzYZFP5EomFY0-nUVA/exec';
+const USERS_API   = 'https://script.google.com/macros/s/AKfycbxzakZLPoomdGmiTcX9doAyBbTYucuMpTgaZQ8Vrfp-wXGcfK9E75fxJ0ecK06G0EFD-A/exec';
 
 // Staff loaded from Google Sheet
 let staffList = [];
 
 async function loadStaffList(){
   try{
-    const j=await jsonpFetch2(USERS_API,'Users');
-    if(Array.isArray(j)&&j.length>=2){
-      // Auto-detect header row
-      let hIdx=0;
-      for(let i=0;i<Math.min(3,j.length);i++){
-        const r=j[i].map(x=>String(x||'').toLowerCase().trim()).join(' ');
-        if(r.includes('username')||r.includes('name')){hIdx=i;break;}
-      }
-      const h=j[hIdx].map(x=>String(x||'').trim().toLowerCase());
-      const nI=h.findIndex(x=>x==='name');
-      const uI=h.findIndex(x=>x==='username');
-      const pI=h.findIndex(x=>x==='password');
-      staffList=j.slice(hIdx+1).map(row=>({
-        name:    String(row[nI>=0?nI:0]||'').trim(),
-        username:String(row[uI>=0?uI:1]||'').trim(),
-        password:String(row[pI>=0?pI:2]||'').trim()
+    // Use the stock sheet API but point to Users sheet ID
+    const cb=`__cb2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const usersSheetId='1VgqqDlU45Kwt_CrapcqsykcHPKnCVm8MvRCYCnovi18';
+    const url=`https://docs.google.com/spreadsheets/d/${usersSheetId}/gviz/tq?tqx=out:json&callback=${encodeURIComponent(cb)}`;
+    const j=await new Promise((resolve,reject)=>{
+      const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
+      window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
+      const s=document.createElement('script');
+      s.src=url;
+      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();reject(new Error('Network error'));};
+      s.onload=()=>s.remove();
+      document.head.appendChild(s);
+    });
+    // Google gviz returns {table:{cols:[],rows:[]}}
+    if(j&&j.table&&j.table.rows){
+      staffList=j.table.rows.map(row=>({
+        name:    String(row.c[0]&&row.c[0].v||'').trim(),
+        username:String(row.c[1]&&row.c[1].v||'').trim(),
+        password:String(row.c[2]&&row.c[2].v||'').trim()
       })).filter(s=>s.username&&s.password);
     }
   } catch(e){ console.warn('Could not load staff list:',e); staffList=[]; }
 }
 
-// Separate JSONP for users sheet (different API endpoint)
-function jsonpFetch2(apiUrl, sheet){
+function jsonpFetch2(apiUrl){
   const cb=`__cb2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   return new Promise((resolve,reject)=>{
     const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
     window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
     const s=document.createElement('script');
-    s.src=`${apiUrl}?sheet=${encodeURIComponent(sheet)}&callback=${encodeURIComponent(cb)}`;
+    s.src=`${apiUrl}?callback=${encodeURIComponent(cb)}`;
     s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();reject(new Error('Network error'));};
     s.onload=()=>s.remove();
     document.head.appendChild(s);
