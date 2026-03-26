@@ -387,10 +387,9 @@ function buildLookups(){
     });
   }
 
-  // ── Build VY map from Stock sheet ──
+  // ── Build VY map and per-yard free stock maps from Stock sheet ──
   const stRows=sheetData[0];
   if(stRows&&stRows.length>=2){
-    // Auto-detect header row
     let headerRowIdx=0;
     for(let ri=0;ri<Math.min(3,stRows.length);ri++){
       const rowStr=stRows[ri].map(x=>String(x||'').trim().toLowerCase()).join(' ');
@@ -401,27 +400,28 @@ function buildLookups(){
     const yI=fc(h,SC.year);
     const sI=fc(h,SC.status);
     const cI=fc(h,SC.colour);
+    const yardI=fc(h,'Yard');
 
     stRows.slice(headerRowIdx+1).forEach(row=>{
       const mc=String(row[mcI]||'').trim();
       const vy=String(row[yI]||'').trim();
       const st=String(row[sI]||'').trim().toLowerCase();
       const col=String(row[cI]||'').trim();
+      const yard=String(row[yardI]||'').trim().toLowerCase();
       if(!mc)return;
 
-      // VY map: modelCode -> unique years
+      // VY map
       if(vy){
         if(!vyMap[mc])vyMap[mc]=new Set();
         vyMap[mc].add(vy);
       }
 
-      // Free stock map: "modelCode|colour|vy" -> count
+      // Per-yard free stock map: "modelCode|colour|vy|yard" -> count
       if(st==='free'){
-        const key=[mc,col,vy].join('|');
+        const key=[mc,col,vy,yard].join('|');
         freeMap[key]=(freeMap[key]||0)+1;
       }
     });
-    // Convert sets to sorted arrays
     Object.keys(vyMap).forEach(k=>{vyMap[k]=[...vyMap[k]].sort();});
   }
 }
@@ -441,19 +441,21 @@ function getFreeStockRows(){
   return rows;
 }
 
-function isFreeStockAvailable(modelCode,colour,vy){
-  // Check all colour variations if colour from spec doesn't match stock colour exactly
-  // First try exact match
-  const key=[modelCode,colour,vy].join('|');
-  if((freeMap[key]||0)>0)return{yes:true,count:freeMap[key]};
-  // Try case-insensitive
+const YARDS=['chennai','trichy','vellore'];
+const YARD_LABELS=['Chennai','Trichy','Vellore'];
+
+function isFreeForYard(modelCode,colour,vy,yard){
+  // exact match
+  const key=[modelCode,colour,vy,yard.toLowerCase()].join('|');
+  if((freeMap[key]||0)>0)return true;
+  // case-insensitive colour match
   for(const k of Object.keys(freeMap)){
-    const parts=k.split('|');
-    if(parts[0]===modelCode&&parts[1].toLowerCase()===colour.toLowerCase()&&parts[2]===vy){
-      return{yes:true,count:freeMap[k]};
+    const p=k.split('|');
+    if(p[0]===modelCode&&p[1].toLowerCase()===colour.toLowerCase()&&p[2]===vy&&p[3]===yard.toLowerCase()){
+      return true;
     }
   }
-  return{yes:false,count:0};
+  return false;
 }
 
 /* ═══════════════ LOGIN ═══════════════ */
@@ -686,7 +688,7 @@ function clearAllFilters(){['fModel','fVariant','fColour','fYear'].forEach(id=>{
 /* ═══════════════ SHOW EMPTY PROMPT ═══════════════ */
 function showEmptyPrompt(){
   document.getElementById('tHead').innerHTML='';
-  document.getElementById('tBody').innerHTML=`<tr><td colspan="5"><div class="empty-prompt">
+  document.getElementById('tBody').innerHTML=`<tr><td colspan="7"><div class="empty-prompt">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
     <strong>No model selected</strong>
     <p>Choose a model from the dropdown above to view stock availability.</p>
@@ -745,10 +747,12 @@ function renderFreeStock(){
     `<th onclick="doSort(1)">Variant<span class="si2">${sortCol===1?(sortAsc?'↑':'↓'):'↕'}</span></th>`+
     `<th onclick="doSort(2)">Colour<span class="si2">${sortCol===2?(sortAsc?'↑':'↓'):'↕'}</span></th>`+
     `<th onclick="doSort(3)">VIN Year<span class="si2">${sortCol===3?(sortAsc?'↑':'↓'):'↕'}</span></th>`+
-    `<th>Free Stock</th>`;
+    `<th>Chennai</th>`+
+    `<th>Trichy</th>`+
+    `<th>Vellore</th>`;
 
   if(!rows.length){
-    document.getElementById('tBody').innerHTML=`<tr><td colspan="5"><div class="state-box">
+    document.getElementById('tBody').innerHTML=`<tr><td colspan="7"><div class="state-box">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <strong>No matches found</strong><p>Try adjusting your filters.</p>
     </div></td></tr>`;
@@ -756,19 +760,22 @@ function renderFreeStock(){
   }
 
   document.getElementById('tBody').innerHTML=rows.map((r,ri)=>{
-    const{yes}=isFreeStockAvailable(r.modelCode,r.colour,r.vy);
-    const badge=yes
-      ?`<span class="fs-yes"><span class="fsdot"></span>Yes</span>`
-      :`<span class="fs-no"><span class="fsdot"></span>No</span>`;
     const colCell=r.colour
       ?`<div class="cc"><div class="cd" style="background:${hueFor(r.colour)}"></div>${r.colour}</div>`
       :'—';
+    const yardCells=YARDS.map(yard=>{
+      const yes=isFreeForYard(r.modelCode,r.colour,r.vy,yard);
+      const badge=yes
+        ?`<span class="fs-yes"><span class="fsdot"></span>Yes</span>`
+        :`<span class="fs-no"><span class="fsdot"></span>No</span>`;
+      return `<td>${badge}</td>`;
+    }).join('');
     return `<tr style="animation-delay:${Math.min(ri*.015,.3)}s">
       <td>${r.model||'—'}</td>
       <td>${r.variant||'—'}</td>
       <td>${colCell}</td>
       <td class="${!r.vy?'dim':''}">${r.vy||'—'}</td>
-      <td>${badge}</td>
+      ${yardCells}
     </tr>`;
   }).join('');
 }
