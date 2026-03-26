@@ -429,13 +429,23 @@ function buildLookups(){
 /* ═══════════════ FREE STOCK ROWS (for display) ═══════════════ */
 // Expand specRows with VY: for each specRow, cross with VY values from vyMap
 function getFreeStockRows(){
+  const currentYear = String(new Date().getFullYear());
   const rows=[];
   specRows.forEach(sr=>{
     const vys=sr.modelCode?vyMap[sr.modelCode]||[]:[];
     if(vys.length===0){
       rows.push({...sr,vy:''});
     } else {
-      vys.forEach(vy=>rows.push({...sr,vy}));
+      vys.forEach(vy=>{
+        // Current year — always include
+        if(vy===currentYear){
+          rows.push({...sr,vy});
+        } else {
+          // Previous year — only include if free stock exists in at least one yard
+          const hasFree=YARDS.some(yard=>isFreeForYard(sr.modelCode,sr.colour,vy,yard));
+          if(hasFree) rows.push({...sr,vy});
+        }
+      });
     }
   });
   return rows;
@@ -625,20 +635,32 @@ function cascadeFree(){
 
   // Filtered specRows by model
   const byModel=specRows.filter(r=>r.model===model);
-  // Variants
+
+  // Variants — unique from model rows
   const variants=[...new Set(byModel.map(r=>r.variant).filter(Boolean))].sort();
   refill('fVariant',variants,'All Variants',selVar);
 
-  // Colours filtered by model+variant
+  // Colours — ONLY colours where value=Yes in Product Spec for selected variant
+  // specRows already contains only Yes-applicable colours, so just filter by variant
   const byVariant=selVar?byModel.filter(r=>r.variant===selVar):byModel;
   const colours=[...new Set(byVariant.map(r=>r.colour).filter(Boolean))].sort();
   refill('fColour',colours,'All Colours',selCol);
 
-  // VIN Years filtered by model+variant+colour (via modelCode)
+  // VIN Years — filtered by model+variant+colour via modelCode
+  // For year dropdown: show current year always + previous years only if free stock exists
   const byColour=selCol?byVariant.filter(r=>r.colour===selCol):byVariant;
   const modelCodes=[...new Set(byColour.map(r=>r.modelCode).filter(Boolean))];
-  const years=[...new Set(modelCodes.flatMap(mc=>vyMap[mc]||[]))].sort();
-  refill('fYear',years,'All Years',document.getElementById('fYear').value);
+  const currentYear=String(new Date().getFullYear());
+  const allYears=[...new Set(modelCodes.flatMap(mc=>vyMap[mc]||[]))].sort();
+
+  // Filter years for dropdown: current year always, previous only if has free stock
+  const filteredYears=allYears.filter(vy=>{
+    if(vy===currentYear)return true;
+    // For previous years, check if any combination in byColour has free stock
+    return byColour.some(sr=>YARDS.some(yard=>isFreeForYard(sr.modelCode,sr.colour,vy,yard)));
+  });
+
+  refill('fYear',filteredYears,'All Years',document.getElementById('fYear').value);
 }
 
 function cascadeStd(rows,h){
@@ -868,4 +890,3 @@ document.addEventListener('keydown',e=>{
 </script>
 </body>
 </html>
-
