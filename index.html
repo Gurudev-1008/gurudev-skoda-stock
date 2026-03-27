@@ -282,37 +282,34 @@ let staffList = [];
 
 const USERS_SCRIPT='https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G8_zQKz72f_iQz318Jix2Icd2A5f9ZyAK0UlVtAtBTlwjxCOLg/exec';
 
-async function loadStaffList(retries=3){
-  for(let attempt=1;attempt<=retries;attempt++){
-    try{
-      const cb=`__cb2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-      const j=await new Promise((resolve,reject)=>{
-        const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},20000);
-        window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
-        const s=document.createElement('script');
-        s.src=`${USERS_SCRIPT}?action=read&callback=${encodeURIComponent(cb)}`;
-        s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();reject(new Error('Failed'));};
-        s.onload=()=>s.remove();
-        document.head.appendChild(s);
-      });
-      if(Array.isArray(j)&&j.length>=2){
-        let hIdx=0;
-        for(let i=0;i<Math.min(3,j.length);i++){
-          if(j[i].map(x=>String(x||'').toLowerCase()).join(' ').includes('username')){hIdx=i;break;}
-        }
-        staffList=j.slice(hIdx+1).map(row=>({
-          name:    String(row[0]||'').trim(),
-          username:String(row[1]||'').trim(),
-          password:String(row[2]||'').trim()
-        })).filter(s=>s.username&&s.password);
-        if(staffList.length>0)return;
-      }
-    }catch(e){
-      console.warn(`Staff load attempt ${attempt}:`,e.message);
-      if(attempt<retries)await new Promise(r=>setTimeout(r,1500));
-    }
-  }
+async function loadStaffList(){
   staffList=[];
+  try{
+    const cb=`__cb2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const j=await new Promise((resolve,reject)=>{
+      const t=setTimeout(()=>{delete window[cb];resolve([]);},30000);
+      window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
+      const s=document.createElement('script');
+      s.src=`${USERS_SCRIPT}?action=read&callback=${encodeURIComponent(cb)}`;
+      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();resolve([]);};
+      s.onload=()=>s.remove();
+      document.head.appendChild(s);
+    });
+    if(Array.isArray(j)&&j.length>=2){
+      let hIdx=0;
+      for(let i=0;i<Math.min(3,j.length);i++){
+        if(j[i].map(x=>String(x||'').toLowerCase()).join(' ').includes('username')){hIdx=i;break;}
+      }
+      staffList=j.slice(hIdx+1).map(row=>({
+        name:    String(row[0]||'').trim(),
+        username:String(row[1]||'').trim(),
+        password:String(row[2]||'').trim()
+      })).filter(s=>s.username&&s.password);
+    }
+  }catch(e){
+    console.warn('loadStaffList:',e.message);
+    staffList=[];
+  }
 }
     const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
     window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
@@ -555,7 +552,7 @@ async function doLogin(){
 
   if(!found){
     errEl.textContent=staffList.length===0
-      ?'Could not connect to user list. Please try again.'
+      ?'Connection failed. Please check your internet and try again.'
       :'Incorrect username or password.';
     return;
   }
