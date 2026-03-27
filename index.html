@@ -185,6 +185,7 @@
       <span class="ts" id="appTs">—</span>
       <span class="user-tag" id="appUser"></span>
       <button class="hdr-btn" onclick="loadAllSheets()">↻ Refresh</button>
+      <button class="hdr-btn" id="chgPwdBtn" onclick="switchTab(4)" style="display:none">🔑 Password</button>
       <button class="hdr-btn" onclick="doLogout()">Sign out</button>
     </div>
   </header>
@@ -247,12 +248,22 @@
       <div class="admin-section">
         <h3>Staff List</h3>
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.7;">
-          Staff accounts are managed directly in your <strong>Users Google Sheet</strong>.<br>
-          Add or remove staff there, then click <strong>Refresh Staff</strong> to update this list.
+          Staff accounts are managed in your <strong>Users Google Sheet</strong>.<br>
+          Add or remove staff there, then click <strong>Refresh Staff</strong> to update.
         </p>
         <button class="add-btn" id="refreshStaffBtn" onclick="refreshStaffList()" style="margin-bottom:20px;">↻ Refresh Staff</button>
         <div class="add-err" id="addErr"></div>
         <div id="staffWrap"><div class="no-users">Click "Refresh Staff" to load the current staff list.</div></div>
+      </div>
+      <div class="admin-section">
+        <h3>Change My Password</h3>
+        <div class="add-form">
+          <div class="ff"><span class="ffl">Current Password</span><input class="fi" id="cpOld" type="password" placeholder="Current password"></div>
+          <div class="ff"><span class="ffl">New Password</span><input class="fi" id="cpNew" type="password" placeholder="New password"></div>
+          <div class="ff"><span class="ffl">Confirm New Password</span><input class="fi" id="cpCon" type="password" placeholder="Confirm new password"></div>
+          <button class="add-btn" onclick="changePassword()">Update Password</button>
+        </div>
+        <div class="add-err" id="cpErr"></div>
       </div>
     </div>
   </div>
@@ -273,7 +284,7 @@ async function loadStaffList(){
   try{
     const cb=`__cb2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     // Use stock Apps Script but pass Users sheet ID and sheet name
-    const url=`${API}?sheetId=1VgqqDlU45Kwt_CrapcqsykcHPKnCVm8MvRCYCnovi18&sheet=Sheet1&callback=${encodeURIComponent(cb)}`;
+    const url=`https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G8_zQKz72f_iQz318Jix2Icd2A5f9ZyAK0UlVtAtBTlwjxCOLg/exec?action=read&callback=${encodeURIComponent(cb)}`;
     const j=await new Promise((resolve,reject)=>{
       const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
       window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
@@ -291,13 +302,14 @@ async function loadStaffList(){
         if(r.includes('username')){hIdx=i;break;}
       }
       const h=j[hIdx].map(x=>String(x||'').trim().toLowerCase());
-      const nI=h.findIndex(x=>x.includes('name'));
-      const uI=h.findIndex(x=>x.includes('username')||x.includes('user'));
-      const pI=h.findIndex(x=>x.includes('password')||x.includes('pass'));
+      // Use fixed column positions: A=Name, B=Username, C=Password
+      const nI=0;
+      const uI=1;
+      const pI=2;
       staffList=j.slice(hIdx+1).map(row=>({
-        name:    String(row[nI>=0?nI:0]||'').trim(),
-        username:String(row[uI>=0?uI:1]||'').trim(),
-        password:String(row[pI>=0?pI:2]||'').trim()
+        name:    String(row[0]||'').trim(),
+        username:String(row[1]||'').trim(),
+        password:String(row[2]||'').trim()
       })).filter(s=>s.username&&s.password);
       console.log('Staff loaded:',staffList.length,'users:',staffList.map(s=>s.username));
     } else {
@@ -526,31 +538,27 @@ async function doLogin(){
   const u=document.getElementById('liUser').value.trim();
   const p=document.getElementById('liPass').value.trim();
   const errEl=document.getElementById('liErr');
-  errEl.textContent='';
+  errEl.textContent='Verifying…';
 
-  // Admin login — no sheet lookup needed
+  // Admin login
   if(u===ADMIN_USER&&p===ADMIN_PASS){
     currentUser={username:ADMIN_USER,name:'Admin',isAdmin:true};
     document.getElementById('appUser').textContent='Admin';
     document.getElementById('appSub').textContent='Admin Panel';
     setupUI();
-    document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
     document.getElementById('pageApp').classList.add('active');
     loadAllSheets();
+    startAutoRefresh();
     return;
   }
 
   // Staff login — load from Google Sheet
-  errEl.textContent='Verifying…';
   await loadStaffList();
 
-  console.log('After load, staffList length:',staffList.length);
-  console.log('Looking for username:',JSON.stringify(u),'password:',JSON.stringify(p));
-  staffList.forEach(s=>console.log('Sheet user:',JSON.stringify(s.username),'pass:',JSON.stringify(s.password)));
+  const norm=s=>String(s||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
+  const found=staffList.find(s=>norm(s.username)===norm(u)&&norm(s.password)===norm(p));
 
-  const found=staffList.find(s=>
-    s.username.trim()===u.trim() && s.password.trim()===p.trim()
-  );
   if(!found){
     errEl.textContent=staffList.length===0
       ?'Could not connect to user list. Please try again.'
@@ -565,10 +573,12 @@ async function doLogin(){
   document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
   document.getElementById('pageApp').classList.add('active');
   loadAllSheets();
+  startAutoRefresh();
 }
 
 function doLogout(){
   currentUser=null;logoClicks=0;
+  if(autoRefreshTimer){clearInterval(autoRefreshTimer);autoRefreshTimer=null;}
   ['liUser','liPass'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('liErr').textContent='';
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -595,16 +605,48 @@ function setupUI(){
   [0,1,2,3,4].forEach(i=>{
     document.getElementById('tab'+i).style.display=isAdmin?'':(i===3?'':'none');
   });
+  // Show password button for staff, hide for admin (admin has it in manage staff tab)
+  const pwdBtn=document.getElementById('chgPwdBtn');
+  if(pwdBtn)pwdBtn.style.display=isAdmin?'none':'';
   activeTab=isAdmin?0:3;
   isFree=(activeTab===3);
 }
 
 /* ═══════════════ TAB SWITCHING ═══════════════ */
 function switchTab(i){
-  if(!currentUser.isAdmin&&i!==3)return;
+  if(!currentUser.isAdmin&&i!==3&&i!==4)return;
   activeTab=i;isFree=(i===3);
   sortCol=-1;sortAsc=true;
   [0,1,2,3,4].forEach(j=>document.getElementById('tab'+j).classList.toggle('active',j===i));
+
+  const isManage=(i===4);
+  document.getElementById('fsBar').style.display=isFree?'block':'none';
+  document.getElementById('mainToolbar').style.display=isManage?'none':'flex';
+  document.getElementById('tableArea').style.display=isManage?'none':'block';
+  document.getElementById('manageArea').style.display=isManage?'block':'none';
+
+  if(isManage){
+    if(currentUser.isAdmin)refreshStaffList();
+    else{
+      // Staff only sees change password
+      document.getElementById('manageArea').innerHTML=`
+        <div class="admin-panel">
+          <h2>Change Password</h2>
+          <div class="admin-section">
+            <h3>Update Your Password</h3>
+            <div class="add-form">
+              <div class="ff"><span class="ffl">Current Password</span><input class="fi" id="cpOld" type="password" placeholder="Current password"></div>
+              <div class="ff"><span class="ffl">New Password</span><input class="fi" id="cpNew" type="password" placeholder="New password"></div>
+              <div class="ff"><span class="ffl">Confirm New Password</span><input class="fi" id="cpCon" type="password" placeholder="Confirm new password"></div>
+              <button class="add-btn" onclick="changePassword()">Update Password</button>
+            </div>
+            <div class="add-err" id="cpErr"></div>
+            <p style="font-size:12px;color:var(--text-dim);margin-top:12px;">Note: After changing password here, please inform your admin to update it in the Users sheet for future logins.</p>
+          </div>
+        </div>`;
+    }
+    return;
+  }
   clearFilters(false);
   setupTab();
 }
@@ -618,7 +660,7 @@ function setupTab(){
   if(isManage){refreshStaffList();return;}
   document.getElementById('searchWrap').style.display=isFree?'none':'';
   setupFilters();
-  if(isFree){showEmptyPrompt();}else{applyFilters();}
+  applyFilters();
 }
 
 /* ═══════════════ FILTER SETUP ═══════════════ */
@@ -631,19 +673,18 @@ function setupFilters(){
 }
 
 function setupFreeFilters(){
-  // Model dropdown from specRows unique models
   const models=[...new Set(specRows.map(r=>r.model).filter(Boolean))].sort();
   const mSel=document.getElementById('fModel');
   mSel.innerHTML='';
-  mSel.add(new Option('— Select a model —',''));
+  mSel.add(new Option('All Models',''));
   models.forEach(v=>mSel.add(new Option(v,v)));
-  // Disable dependents
   ['fVariant','fColour','fYear'].forEach(id=>{
     const el=document.getElementById(id);
-    el.disabled=true;el.innerHTML='<option value="">All Variants</option>';el.value='';
+    el.disabled=false;
+    el.innerHTML=`<option value="">${id==='fVariant'?'All Variants':id==='fColour'?'All Colours':'All Years'}</option>`;
+    el.value='';
   });
-  document.getElementById('fColour').innerHTML='<option value="">All Colours</option>';
-  document.getElementById('fYear').innerHTML='<option value="">All Years</option>';
+  cascadeFree();
 }
 
 function setupStdFilters(){
@@ -672,17 +713,7 @@ function fillDropdown(id,rows,headers,colName,placeholder){
 function onModelChange(){
   sortCol=-1;sortAsc=true;
   if(isFree){
-    const model=document.getElementById('fModel').value;
-    const has=!!model;
-    ['fVariant','fColour','fYear'].forEach(id=>{
-      const el=document.getElementById(id);el.disabled=!has;el.value='';
-    });
-    if(!has){
-      document.getElementById('fVariant').innerHTML='<option value="">All Variants</option>';
-      document.getElementById('fColour').innerHTML='<option value="">All Colours</option>';
-      document.getElementById('fYear').innerHTML='<option value="">All Years</option>';
-      showEmptyPrompt();return;
-    }
+    ['fVariant','fColour','fYear'].forEach(id=>document.getElementById(id).value='');
     cascadeFree();
     applyFilters();
   } else {
@@ -713,33 +744,27 @@ function cascadeFree(){
   const selVar=document.getElementById('fVariant').value;
   const selCol=document.getElementById('fColour').value;
 
-  // Filtered specRows by model
-  const byModel=specRows.filter(r=>r.model===model);
+  // Filter specRows by model (if selected)
+  const byModel=model?specRows.filter(r=>r.model===model):specRows;
 
-  // Variants — unique from model rows
+  // Variants from specRows (already only Yes-applicable)
   const variants=[...new Set(byModel.map(r=>r.variant).filter(Boolean))].sort();
   refill('fVariant',variants,'All Variants',selVar);
 
-  // Colours — ONLY colours where value=Yes in Product Spec for selected variant
-  // specRows already contains only Yes-applicable colours, so just filter by variant
+  // Colours — strictly from specRows (Yes columns only) filtered by variant
   const byVariant=selVar?byModel.filter(r=>r.variant===selVar):byModel;
   const colours=[...new Set(byVariant.map(r=>r.colour).filter(Boolean))].sort();
   refill('fColour',colours,'All Colours',selCol);
 
-  // VIN Years — filtered by model+variant+colour via modelCode
-  // For year dropdown: show current year always + previous years only if free stock exists
+  // VIN Years
   const byColour=selCol?byVariant.filter(r=>r.colour===selCol):byVariant;
   const modelCodes=[...new Set(byColour.map(r=>r.modelCode).filter(Boolean))];
   const currentYear=String(new Date().getFullYear());
   const allYears=[...new Set(modelCodes.flatMap(mc=>vyMap[mc]||[]))].sort();
-
-  // Filter years for dropdown: current year always, previous only if has free stock
   const filteredYears=allYears.filter(vy=>{
     if(vy===currentYear)return true;
-    // For previous years, check if any combination in byColour has free stock
     return byColour.some(sr=>YARDS.some(yard=>isFreeForYard(sr.modelCode,sr.colour,vy,yard)));
   });
-
   refill('fYear',filteredYears,'All Years',document.getElementById('fYear').value);
 }
 
@@ -805,18 +830,15 @@ function applyFilters(){
 
 function renderFreeStock(){
   const model=document.getElementById('fModel').value;
-  if(!model){showEmptyPrompt();return;}
-
   const fVar=document.getElementById('fVariant').value;
   const fCol=document.getElementById('fColour').value;
   const fYear=document.getElementById('fYear').value;
 
-  // Get all expanded rows (model+variant+colour+vy)
   let allRows=getFreeStockRows();
 
   // Filter
   allRows=allRows.filter(r=>{
-    if(r.model!==model)return false;
+    if(model&&r.model!==model)return false;
     if(fVar&&r.variant!==fVar)return false;
     if(fCol&&r.colour!==fCol)return false;
     if(fYear&&r.vy!==fYear)return false;
@@ -983,6 +1005,67 @@ function renderStaffList(){
       <td>${s.name}</td><td>${s.username}</td><td>${s.password}</td>
     </tr>`).join('')}</tbody>
   </table>`;
+}
+
+// Fix 3: Auto refresh every 5 minutes
+let autoRefreshTimer=null;
+function startAutoRefresh(){
+  if(autoRefreshTimer)clearInterval(autoRefreshTimer);
+  autoRefreshTimer=setInterval(()=>{
+    loadAllSheets();
+  },5*60*1000); // every 5 minutes
+}
+
+// Fix 4: Change password
+function showChangePassword(){
+  const d=document.getElementById('changePwdSection');
+  if(d)d.style.display=d.style.display==='none'?'block':'none';
+}
+
+async function changePassword(){
+  const oldP=document.getElementById('cpOld').value.trim();
+  const newP=document.getElementById('cpNew').value.trim();
+  const conP=document.getElementById('cpCon').value.trim();
+  const errEl=document.getElementById('cpErr');
+  errEl.style.color='#f87171';
+  errEl.textContent='';
+
+  if(!oldP||!newP||!conP){errEl.textContent='Please fill in all fields.';return;}
+  if(newP!==conP){errEl.textContent='New passwords do not match.';return;}
+  if(newP.length<4){errEl.textContent='Password must be at least 4 characters.';return;}
+
+  const norm=s=>String(s||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
+  if(norm(currentUser.password)!==norm(oldP)){errEl.textContent='Current password is incorrect.';return;}
+
+  errEl.style.color='var(--text-muted)';
+  errEl.textContent='Saving…';
+
+  try{
+    const cb=`__cbPw_${Date.now()}`;
+    const url=`https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G8_zQKz72f_iQz318Jix2Icd2A5f9ZyAK0UlVtAtBTlwjxCOLg/exec?action=updatePass&username=${encodeURIComponent(currentUser.username)}&newPass=${encodeURIComponent(newP)}&callback=${encodeURIComponent(cb)}`;
+    const result=await new Promise((resolve,reject)=>{
+      const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
+      window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
+      const s=document.createElement('script');
+      s.src=url;
+      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();reject(new Error('Network error'));};
+      s.onload=()=>s.remove();
+      document.head.appendChild(s);
+    });
+
+    if(result&&result.success){
+      currentUser.password=newP;
+      errEl.style.color='#4caf6e';
+      errEl.textContent='✓ Password updated successfully!';
+      ['cpOld','cpNew','cpCon'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    } else {
+      errEl.style.color='#f87171';
+      errEl.textContent='Failed to update: '+(result&&result.error?result.error:'Unknown error');
+    }
+  } catch(e){
+    errEl.style.color='#f87171';
+    errEl.textContent='Error: '+e.message;
+  }
 }
 
 document.addEventListener('keydown',e=>{
