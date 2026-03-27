@@ -272,7 +272,7 @@
 <script>
 /* ═══════════════ CONFIG ═══════════════ */
 const API        = 'https://script.google.com/macros/s/AKfycbyOD9UX2Ztba-JriJzk3dylhLm03WLPFk2c5LLEQ8Z8O1_CipAxO6mWe71WkuW5Wv2m/exec';
-const SHEETS     = ['Stock','Allocation','Live RPO','Product Spec'];
+const SHEETS     = ['Stock','Allocation','Live RPO','Product Spec','Users'];
 const ADMIN_PASS  = 'gurudev1008';
 const ADMIN_USER  = 'admin';
 const USERS_API   = 'https://script.google.com/macros/s/AKfycbxzakZLPoomdGmiTcX9doAyBbTYucuMpTgaZQ8Vrfp-wXGcfK9E75fxJ0ecK06G0EFD-A/exec';
@@ -285,17 +285,9 @@ const USERS_SCRIPT='https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G
 async function loadStaffList(){
   staffList=[];
   try{
-    const cb=`__cb2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const j=await new Promise((resolve,reject)=>{
-      const t=setTimeout(()=>{delete window[cb];resolve([]);},30000);
-      window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
-      const s=document.createElement('script');
-      // Use main stock API with Users sheet ID
-      s.src=`${API}?sheetId=1VgqqDlU45Kwt_CrapcqsykcHPKnCVm8MvRCYCnovi18&sheet=Sheet1&callback=${encodeURIComponent(cb)}`;
-      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();resolve([]);};
-      s.onload=()=>s.remove();
-      document.head.appendChild(s);
-    });
+    // Use preloaded Users sheet (index 4) if available, otherwise fetch
+    let j=sheetData[4];
+    if(!j||j.length<2) j=await jsonpFetch('Users');
     if(Array.isArray(j)&&j.length>=2){
       let hIdx=0;
       for(let i=0;i<Math.min(3,j.length);i++){
@@ -333,7 +325,7 @@ const PC = { // Product Spec columns
 };
 
 /* ═══════════════ STATE ═══════════════ */
-let sheetData  = [[],[],[],[]];
+let sheetData  = [[],[],[],[],[]];
 let activeTab  = 0;
 let isFree     = false;
 let sortCol    = -1, sortAsc = true;
@@ -395,6 +387,19 @@ async function loadAllSheets(){
 /* ═══════════════ BUILD LOOKUPS FROM PRODUCT SPEC ═══════════════ */
 function buildLookups(){
   specRows=[];
+  // Parse Users from sheetData[4]
+  const usersData=sheetData[4];
+  if(Array.isArray(usersData)&&usersData.length>=2){
+    let hIdx=0;
+    for(let i=0;i<Math.min(3,usersData.length);i++){
+      if(usersData[i].map(x=>String(x||'').toLowerCase()).join(' ').includes('username')){hIdx=i;break;}
+    }
+    staffList=usersData.slice(hIdx+1).map(row=>({
+      name:    String(row[0]||'').trim(),
+      username:String(row[1]||'').trim(),
+      password:String(row[2]||'').trim()
+    })).filter(s=>s.username&&s.password);
+  }
   vyMap={};
   freeMap={};
 
