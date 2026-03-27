@@ -393,10 +393,13 @@ function jsonpFetch(sheet){
 
 async function loadAllSheets(){
   document.getElementById('appTs').textContent='Loading…';
-  for(let i=0;i<SHEETS.length;i++){
-    try{const j=await jsonpFetch(SHEETS[i]);sheetData[i]=Array.isArray(j)&&j.length>=2?j:[];}
-    catch{sheetData[i]=[];}
-  }
+  // Fetch all sheets in parallel instead of one by one
+  await Promise.all(SHEETS.map(async(sheet,i)=>{
+    try{
+      const j=await jsonpFetch(sheet);
+      sheetData[i]=Array.isArray(j)&&j.length>=2?j:[];
+    } catch{sheetData[i]=[];}
+  }));
   document.getElementById('appTs').textContent='Updated '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   buildLookups();
   setupTab();
@@ -548,6 +551,8 @@ async function doLogin(){
     setupUI();
     document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
     document.getElementById('pageApp').classList.add('active');
+    document.getElementById('appTs').textContent='Loading…';
+    document.getElementById('tBody').innerHTML='<tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading data…</strong></div></td></tr>';
     loadAllSheets();
     startAutoRefresh();
     return;
@@ -572,6 +577,8 @@ async function doLogin(){
   setupUI();
   document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
   document.getElementById('pageApp').classList.add('active');
+  document.getElementById('appTs').textContent='Loading…';
+  document.getElementById('tBody').innerHTML='<tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading data…</strong></div></td></tr>';
   loadAllSheets();
   startAutoRefresh();
 }
