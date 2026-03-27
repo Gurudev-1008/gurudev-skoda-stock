@@ -280,51 +280,40 @@ const USERS_API   = 'https://script.google.com/macros/s/AKfycbxzakZLPoomdGmiTcX9
 // Staff loaded from Google Sheet
 let staffList = [];
 
-async function loadStaffList(){
-  try{
-    const cb=`__cb2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    // Use stock Apps Script but pass Users sheet ID and sheet name
-    const url=`https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G8_zQKz72f_iQz318Jix2Icd2A5f9ZyAK0UlVtAtBTlwjxCOLg/exec?action=read&callback=${encodeURIComponent(cb)}`;
-    const j=await new Promise((resolve,reject)=>{
-      const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
-      window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
-      const s=document.createElement('script');
-      s.src=url;
-      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();reject(new Error('Script load failed'));};
-      s.onload=()=>s.remove();
-      document.head.appendChild(s);
-    });
-    console.log('Users raw:',JSON.stringify(j).slice(0,200));
-    if(Array.isArray(j)&&j.length>=2){
-      let hIdx=0;
-      for(let i=0;i<Math.min(3,j.length);i++){
-        const r=j[i].map(x=>String(x||'').toLowerCase().trim()).join(' ');
-        if(r.includes('username')){hIdx=i;break;}
-      }
-      const h=j[hIdx].map(x=>String(x||'').trim().toLowerCase());
-      // Use fixed column positions: A=Name, B=Username, C=Password
-      const nI=0;
-      const uI=1;
-      const pI=2;
-      staffList=j.slice(hIdx+1).map(row=>({
-        name:    String(row[0]||'').trim(),
-        username:String(row[1]||'').trim(),
-        password:String(row[2]||'').trim()
-      })).filter(s=>s.username&&s.password);
-      console.log('Staff loaded:',staffList.length,'users:',staffList.map(s=>s.username));
-    } else {
-      console.warn('No data in Users sheet');
-      staffList=[];
-    }
-  } catch(e){
-    console.error('loadStaffList error:',e.message);
-    staffList=[];
-  }
-}
+const USERS_SCRIPT='https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G8_zQKz72f_iQz318Jix2Icd2A5f9ZyAK0UlVtAtBTlwjxCOLg/exec';
 
-function jsonpFetch2(apiUrl){
-  const cb=`__cb2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-  return new Promise((resolve,reject)=>{
+async function loadStaffList(retries=3){
+  for(let attempt=1;attempt<=retries;attempt++){
+    try{
+      const cb=`__cb2_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      const j=await new Promise((resolve,reject)=>{
+        const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},20000);
+        window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
+        const s=document.createElement('script');
+        s.src=`${USERS_SCRIPT}?action=read&callback=${encodeURIComponent(cb)}`;
+        s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();reject(new Error('Failed'));};
+        s.onload=()=>s.remove();
+        document.head.appendChild(s);
+      });
+      if(Array.isArray(j)&&j.length>=2){
+        let hIdx=0;
+        for(let i=0;i<Math.min(3,j.length);i++){
+          if(j[i].map(x=>String(x||'').toLowerCase()).join(' ').includes('username')){hIdx=i;break;}
+        }
+        staffList=j.slice(hIdx+1).map(row=>({
+          name:    String(row[0]||'').trim(),
+          username:String(row[1]||'').trim(),
+          password:String(row[2]||'').trim()
+        })).filter(s=>s.username&&s.password);
+        if(staffList.length>0)return;
+      }
+    }catch(e){
+      console.warn(`Staff load attempt ${attempt}:`,e.message);
+      if(attempt<retries)await new Promise(r=>setTimeout(r,1500));
+    }
+  }
+  staffList=[];
+}
     const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
     window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
     const s=document.createElement('script');
@@ -1049,7 +1038,7 @@ async function changePassword(){
 
   try{
     const cb=`__cbPw_${Date.now()}`;
-    const url=`https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G8_zQKz72f_iQz318Jix2Icd2A5f9ZyAK0UlVtAtBTlwjxCOLg/exec?action=updatePass&username=${encodeURIComponent(currentUser.username)}&newPass=${encodeURIComponent(newP)}&callback=${encodeURIComponent(cb)}`;
+    const url=`${USERS_SCRIPT}?action=updatePass&username=${encodeURIComponent(currentUser.username)}&newPass=${encodeURIComponent(newP)}&callback=${encodeURIComponent(cb)}`;
     const result=await new Promise((resolve,reject)=>{
       const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
       window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
