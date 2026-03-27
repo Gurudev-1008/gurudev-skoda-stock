@@ -528,7 +528,7 @@ async function doLogin(){
   const u=document.getElementById('liUser').value.trim();
   const p=document.getElementById('liPass').value.trim();
   const errEl=document.getElementById('liErr');
-  errEl.textContent='Verifying…';
+  errEl.textContent='';
 
   // Admin login
   if(u===ADMIN_USER&&p===ADMIN_PASS){
@@ -545,10 +545,15 @@ async function doLogin(){
     return;
   }
 
-  // Staff login — load from Google Sheet
-  await loadStaffList();
-
+  // Staff login — use preloaded staff list
   const norm=s=>String(s||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
+  
+  // If staffList not loaded yet, try loading now
+  if(staffList.length===0){
+    errEl.textContent='Verifying…';
+    await loadStaffList();
+  }
+
   const found=staffList.find(s=>norm(s.username)===norm(u)&&norm(s.password)===norm(p));
 
   if(!found){
@@ -1065,6 +1070,9 @@ async function changePassword(){
 document.addEventListener('keydown',e=>{
   if(e.key==='Enter'&&document.getElementById('pageLogin').classList.contains('active'))doLogin();
 });
+
+// Preload staff list on page open so login is instant
+loadStaffList();
 </script>
 </body>
 </html>
