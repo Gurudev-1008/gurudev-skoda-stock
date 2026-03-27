@@ -304,15 +304,6 @@ async function loadStaffList(){
     staffList=[];
   }
 }
-    const t=setTimeout(()=>{delete window[cb];reject(new Error('Timed out'));},15000);
-    window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
-    const s=document.createElement('script');
-    s.src=`${apiUrl}?callback=${encodeURIComponent(cb)}`;
-    s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();reject(new Error('Network error'));};
-    s.onload=()=>s.remove();
-    document.head.appendChild(s);
-  });
-}
 
 // Exact column names
 const SC = { // Stock sheet columns
