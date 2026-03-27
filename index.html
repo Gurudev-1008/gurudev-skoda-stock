@@ -290,7 +290,8 @@ async function loadStaffList(){
       const t=setTimeout(()=>{delete window[cb];resolve([]);},30000);
       window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
       const s=document.createElement('script');
-      s.src=`${USERS_SCRIPT}?action=read&callback=${encodeURIComponent(cb)}`;
+      // Use main stock API with Users sheet ID
+      s.src=`${API}?sheetId=1VgqqDlU45Kwt_CrapcqsykcHPKnCVm8MvRCYCnovi18&sheet=Sheet1&callback=${encodeURIComponent(cb)}`;
       s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();resolve([]);};
       s.onload=()=>s.remove();
       document.head.appendChild(s);
