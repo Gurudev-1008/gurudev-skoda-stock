@@ -529,48 +529,35 @@ function isFreeForYard(modelCode,colour,vy,yard){
 }
 
 /* ═══════════════ LOGIN ═══════════════ */
-async function doLogin(){
+function doLogin(){
   const u=document.getElementById('liUser').value.trim();
   const p=document.getElementById('liPass').value.trim();
   const errEl=document.getElementById('liErr');
   errEl.textContent='';
 
-  // Admin login
+  // Admin login — instant, no network call
   if(u===ADMIN_USER&&p===ADMIN_PASS){
-    currentUser={username:ADMIN_USER,name:'Admin',isAdmin:true};
-    document.getElementById('appUser').textContent='Admin';
-    document.getElementById('appSub').textContent='Admin Panel';
-    setupUI();
-    document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
-    document.getElementById('pageApp').classList.add('active');
-    document.getElementById('appTs').textContent='Loading…';
-    document.getElementById('tBody').innerHTML='<tr><td colspan="20"><div class="state-box"><div class="spinner"></div><strong>Loading data…</strong></div></td></tr>';
-    loadAllSheets();
-    startAutoRefresh();
+    loginSuccess({username:ADMIN_USER,name:'Admin',isAdmin:true});
     return;
   }
 
-  // Staff login — use preloaded staff list
+  // Staff login — use already-loaded staffList (loaded on page open)
   const norm=s=>String(s||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
-  
-  // If staffList not loaded yet, try loading now
-  if(staffList.length===0){
-    errEl.textContent='Verifying…';
-    await loadStaffList();
-  }
-
   const found=staffList.find(s=>norm(s.username)===norm(u)&&norm(s.password)===norm(p));
 
-  if(!found){
-    errEl.textContent=staffList.length===0
-      ?'Connection failed. Please check your internet and try again.'
-      :'Incorrect username or password.';
+  if(found){
+    loginSuccess({...found,isAdmin:false});
     return;
   }
 
-  currentUser={...found,isAdmin:false};
-  document.getElementById('appUser').textContent=found.name||found.username;
-  document.getElementById('appSub').textContent='Stock Viewer';
+  // staffList may still be loading — show message
+  errEl.textContent='Incorrect username or password.';
+}
+
+function loginSuccess(user){
+  currentUser=user;
+  document.getElementById('appUser').textContent=user.name||user.username;
+  document.getElementById('appSub').textContent=user.isAdmin?'Admin Panel':'Stock Viewer';
   setupUI();
   document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
   document.getElementById('pageApp').classList.add('active');
@@ -595,10 +582,7 @@ function logoClick(){
     logoClicks=0;
     const pw=prompt('Admin password:');
     if(pw===ADMIN_PASS){
-      currentUser={username:ADMIN_USER,name:'Admin',isAdmin:true};
-      document.getElementById('appUser').textContent='Admin';
-      document.getElementById('appSub').textContent='Admin Panel';
-      setupUI();loadAllSheets();
+      loginSuccess({username:ADMIN_USER,name:'Admin',isAdmin:true});
     }
   }
 }
