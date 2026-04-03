@@ -636,10 +636,11 @@ async function changePw(){
   e.style.color='var(--text-muted)';e.textContent='Saving…';
   try{
     const cb=`__cpw_${Date.now()}`;
-    const UAPI=API; // use same script for read & write
+    const UAPI='https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G8_zQKz72f_iQz318Jix2Icd2A5f9ZyAK0UlVtAtBTlwjxCOLg/exec';
     const result=await new Promise((res)=>{
       const t=setTimeout(()=>{delete window[cb];res({success:false,error:'Timed out'});},15000);
-      window[cb]=d=>{clearTimeout(t);delete window[cb];res(d);};
+      window[cb]=d=>{clearTimeout(t);delete window[cb];console.log('PW update response:',JSON.stringify(d));res(d);};
+      console.log('PW update URL:',`${UAPI}?action=updatePass&sheet=Users&username=${encodeURIComponent(curUser.username)}`);
       const s=document.createElement('script');
       s.src=`${UAPI}?action=updatePass&sheet=Users&username=${encodeURIComponent(curUser.username)}&newPass=${encodeURIComponent(n)}&callback=${encodeURIComponent(cb)}`;
       s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();res({success:false,error:'Network error'});};
@@ -650,7 +651,7 @@ async function changePw(){
       curUser.password=n;
       e.style.color='#4caf6e';e.textContent='✓ Password updated!';
       ['cpO','cpN','cpC'].forEach(id=>document.getElementById(id).value='');
-    } else {e.style.color='#f87171';e.textContent='Failed: '+(result.error||'Unknown error');}
+    } else {e.style.color='#f87171';e.textContent='Failed: '+(result.error||JSON.stringify(result)||'No response');}
   }catch(ex){e.style.color='#f87171';e.textContent='Error: '+ex.message;}
 }
 
