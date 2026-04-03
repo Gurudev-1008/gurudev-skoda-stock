@@ -185,11 +185,11 @@ td.dim{color:var(--text-muted);}
 
 
 /* Last Booking Info Bar */
-.lbb{display:none;padding:8px 20px;background:var(--bg-card);border-bottom:1px solid var(--border);gap:6px 20px;flex-wrap:wrap;align-items:center;}
-.lbb-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;font-weight:600;white-space:nowrap;}
-.lbb-chip{display:flex;align-items:center;gap:6px;background:var(--bg-surface);border:1px solid var(--border);border-radius:20px;padding:4px 12px;}
-.lbb-key{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;font-weight:600;white-space:nowrap;}
-.lbb-val{font-size:12px;color:var(--text-primary);font-weight:500;white-space:nowrap;}
+.lbb{display:none;padding:9px 20px;background:linear-gradient(90deg,rgba(96,165,250,0.12) 0%,rgba(96,165,250,0.05) 100%);border-bottom:2px solid rgba(96,165,250,0.35);gap:8px 16px;flex-wrap:wrap;align-items:center;}
+.lbb-label{font-size:10px;color:#60a5fa;text-transform:uppercase;letter-spacing:.1em;font-weight:700;white-space:nowrap;padding-right:4px;}
+.lbb-chip{display:flex;align-items:center;gap:6px;background:rgba(96,165,250,0.1);border:1px solid rgba(96,165,250,0.3);border-radius:20px;padding:4px 12px;}
+.lbb-key{font-size:10px;color:#93c5fd;text-transform:uppercase;letter-spacing:.07em;font-weight:700;white-space:nowrap;}
+.lbb-val{font-size:12px;color:#e0f2fe;font-weight:600;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -240,6 +240,15 @@ td.dim{color:var(--text-muted);}
     </div>
   </div>
 
+  <!-- Last Booking Bar — Free Stock only -->
+  <div class="lbb" id="lastBookingBar">
+    <span class="lbb-label">Last Booking</span>
+    <div class="lbb-chip"><span class="lbb-key">Model</span><span class="lbb-val" id="lbMod">—</span></div>
+    <div class="lbb-chip"><span class="lbb-key">Name</span><span class="lbb-val" id="lbName">—</span></div>
+    <div class="lbb-chip"><span class="lbb-key">Date</span><span class="lbb-val" id="lbDate">—</span></div>
+    <div class="lbb-chip"><span class="lbb-key">Location</span><span class="lbb-val" id="lbLoc">—</span></div>
+  </div>
+
   <div class="tb" id="toolBar">
     <div class="si" id="searchWrap">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -251,14 +260,6 @@ td.dim{color:var(--text-muted);}
     <div class="fw"><span class="fl">VIN Year</span><select class="fs" id="fYr" onchange="renderTable()"><option value="">All Years</option></select></div>
     <button class="cb" onclick="clearF()">Clear</button>
     <span class="ri" id="rInfo"></span>
-  </div>
-
-  <!-- Last Booking Bar — Free Stock only -->
-  <div class="lbb" id="lastBookingBar">
-    <span class="lbb-label">Last Booking</span>
-    <div class="lbb-chip"><span class="lbb-key">Name</span><span class="lbb-val" id="lbName">—</span></div>
-    <div class="lbb-chip"><span class="lbb-key">Date</span><span class="lbb-val" id="lbDate">—</span></div>
-    <div class="lbb-chip"><span class="lbb-key">Location</span><span class="lbb-val" id="lbLoc">—</span></div>
   </div>
 
   <div id="tblArea">
@@ -726,6 +727,8 @@ function updateLastBooking(){
     }
     return s;
   };
+  const modIdx=headers.findIndex(h=>h==='model'||h.includes('model'));
+  document.getElementById('lbMod').textContent=fmt(modIdx>=0?lastRow[modIdx]:null);
   document.getElementById('lbName').textContent=fmt(custIdx>=0?lastRow[custIdx]:null);
   document.getElementById('lbDate').textContent=fmt(dateIdx>=0?lastRow[dateIdx]:null);
   document.getElementById('lbLoc').textContent=fmt(locIdx>=0?lastRow[locIdx]:null);
