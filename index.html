@@ -636,7 +636,7 @@ async function changePw(){
   e.style.color='var(--text-muted)';e.textContent='Saving…';
   try{
     const cb=`__cpw_${Date.now()}`;
-    const UAPI='https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G8_zQKz72f_iQz318Jix2Icd2A5f9ZyAK0UlVtAtBTlwjxCOLg/exec';
+    const UAPI=API; // use same script as read — correct spreadsheet
     const result=await new Promise((res)=>{
       const t=setTimeout(()=>{delete window[cb];res({success:false,error:'Timed out'});},15000);
       window[cb]=d=>{clearTimeout(t);delete window[cb];console.log('PW update response:',JSON.stringify(d));res(d);};
