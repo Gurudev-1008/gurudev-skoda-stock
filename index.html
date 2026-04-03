@@ -719,20 +719,18 @@ async function updateLastBooking(){
   const modIdx=headers.findIndex(h=>h.trim()==='model');
   console.log('LBB col indices — model:',modIdx,'customer:',custIdx,'date:',dateIdx,'branch:',locIdx);
 
-  // Get last row where customer name is filled
+  // Scan upward — find last row where booking date OR customer name is filled
   let lastRow=null;
   for(let i=rows.length-1;i>hi;i--){
     const r=rows[i];
+    const dateVal=dateIdx>=0?String(r[dateIdx]||'').trim():'';
     const custVal=custIdx>=0?String(r[custIdx]||'').trim():'';
-    if(custVal&&custVal.toLowerCase()!=='nil'){lastRow=r;break;}
+    const hasDate=dateVal&&dateVal!=='Nil'&&dateVal!=='nil';
+    const hasCust=custVal&&custVal!=='Nil'&&custVal!=='nil';
+    if(hasDate||hasCust){lastRow=r;break;}
   }
-  // Fallback: last row with any meaningful data
-  if(!lastRow){
-    for(let i=rows.length-1;i>hi;i--){
-      if(rows[i].some(c=>{const v=String(c||'').trim();return v&&v.toLowerCase()!=='nil';})){lastRow=rows[i];break;}
-    }
-  }
-  if(!lastRow){console.log('LBB: no data rows found');bar.style.display='none';return;}
+  if(!lastRow){console.log('LBB: no booking rows found');bar.style.display='none';return;}
+  console.log('LBB found row at scan, custVal='+String(lastRow[custIdx]||''),' dateVal='+String(lastRow[dateIdx]||''));
   console.log('LBB lastRow:',lastRow);
 
   const fmt=v=>{
