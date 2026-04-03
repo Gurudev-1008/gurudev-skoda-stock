@@ -478,7 +478,7 @@ function setupTab(){
   document.getElementById('searchWrap').style.display=isFree?'none':'';
   if(isM){setupManage();return;}
   setupFilters();
-  updateLastBooking();
+  updateLastBooking().catch(e=>console.error('LBB error:',e));
   renderTable();
 }
 
@@ -693,6 +693,7 @@ function togglePw(id,btn){
 }
 
 async function updateLastBooking(){
+  console.log('LBB: called, isFree='+isFree);
   const bar=document.getElementById('lastBookingBar');
   if(!isFree){bar.style.display='none';return;}
 
