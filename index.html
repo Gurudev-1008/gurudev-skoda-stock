@@ -561,6 +561,25 @@ function clearF(r=true){['fSrch','fMod','fVar','fCol','fYr'].forEach(id=>{const 
 function clearAllF(){['fMod','fVar','fCol','fYr'].forEach(id=>{const el=document.getElementById(id);if(el){el.innerHTML='<option value="">All</option>';el.value='';}});}
 
 /* ═══ RENDER ═══ */
+function fmtCell(v){
+  if(v===null||v===undefined||v==='')return'';
+  if(v instanceof Date)return v.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  const s=String(v).trim();
+  if(!s)return'';
+  // ISO date string e.g. 2026-04-03T00:00:00.000Z
+  if(/^\d{4}-\d{2}-\d{2}T/.test(s)){
+    const d=new Date(s);
+    if(!isNaN(d))return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  }
+  // Google Sheets serial date number
+  const n=Number(s);
+  if(!isNaN(n)&&n>40000&&n<60000){
+    const d=new Date(Math.round((n-25569)*86400*1000));
+    return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  }
+  return s;
+}
+
 function renderTable(){
   if(isFree)renderFree();else renderStd();
 }
@@ -628,7 +647,7 @@ function renderStd(){
   document.getElementById('rInfo').textContent=`${filtered.length} of ${body.length} records`;
   document.getElementById('tH').innerHTML=h.map((col,i)=>`<th onclick="doSort(${i})" class="${sCol===i?'sorted':''}">${col}<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span></th>`).join('');
   document.getElementById('tB').innerHTML=filtered.length
-    ?filtered.map((r,ri)=>`<tr style="animation-delay:${Math.min(ri*.012,.25)}s">${h.map((_,ci)=>{const v=String(r[ci]||'').trim();if(ci===cI)return`<td><div class="cc"><div class="cd" style="background:${hue(v)}"></div>${v||'—'}</div></td>`;return`<td ${!v?'class="dim"':''}>${v||'—'}</td>`;}).join('')}</tr>`).join('')
+    ?filtered.map((r,ri)=>`<tr style="animation-delay:${Math.min(ri*.012,.25)}s">${h.map((_,ci)=>{const raw=r[ci];const v=fmtCell(raw);if(ci===cI)return`<td><div class="cc"><div class="cd" style="background:${hue(v)}"></div>${v||'—'}</div></td>`;return`<td ${!v?'class="dim"':''}>${v||'—'}</td>`;}).join('')}</tr>`).join('')
     :`<tr><td colspan="${h.length}"><div class="sb"><strong>No matches</strong></div></td></tr>`;
 }
 
