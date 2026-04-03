@@ -719,10 +719,18 @@ async function updateLastBooking(){
   const modIdx=headers.findIndex(h=>h.trim()==='model');
   console.log('LBB col indices — model:',modIdx,'customer:',custIdx,'date:',dateIdx,'branch:',locIdx);
 
-  // Get last non-empty data row
+  // Get last row where customer name is filled
   let lastRow=null;
   for(let i=rows.length-1;i>hi;i--){
-    if(rows[i].some(c=>String(c||'').trim())){lastRow=rows[i];break;}
+    const r=rows[i];
+    const custVal=custIdx>=0?String(r[custIdx]||'').trim():'';
+    if(custVal&&custVal.toLowerCase()!=='nil'){lastRow=r;break;}
+  }
+  // Fallback: last row with any meaningful data
+  if(!lastRow){
+    for(let i=rows.length-1;i>hi;i--){
+      if(rows[i].some(c=>{const v=String(c||'').trim();return v&&v.toLowerCase()!=='nil';})){lastRow=rows[i];break;}
+    }
   }
   if(!lastRow){console.log('LBB: no data rows found');bar.style.display='none';return;}
   console.log('LBB lastRow:',lastRow);
