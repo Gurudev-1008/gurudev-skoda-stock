@@ -183,6 +183,13 @@ td.dim{color:var(--text-muted);}
   .fsbt{font-size:15px;}
 }
 
+
+/* Last Booking Info Bar */
+.lbb{display:none;padding:8px 20px;background:var(--bg-card);border-bottom:1px solid var(--border);gap:6px 20px;flex-wrap:wrap;align-items:center;}
+.lbb-label{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;font-weight:600;white-space:nowrap;}
+.lbb-chip{display:flex;align-items:center;gap:6px;background:var(--bg-surface);border:1px solid var(--border);border-radius:20px;padding:4px 12px;}
+.lbb-key{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.07em;font-weight:600;white-space:nowrap;}
+.lbb-val{font-size:12px;color:var(--text-primary);font-weight:500;white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -196,7 +203,7 @@ td.dim{color:var(--text-muted);}
       </div>
       <div class="ls">Stock Viewer — Login</div>
       <div class="lf"><label class="ll">Username</label><input class="li" id="liU" type="text" placeholder="Enter username" autocomplete="username"></div>
-      <div class="lf"><label class="ll">Password</label><input class="li" id="liP" type="password" placeholder="Enter password" autocomplete="current-password"></div>
+      <div class="lf"><label class="ll">Password</label><div style="position:relative;"><input class="li" id="liP" type="password" placeholder="Enter password" autocomplete="current-password" style="padding-right:42px;width:100%;"><span onclick="togglePw('liP',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;color:#4a7a57;user-select:none;">👁</span></div></div>
       <button class="lbtn" onclick="doLogin()">Sign In</button>
       <div class="le" id="liE"></div>
     </div>
@@ -244,6 +251,14 @@ td.dim{color:var(--text-muted);}
     <div class="fw"><span class="fl">VIN Year</span><select class="fs" id="fYr" onchange="renderTable()"><option value="">All Years</option></select></div>
     <button class="cb" onclick="clearF()">Clear</button>
     <span class="ri" id="rInfo"></span>
+  </div>
+
+  <!-- Last Booking Bar — Free Stock only -->
+  <div class="lbb" id="lastBookingBar">
+    <span class="lbb-label">Last Booking</span>
+    <div class="lbb-chip"><span class="lbb-key">Name</span><span class="lbb-val" id="lbName">—</span></div>
+    <div class="lbb-chip"><span class="lbb-key">Date</span><span class="lbb-val" id="lbDate">—</span></div>
+    <div class="lbb-chip"><span class="lbb-key">Location</span><span class="lbb-val" id="lbLoc">—</span></div>
   </div>
 
   <div id="tblArea">
@@ -462,6 +477,7 @@ function setupTab(){
   document.getElementById('searchWrap').style.display=isFree?'none':'';
   if(isM){setupManage();return;}
   setupFilters();
+  updateLastBooking();
   renderTable();
 }
 
@@ -673,6 +689,47 @@ function togglePw(id,btn){
   const inp=document.getElementById(id);
   if(inp.type==='password'){inp.type='text';btn.textContent='🙈';}
   else{inp.type='password';btn.textContent='👁';}
+}
+
+function updateLastBooking(){
+  const bar=document.getElementById('lastBookingBar');
+  if(!isFree){bar.style.display='none';return;}
+  const rows=SD[2]; // Live RPO
+  if(!rows||rows.length<2){bar.style.display='none';return;}
+  // Find header row
+  let hi=0;
+  for(let i=0;i<Math.min(4,rows.length);i++){
+    const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');
+    if(r.includes('customer')||r.includes('booking')||r.includes('branch')){hi=i;break;}
+  }
+  const headers=rows[hi].map(x=>String(x||'').trim().toLowerCase());
+  const custIdx=headers.findIndex(h=>h.includes('customer'));
+  const dateIdx=headers.findIndex(h=>h.includes('booking date')||h.includes('date'));
+  const locIdx=headers.findIndex(h=>h.includes('branch'));
+  // Get last non-empty data row
+  let lastRow=null;
+  for(let i=rows.length-1;i>hi;i--){
+    if(rows[i].some(c=>String(c||'').trim())){lastRow=rows[i];break;}
+  }
+  if(!lastRow){bar.style.display='none';return;}
+  const fmt=v=>{
+    if(!v&&v!==0)return'—';
+    // Format date if it looks like one
+    if(v instanceof Date)return v.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    const s=String(v).trim();
+    if(!s)return'—';
+    // Try parse serial date (Google Sheets number)
+    const n=Number(s);
+    if(!isNaN(n)&&n>40000&&n<60000){
+      const d=new Date(Math.round((n-25569)*86400*1000));
+      return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    }
+    return s;
+  };
+  document.getElementById('lbName').textContent=fmt(custIdx>=0?lastRow[custIdx]:null);
+  document.getElementById('lbDate').textContent=fmt(dateIdx>=0?lastRow[dateIdx]:null);
+  document.getElementById('lbLoc').textContent=fmt(locIdx>=0?lastRow[locIdx]:null);
+  bar.style.display='flex';
 }
 </script>
 </body>
