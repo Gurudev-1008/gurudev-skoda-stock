@@ -727,7 +727,7 @@ function updateLastBooking(){
     }
     return s;
   };
-  const modIdx=headers.findIndex(h=>h==='model'||h.includes('model'));
+  const modIdx=headers.findIndex(h=>h.trim()==='model');
   document.getElementById('lbMod').textContent=fmt(modIdx>=0?lastRow[modIdx]:null);
   document.getElementById('lbName').textContent=fmt(custIdx>=0?lastRow[custIdx]:null);
   document.getElementById('lbDate').textContent=fmt(dateIdx>=0?lastRow[dateIdx]:null);
