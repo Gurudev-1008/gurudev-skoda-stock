@@ -641,7 +641,7 @@ async function changePw(){
       const t=setTimeout(()=>{delete window[cb];res({success:false,error:'Timed out'});},15000);
       window[cb]=d=>{clearTimeout(t);delete window[cb];res(d);};
       const s=document.createElement('script');
-      s.src=`${UAPI}?action=updatePass&username=${encodeURIComponent(curUser.username)}&newPass=${encodeURIComponent(n)}&callback=${encodeURIComponent(cb)}`;
+      s.src=`${UAPI}?action=updatePass&sheet=Users&username=${encodeURIComponent(curUser.username)}&newPass=${encodeURIComponent(n)}&callback=${encodeURIComponent(cb)}`;
       s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();res({success:false,error:'Network error'});};
       s.onload=()=>s.remove();
       document.head.appendChild(s);
