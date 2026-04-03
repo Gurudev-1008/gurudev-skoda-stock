@@ -692,34 +692,45 @@ function togglePw(id,btn){
   else{inp.type='password';btn.textContent='👁';}
 }
 
-function updateLastBooking(){
+async function updateLastBooking(){
   const bar=document.getElementById('lastBookingBar');
   if(!isFree){bar.style.display='none';return;}
-  const rows=SD[2]; // Live RPO
-  if(!rows||rows.length<2){bar.style.display='none';return;}
-  // Find header row
-  let hi=0;
-  for(let i=0;i<Math.min(4,rows.length);i++){
-    const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');
-    if(r.includes('customer')||r.includes('booking')||r.includes('branch')){hi=i;break;}
+
+  // Use cached SD[2] or fetch fresh if empty
+  let rows=SD[2];
+  if(!rows||rows.length<2){
+    try{rows=await jFetch('Live RPO');SD[2]=rows;}catch(e){rows=[];}
   }
-  const headers=rows[hi].map(x=>String(x||'').trim().toLowerCase());
+  if(!rows||rows.length<2){console.log('LBB: Live RPO empty');bar.style.display='none';return;}
+
+  // Find header row — scan first 5 rows
+  let hi=0;
+  for(let i=0;i<Math.min(5,rows.length);i++){
+    const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');
+    if(r.includes('customer')||r.includes('booking')||r.includes('branch')||r.includes('model')){hi=i;break;}
+  }
+  const headers=rows[hi].map(x=>String(x||'').replace(/^﻿/,'').trim().toLowerCase());
+  console.log('LBB headers:',headers);
+
   const custIdx=headers.findIndex(h=>h.includes('customer'));
-  const dateIdx=headers.findIndex(h=>h.includes('booking date')||h.includes('date'));
+  const dateIdx=headers.findIndex(h=>h.includes('booking') && h.includes('date') || h==='date');
   const locIdx=headers.findIndex(h=>h.includes('branch'));
+  const modIdx=headers.findIndex(h=>h.trim()==='model');
+  console.log('LBB col indices — model:',modIdx,'customer:',custIdx,'date:',dateIdx,'branch:',locIdx);
+
   // Get last non-empty data row
   let lastRow=null;
   for(let i=rows.length-1;i>hi;i--){
     if(rows[i].some(c=>String(c||'').trim())){lastRow=rows[i];break;}
   }
-  if(!lastRow){bar.style.display='none';return;}
+  if(!lastRow){console.log('LBB: no data rows found');bar.style.display='none';return;}
+  console.log('LBB lastRow:',lastRow);
+
   const fmt=v=>{
     if(!v&&v!==0)return'—';
-    // Format date if it looks like one
     if(v instanceof Date)return v.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const s=String(v).trim();
     if(!s)return'—';
-    // Try parse serial date (Google Sheets number)
     const n=Number(s);
     if(!isNaN(n)&&n>40000&&n<60000){
       const d=new Date(Math.round((n-25569)*86400*1000));
@@ -727,7 +738,7 @@ function updateLastBooking(){
     }
     return s;
   };
-  const modIdx=headers.findIndex(h=>h.trim()==='model');
+
   document.getElementById('lbMod').textContent=fmt(modIdx>=0?lastRow[modIdx]:null);
   document.getElementById('lbName').textContent=fmt(custIdx>=0?lastRow[custIdx]:null);
   document.getElementById('lbDate').textContent=fmt(dateIdx>=0?lastRow[dateIdx]:null);
