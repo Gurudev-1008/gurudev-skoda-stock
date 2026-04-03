@@ -262,9 +262,9 @@ td.dim{color:var(--text-muted);}
       <div class="as" id="pwSection">
         <h3>Change Password</h3>
         <div class="af">
-          <div class="aff"><span class="afl">Current Password</span><input class="afi" id="cpO" type="password" placeholder="Current password"></div>
-          <div class="aff"><span class="afl">New Password</span><input class="afi" id="cpN" type="password" placeholder="New password"></div>
-          <div class="aff"><span class="afl">Confirm New</span><input class="afi" id="cpC" type="password" placeholder="Confirm new password"></div>
+          <div class="aff"><span class="afl">Current Password</span><div style="position:relative;width:100%"><input class="afi" id="cpO" type="password" placeholder="Current password" style="padding-right:36px;width:100%"><span onclick="togglePw('cpO',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-dim);font-size:16px;">👁</span></div></div>
+          <div class="aff"><span class="afl">New Password</span><div style="position:relative;width:100%"><input class="afi" id="cpN" type="password" placeholder="New password" style="padding-right:36px;width:100%"><span onclick="togglePw('cpN',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-dim);font-size:16px;">👁</span></div></div>
+          <div class="aff"><span class="afl">Confirm New</span><div style="position:relative;width:100%"><input class="afi" id="cpC" type="password" placeholder="Confirm new password" style="padding-right:36px;width:100%"><span onclick="togglePw('cpC',this)" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--text-dim);font-size:16px;">👁</span></div></div>
           <button class="abtn" onclick="changePw()">Update</button>
         </div>
         <div class="ae" id="cpE"></div>
@@ -636,7 +636,7 @@ async function changePw(){
   e.style.color='var(--text-muted)';e.textContent='Saving…';
   try{
     const cb=`__cpw_${Date.now()}`;
-    const UAPI='https://script.google.com/macros/s/AKfycbyt9R4fgCEiYQvlxNv9G8_zQKz72f_iQz318Jix2Icd2A5f9ZyAK0UlVtAtBTlwjxCOLg/exec';
+    const UAPI=API; // use same script for read & write
     const result=await new Promise((res)=>{
       const t=setTimeout(()=>{delete window[cb];res({success:false,error:'Timed out'});},15000);
       window[cb]=d=>{clearTimeout(t);delete window[cb];res(d);};
@@ -667,6 +667,12 @@ jFetch('Users').then(j=>{
 });
 
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('pgLogin').classList.contains('active'))doLogin();});
+
+function togglePw(id,btn){
+  const inp=document.getElementById(id);
+  if(inp.type==='password'){inp.type='text';btn.textContent='🙈';}
+  else{inp.type='password';btn.textContent='👁';}
+}
 </script>
 </body>
 </html>
