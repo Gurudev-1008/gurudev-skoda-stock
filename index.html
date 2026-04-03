@@ -738,6 +738,12 @@ async function updateLastBooking(){
     if(v instanceof Date)return v.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
     const s=String(v).trim();
     if(!s)return'—';
+    // ISO date string e.g. 2026-04-03T00:00:00.000Z
+    if(/^\d{4}-\d{2}-\d{2}/.test(s)){
+      const d=new Date(s);
+      if(!isNaN(d))return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+    }
+    // Google Sheets serial number
     const n=Number(s);
     if(!isNaN(n)&&n>40000&&n<60000){
       const d=new Date(Math.round((n-25569)*86400*1000));
