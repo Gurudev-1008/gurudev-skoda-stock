@@ -622,7 +622,7 @@ function renderFree(){
   document.getElementById('tB').innerHTML=rows.map((r,ri)=>{
     const cc=r.colour?`<div class="cc"><div class="cd" style="background:${hue(r.colour)}"></div>${r.colour}</div>`:'—';
     const yc=YARDS.map(yd=>`<td>${isFreeYard(r.modelCode,r.colour,r.vy,yd)?'<span class="fsy"><span class="fsd"></span>Yes</span>':'<span class="fsn"><span class="fsd"></span>No</span>'}</td>`).join('');
-    return `<tr style="animation-delay:${Math.min(ri*.012,.25)}s"><td>${r.model||'—'}</td><td>${r.variant||'—'}</td><td>${cc}</td><td class="${!r.vy?'dim':''}">${r.vy||'—'}</td>${yc}</tr>`;
+    return `<tr style="animation-delay:${Math.min(ri*.012,.25)}s"><td>${r.model||'—'}</td><td>${r.variant||'—'}</td><td>${cc}</td><td>${r.vy||CY}</td>${yc}</tr>`;
   }).join('');
 }
 
