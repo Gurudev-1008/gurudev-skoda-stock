@@ -542,10 +542,11 @@ function setupFilters(){
       // Populate Model dropdown from Status=Free rows only
       // Tab 6 (Demo): Status is fixed at column P (index 15)
       // Tab 5 (Ageing): search by header name
-      const stI=curTab===6?15:fc(h,'Status');
+      const stI=curTab===6?15:h.findIndex(x=>x.replace(/^\uFEFF/,'').trim().toLowerCase()==='status');
       const mI=fc(h,SC.model);
+      const cleanSt=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF\r\n]/g,'').trim().toLowerCase();
       const freeBody=rows.slice(hi+1).filter(r=>{
-        const sv=String(r[stI]||'').trim().toLowerCase();
+        const sv=cleanSt(r[stI]);
         return curTab===6?(sv==='free'):(stI<0||sv==='free');
       });
       const sel=document.getElementById('fMod'),cur=sel.value;
@@ -713,9 +714,11 @@ function renderAgeing(){
   ];
   const idxs=COL_DEFS.map(d=>{for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}return -1;});
   const mI=idxs[0];
-  const stI=fc(h,'Status');
+  // Exact-only match for Status column to avoid partial-match false positives
+  const stI=h.findIndex(x=>x.replace(/^\uFEFF/,'').trim().toLowerCase()==='status');
+  const cleanVal=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF\r\n]/g,'').trim().toLowerCase();
   let filtered=body.filter(r=>{
-    if(stI>=0&&String(r[stI]||'').trim().toLowerCase()!=='free')return false;
+    if(stI>=0&&cleanVal(r[stI])!=='free')return false;
     if(fM&&mI>=0&&String(r[mI]||'').trim()!==fM)return false;
     return true;
   });
@@ -761,7 +764,7 @@ function renderDemo(){
     {label:'Colour',keys:['Colour','Color']},
     {label:'VY',keys:['VY','VIN Year']},
     {label:'Warranty Validity',keys:['Warranty Validity','Warranty']},
-    {label:'VIN',keys:['VIN']},
+    {label:'VIN',keys:['Chassis No','Chassis Number','VIN','VIN No']},
     {label:'Location',keys:['Yard','Location']}
   ];
   const idxs=COL_DEFS.map(d=>{for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}return -1;});
