@@ -257,7 +257,7 @@ td.dim{color:var(--text-muted);}
     <button class="tab"    onclick="goTab(0)" id="t0">Stock</button>
     <button class="tab"    onclick="goTab(1)" id="t1">Allocation</button>
     <button class="tab"    onclick="goTab(2)" id="t2">Live RPO</button>
-    <button class="tab tf" onclick="goTab(3)" id="t3">Free Stock</button>
+    <button class="tab tf" onclick="goTab(3)" id="t3">New Car Free Stock</button>
     <button class="tab tf" onclick="goTab(5)" id="t5">Ageing Free Stock</button>
     <button class="tab tf" onclick="goTab(6)" id="t6">Demo Free Stock</button>
     <button class="tab"    onclick="goTab(4)" id="t4">⚙ Manage</button>
@@ -357,7 +357,7 @@ async function loadAll(){
   document.getElementById('tH').innerHTML='';
   document.getElementById('tB').innerHTML='<tr><td colspan="20"><div class="sb"><div class="sp"></div><strong>Loading data…</strong></div></td></tr>';
   await Promise.all(SHEETS.map(async(sh,i)=>{
-    try{const j=await jFetch(sh);SD[i]=Array.isArray(j)&&j.length>=2?j:[];}
+    try{const j=await jFetch(sh);SD[i]=Array.isArray(j)&&j.length>=1?j:[];}
     catch{SD[i]=[];}
   }));
   // Build all lookups BEFORE rendering
@@ -686,9 +686,9 @@ function renderFree(){
 /* ── Ageing Free Stock (tab 5) ── */
 function renderAgeing(){
   const rows=SD[5];
-  if(!rows||rows.length<2){
+  if(!rows||rows.length<1){
     document.getElementById('tH').innerHTML='';
-    document.getElementById('tB').innerHTML=`<tr><td colspan="6"><div class="sb"><strong>No data in "Ageing_Stock"</strong><p>Make sure the sheet tab is named exactly "Ageing_Stock".</p></div></td></tr>`;
+    document.getElementById('tB').innerHTML=`<tr><td colspan="6"><div class="sb"><strong>Sheet not found or empty</strong><p>Make sure the Google Sheet tab is named exactly <strong>Ageing_Stock</strong>.</p></div></td></tr>`;
     document.getElementById('rInfo').textContent='';
     return;
   }
@@ -720,7 +720,10 @@ function renderAgeing(){
   document.getElementById('tH').innerHTML=COL_DEFS.map((d,i)=>
     `<th onclick="doSort(${i})" class="${sCol===i?'sorted':''}">${d.label}<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span></th>`
   ).join('');
-  if(!filtered.length){document.getElementById('tB').innerHTML=`<tr><td colspan="6"><div class="sb"><strong>No matches</strong><p>Try adjusting the Model filter.</p></div></td></tr>`;return;}
+  if(!filtered.length){
+    const msg=stI>=0?'No rows with Status = "Free" found. Check your sheet data.':'No records found. Try adjusting the Model filter.';
+    document.getElementById('tB').innerHTML=`<tr><td colspan="6"><div class="sb"><strong>No data to display</strong><p>${msg}</p></div></td></tr>`;return;
+  }
   const cI=idxs[2],yI=idxs[3];
   document.getElementById('tB').innerHTML=filtered.map((r,ri)=>{
     return `<tr style="animation-delay:${Math.min(ri*.012,.25)}s">${idxs.map((ci,si)=>{
@@ -735,9 +738,9 @@ function renderAgeing(){
 /* ── Demo Free Stock (tab 6) ── */
 function renderDemo(){
   const rows=SD[6];
-  if(!rows||rows.length<2){
+  if(!rows||rows.length<1){
     document.getElementById('tH').innerHTML='';
-    document.getElementById('tB').innerHTML=`<tr><td colspan="7"><div class="sb"><strong>No data in "Demo_stock"</strong><p>Make sure the sheet tab is named exactly "Demo_stock".</p></div></td></tr>`;
+    document.getElementById('tB').innerHTML=`<tr><td colspan="7"><div class="sb"><strong>Sheet not found or empty</strong><p>Make sure the Google Sheet tab is named exactly <strong>Demo_stock</strong>.</p></div></td></tr>`;
     document.getElementById('rInfo').textContent='';
     return;
   }
@@ -770,7 +773,10 @@ function renderDemo(){
   document.getElementById('tH').innerHTML=COL_DEFS.map((d,i)=>
     `<th onclick="doSort(${i})" class="${sCol===i?'sorted':''}">${d.label}<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span></th>`
   ).join('');
-  if(!filtered.length){document.getElementById('tB').innerHTML=`<tr><td colspan="7"><div class="sb"><strong>No matches</strong><p>Try adjusting the Model filter.</p></div></td></tr>`;return;}
+  if(!filtered.length){
+    const msg=stI>=0?'No rows with Status = "Free" found. Check your sheet data.':'No records found. Try adjusting the Model filter.';
+    document.getElementById('tB').innerHTML=`<tr><td colspan="7"><div class="sb"><strong>No data to display</strong><p>${msg}</p></div></td></tr>`;return;
+  }
   document.getElementById('tB').innerHTML=filtered.map((r,ri)=>{
     return `<tr style="animation-delay:${Math.min(ri*.012,.25)}s">${idxs.map((ci,si)=>{
       const v=fmtCell(ci>=0?r[ci]:'')||'—';
