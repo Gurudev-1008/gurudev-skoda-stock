@@ -542,13 +542,11 @@ function setupFilters(){
       // Populate Model dropdown from Status=Free rows only
       // Tab 6 (Demo): Status is fixed at column P (index 15)
       // Tab 5 (Ageing): search by header name
-      const stI=curTab===6?15:h.findIndex(x=>x.replace(/^\uFEFF/,'').trim().toLowerCase()==='status');
+      // Tab 5 (Ageing): Status = column Z (index 25); Tab 6 (Demo): Status = column P (index 15)
+      const stI=curTab===6?15:25;
       const mI=fc(h,SC.model);
-      const cleanSt=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF\r\n]/g,'').trim().toLowerCase();
-      const freeBody=rows.slice(hi+1).filter(r=>{
-        const sv=cleanSt(r[stI]);
-        return curTab===6?(sv==='free'):(stI<0||sv==='free');
-      });
+      const cleanSt=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF\u00A0\r\n]/g,'').trim().toLowerCase();
+      const freeBody=rows.slice(hi+1).filter(r=>cleanSt(r[stI])==='free');
       const sel=document.getElementById('fMod'),cur=sel.value;
       sel.innerHTML='<option value="">All Models</option>';
       if(mI>=0){const v=[...new Set(freeBody.map(r=>String(r[mI]||'').trim()).filter(Boolean))].sort();v.forEach(x=>sel.add(new Option(x,x)));if(v.includes(cur))sel.value=cur;}
@@ -714,11 +712,11 @@ function renderAgeing(){
   ];
   const idxs=COL_DEFS.map(d=>{for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}return -1;});
   const mI=idxs[0];
-  // Exact-only match for Status column to avoid partial-match false positives
-  const stI=h.findIndex(x=>x.replace(/^\uFEFF/,'').trim().toLowerCase()==='status');
-  const cleanVal=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF\r\n]/g,'').trim().toLowerCase();
+  // Status is in column Z (index 25) of Agein_Stock
+  const stI=25;
+  const cleanVal=v=>String(v||'').replace(/[\u200B-\u200D\uFEFF\u00A0\r\n]/g,'').trim().toLowerCase();
   let filtered=body.filter(r=>{
-    if(stI>=0&&cleanVal(r[stI])!=='free')return false;
+    if(cleanVal(r[stI])!=='free')return false;
     if(fM&&mI>=0&&String(r[mI]||'').trim()!==fM)return false;
     return true;
   });
@@ -764,12 +762,16 @@ function renderDemo(){
     {label:'Colour',keys:['Colour','Color']},
     {label:'VY',keys:['VY','VIN Year']},
     {label:'Warranty Validity',keys:['Warranty Validity','Warranty']},
-    {label:'VIN',keys:['Chassis No','Chassis Number','VIN','VIN No']},
+    {label:'VIN',keys:['Chassis #','Chassis#','Chassis No','Chassis Number','VIN No','VIN']},
     {label:'Location',keys:['Yard','Location']}
   ];
-  const idxs=COL_DEFS.map(d=>{for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}return -1;});
+  const idxs=COL_DEFS.map((d,di)=>{
+    for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}
+    if(di===5)return 9; // VIN (Chassis #) is always column J (index 9) as fallback
+    return -1;
+  });
   const mI=idxs[0];
-  // Status is in column P (index 15); fall back to header search if needed
+  // Status is in column P (index 15)
   const stI=15;
   let filtered=body.filter(r=>{
     if(String(r[stI]||'').trim().toLowerCase()!=='free')return false;
