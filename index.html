@@ -258,6 +258,8 @@ td.dim{color:var(--text-muted);}
     <button class="tab"    onclick="goTab(1)" id="t1">Allocation</button>
     <button class="tab"    onclick="goTab(2)" id="t2">Live RPO</button>
     <button class="tab tf" onclick="goTab(3)" id="t3">Free Stock</button>
+    <button class="tab tf" onclick="goTab(5)" id="t5">Ageing Free Stock</button>
+    <button class="tab tf" onclick="goTab(6)" id="t6">Demo Free Stock</button>
     <button class="tab"    onclick="goTab(4)" id="t4">⚙ Manage</button>
   </div>
       <div class="fsbs">Select a model to view availability</div>
@@ -316,7 +318,7 @@ td.dim{color:var(--text-muted);}
 <script>
 /* ═══ CONFIG ═══ */
 const API   = 'https://script.google.com/macros/s/AKfycbyOD9UX2Ztba-JriJzk3dylhLm03WLPFk2c5LLEQ8Z8O1_CipAxO6mWe71WkuW5Wv2m/exec';
-const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users'];
+const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users','Ageing_Stock','Demo_stock'];
 const ADMIN_USER='admin', ADMIN_PASS='gurudev1008';
 const SC={model:'Model',modelCode:'Model Code',colour:'Color',year:'VY',status:'STATUS'};
 const PC={model:'Model',variant:'Variant',modelCode:'Model code'};
@@ -324,7 +326,7 @@ const YARDS=['chennai','trichy','vellore'];
 const CY=String(new Date().getFullYear());
 
 /* ═══ STATE ═══ */
-let SD=[[],[],[],[],[]]; // sheetData
+let SD=[[],[],[],[],[],[],[]]; // sheetData
 let specRows=[],vyMap={},freeMap={},staffList=[];
 let curTab=0,isFree=false,sCol=-1,sAsc=true;
 let curUser=null,lClicks=0,lTimer=null,arTimer=null;
@@ -487,19 +489,25 @@ function logoClick(){
 
 /* ═══ TABS ═══ */
 function goTab(i){
-  if(!curUser.isAdmin&&i!==3&&i!==4)return;
+  if(!curUser.isAdmin&&i!==3&&i!==4&&i!==5&&i!==6)return;
   curTab=i;isFree=(i===3);sCol=-1;sAsc=true;
-  [0,1,2,3,4].forEach(j=>document.getElementById('t'+j).classList.toggle('active',j===i));
+  [0,1,2,3,4,5,6].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===i);});
   clearF(false);setupTab();
 }
 
 function setupTab(){
   const isM=(curTab===4);
-  
+  const isCustom=(curTab===5||curTab===6);
+
   document.getElementById('toolBar').style.display=isM?'none':'flex';
   document.getElementById('tblArea').style.display=isM?'none':'block';
   document.getElementById('manArea').style.display=isM?'block':'none';
-  document.getElementById('searchWrap').style.display=isFree?'none':'';
+  document.getElementById('searchWrap').style.display=(isFree||isCustom)?'none':'';
+  // For custom tabs show only Model filter; hide Variant, Colour, VIN Year
+  ['fVar','fCol','fYr'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el&&el.parentElement)el.parentElement.style.display=isCustom?'none':'';
+  });
   if(isM){setupManage();return;}
   setupFilters();
   updateLastBooking().catch(e=>console.error('LBB error:',e));
@@ -530,6 +538,15 @@ function setupFilters(){
     if(!rows||rows.length<2){clearAllF();return;}
     let hi=0;for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')||r.includes('vin')||r.includes('#')){hi=i;break;}}
     const h=rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+    if(curTab===5||curTab===6){
+      // Populate Model dropdown from Status=Free rows only
+      const stI=fc(h,'Status'),mI=fc(h,SC.model);
+      const freeBody=rows.slice(hi+1).filter(r=>stI<0||String(r[stI]||'').trim().toLowerCase()==='free');
+      const sel=document.getElementById('fMod'),cur=sel.value;
+      sel.innerHTML='<option value="">All Models</option>';
+      if(mI>=0){const v=[...new Set(freeBody.map(r=>String(r[mI]||'').trim()).filter(Boolean))].sort();v.forEach(x=>sel.add(new Option(x,x)));if(v.includes(cur))sel.value=cur;}
+      return;
+    }
     fillDrop('fMod',rows,hi,h,SC.model,'All Models');
     ['fVar','fCol','fYr'].forEach(id=>document.getElementById(id).disabled=false);
     cascadeStd(rows,hi,h);
@@ -578,7 +595,7 @@ function cascadeStd(rows,hi,h){
   if(yI>=0){const v=[...new Set(byC.map(r=>String(r[yI]||'').trim()).filter(Boolean))].sort();refill('fYr',v,'All Years',document.getElementById('fYr').value);}
 }
 
-function onMod(){sCol=-1;sAsc=true;['fVar','fCol','fYr'].forEach(id=>document.getElementById(id).value='');if(isFree)cascade();else{const rows=SD[curTab];if(rows&&rows.length>=2){let hi=0;for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')||r.includes('#')){hi=i;break;}}cascadeStd(rows,hi,rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim()));}}renderTable();}
+function onMod(){sCol=-1;sAsc=true;['fVar','fCol','fYr'].forEach(id=>document.getElementById(id).value='');if(isFree)cascade();else if(curTab===5||curTab===6){renderTable();}else{const rows=SD[curTab];if(rows&&rows.length>=2){let hi=0;for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')||r.includes('#')){hi=i;break;}}cascadeStd(rows,hi,rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim()));}}renderTable();}
 function onVar(){['fCol','fYr'].forEach(id=>document.getElementById(id).value='');if(isFree)cascade();else{const rows=SD[curTab];if(rows&&rows.length>=2){let hi=0;for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')||r.includes('#')){hi=i;break;}}cascadeStd(rows,hi,rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim()));}}renderTable();}
 function onCol(){document.getElementById('fYr').value='';if(isFree)cascade();else{const rows=SD[curTab];if(rows&&rows.length>=2){let hi=0;for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')||r.includes('#')){hi=i;break;}}cascadeStd(rows,hi,rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim()));}}renderTable();}
 function clearF(r=true){['fSrch','fMod','fVar','fCol','fYr'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});if(r){setupFilters();renderTable();}}
@@ -618,7 +635,10 @@ function fmtCell(v){
 }
 
 function renderTable(){
-  if(isFree)renderFree();else renderStd();
+  if(isFree)renderFree();
+  else if(curTab===5)renderAgeing();
+  else if(curTab===6)renderDemo();
+  else renderStd();
 }
 
 function getFreeRows(){
@@ -660,6 +680,104 @@ function renderFree(){
     const cc=r.colour?`<div class="cc"><div class="cd" style="background:${hue(r.colour)}"></div>${r.colour}</div>`:'—';
     const yc=YARDS.map(yd=>`<td>${isFreeYard(r.modelCode,r.colour,r.vy,yd)?'<span class="fsy"><span class="fsd"></span>Yes</span>':'<span class="fsn"><span class="fsd"></span>No</span>'}</td>`).join('');
     return `<tr style="animation-delay:${Math.min(ri*.012,.25)}s"><td>${r.model||'—'}</td><td>${r.variant||'—'}</td><td>${cc}</td><td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${vyColor(r.vy||CY)}22;color:${vyColor(r.vy||CY)};border:1px solid ${vyColor(r.vy||CY)}55;">${r.vy||CY}</span></td>${yc}</tr>`;
+  }).join('');
+}
+
+/* ── Ageing Free Stock (tab 5) ── */
+function renderAgeing(){
+  const rows=SD[5];
+  if(!rows||rows.length<2){
+    document.getElementById('tH').innerHTML='';
+    document.getElementById('tB').innerHTML=`<tr><td colspan="6"><div class="sb"><strong>No data in "Ageing_Stock"</strong><p>Make sure the sheet tab is named exactly "Ageing_Stock".</p></div></td></tr>`;
+    document.getElementById('rInfo').textContent='';
+    return;
+  }
+  let hi=0;
+  for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')||r.includes('vin')||r.includes('#')){hi=i;break;}}
+  const h=rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+  const body=rows.slice(hi+1);
+  const fM=document.getElementById('fMod').value;
+  const COL_DEFS=[
+    {label:'Model',keys:['Model']},
+    {label:'Variant',keys:['Variant']},
+    {label:'Colour',keys:['Colour','Color']},
+    {label:'VY',keys:['VY','VIN Year']},
+    {label:'Yard',keys:['Yard','Location']},
+    {label:'Warranty Start Date',keys:['Warranty Start Date']}
+  ];
+  const idxs=COL_DEFS.map(d=>{for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}return -1;});
+  const mI=idxs[0];
+  const stI=fc(h,'Status');
+  let filtered=body.filter(r=>{
+    if(stI>=0&&String(r[stI]||'').trim().toLowerCase()!=='free')return false;
+    if(fM&&mI>=0&&String(r[mI]||'').trim()!==fM)return false;
+    return true;
+  });
+  if(sCol>=0&&sCol<idxs.length){
+    filtered.sort((a,b)=>{const ci=idxs[sCol],av=String(ci>=0?a[ci]||'':'').toLowerCase(),bv=String(ci>=0?b[ci]||'':'').toLowerCase();return sAsc?av.localeCompare(bv):bv.localeCompare(av);});
+  }
+  document.getElementById('rInfo').textContent=`${filtered.length} record${filtered.length!==1?'s':''}`;
+  document.getElementById('tH').innerHTML=COL_DEFS.map((d,i)=>
+    `<th onclick="doSort(${i})" class="${sCol===i?'sorted':''}">${d.label}<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span></th>`
+  ).join('');
+  if(!filtered.length){document.getElementById('tB').innerHTML=`<tr><td colspan="6"><div class="sb"><strong>No matches</strong><p>Try adjusting the Model filter.</p></div></td></tr>`;return;}
+  const cI=idxs[2],yI=idxs[3];
+  document.getElementById('tB').innerHTML=filtered.map((r,ri)=>{
+    return `<tr style="animation-delay:${Math.min(ri*.012,.25)}s">${idxs.map((ci,si)=>{
+      const v=fmtCell(ci>=0?r[ci]:'')||'—';
+      if(si===2&&ci>=0){return`<td><div class="cc"><div class="cd" style="background:${hue(v)}"></div>${v}</div></td>`;}
+      if(si===3&&v!=='—'){return`<td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${vyColor(v)}22;color:${vyColor(v)};border:1px solid ${vyColor(v)}55;">${v}</span></td>`;}
+      return`<td class="${v==='—'?'dim':''}">${v}</td>`;
+    }).join('')}</tr>`;
+  }).join('');
+}
+
+/* ── Demo Free Stock (tab 6) ── */
+function renderDemo(){
+  const rows=SD[6];
+  if(!rows||rows.length<2){
+    document.getElementById('tH').innerHTML='';
+    document.getElementById('tB').innerHTML=`<tr><td colspan="7"><div class="sb"><strong>No data in "Demo_stock"</strong><p>Make sure the sheet tab is named exactly "Demo_stock".</p></div></td></tr>`;
+    document.getElementById('rInfo').textContent='';
+    return;
+  }
+  let hi=0;
+  for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')||r.includes('vin')||r.includes('#')){hi=i;break;}}
+  const h=rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+  const body=rows.slice(hi+1);
+  const fM=document.getElementById('fMod').value;
+  const COL_DEFS=[
+    {label:'Model',keys:['Model']},
+    {label:'Model & Variant',keys:['Model & Variant','Model and Variant','Model Variant']},
+    {label:'Colour',keys:['Colour','Color']},
+    {label:'VY',keys:['VY','VIN Year']},
+    {label:'Warranty Validity',keys:['Warranty Validity','Warranty']},
+    {label:'VIN',keys:['VIN']},
+    {label:'Location',keys:['Yard','Location']}
+  ];
+  const idxs=COL_DEFS.map(d=>{for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}return -1;});
+  const mI=idxs[0];
+  const stI=fc(h,'Status');
+  let filtered=body.filter(r=>{
+    if(stI>=0&&String(r[stI]||'').trim().toLowerCase()!=='free')return false;
+    if(fM&&mI>=0&&String(r[mI]||'').trim()!==fM)return false;
+    return true;
+  });
+  if(sCol>=0&&sCol<idxs.length){
+    filtered.sort((a,b)=>{const ci=idxs[sCol],av=String(ci>=0?a[ci]||'':'').toLowerCase(),bv=String(ci>=0?b[ci]||'':'').toLowerCase();return sAsc?av.localeCompare(bv):bv.localeCompare(av);});
+  }
+  document.getElementById('rInfo').textContent=`${filtered.length} record${filtered.length!==1?'s':''}`;
+  document.getElementById('tH').innerHTML=COL_DEFS.map((d,i)=>
+    `<th onclick="doSort(${i})" class="${sCol===i?'sorted':''}">${d.label}<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span></th>`
+  ).join('');
+  if(!filtered.length){document.getElementById('tB').innerHTML=`<tr><td colspan="7"><div class="sb"><strong>No matches</strong><p>Try adjusting the Model filter.</p></div></td></tr>`;return;}
+  document.getElementById('tB').innerHTML=filtered.map((r,ri)=>{
+    return `<tr style="animation-delay:${Math.min(ri*.012,.25)}s">${idxs.map((ci,si)=>{
+      const v=fmtCell(ci>=0?r[ci]:'')||'—';
+      if(si===2&&ci>=0){return`<td><div class="cc"><div class="cd" style="background:${hue(v)}"></div>${v}</div></td>`;}
+      if(si===3&&v!=='—'){return`<td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${vyColor(v)}22;color:${vyColor(v)};border:1px solid ${vyColor(v)}55;">${v}</span></td>`;}
+      return`<td class="${v==='—'?'dim':''}">${v}</td>`;
+    }).join('')}</tr>`;
   }).join('');
 }
 
