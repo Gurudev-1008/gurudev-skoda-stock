@@ -318,7 +318,7 @@ td.dim{color:var(--text-muted);}
 <script>
 /* ═══ CONFIG ═══ */
 const API   = 'https://script.google.com/macros/s/AKfycbyOD9UX2Ztba-JriJzk3dylhLm03WLPFk2c5LLEQ8Z8O1_CipAxO6mWe71WkuW5Wv2m/exec';
-const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users','Ageing_Stock','Demo_stock'];
+const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users','Agein_Stock','Demo_stock'];
 const ADMIN_USER='admin', ADMIN_PASS='gurudev1008';
 const SC={model:'Model',modelCode:'Model Code',colour:'Color',year:'VY',status:'STATUS'};
 const PC={model:'Model',variant:'Variant',modelCode:'Model code'};
@@ -540,8 +540,14 @@ function setupFilters(){
     const h=rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim());
     if(curTab===5||curTab===6){
       // Populate Model dropdown from Status=Free rows only
-      const stI=fc(h,'Status'),mI=fc(h,SC.model);
-      const freeBody=rows.slice(hi+1).filter(r=>stI<0||String(r[stI]||'').trim().toLowerCase()==='free');
+      // Tab 6 (Demo): Status is fixed at column P (index 15)
+      // Tab 5 (Ageing): search by header name
+      const stI=curTab===6?15:fc(h,'Status');
+      const mI=fc(h,SC.model);
+      const freeBody=rows.slice(hi+1).filter(r=>{
+        const sv=String(r[stI]||'').trim().toLowerCase();
+        return curTab===6?(sv==='free'):(stI<0||sv==='free');
+      });
       const sel=document.getElementById('fMod'),cur=sel.value;
       sel.innerHTML='<option value="">All Models</option>';
       if(mI>=0){const v=[...new Set(freeBody.map(r=>String(r[mI]||'').trim()).filter(Boolean))].sort();v.forEach(x=>sel.add(new Option(x,x)));if(v.includes(cur))sel.value=cur;}
@@ -688,7 +694,7 @@ function renderAgeing(){
   const rows=SD[5];
   if(!rows||rows.length<1){
     document.getElementById('tH').innerHTML='';
-    document.getElementById('tB').innerHTML=`<tr><td colspan="6"><div class="sb"><strong>Sheet not found or empty</strong><p>Make sure the Google Sheet tab is named exactly <strong>Ageing_Stock</strong>.</p></div></td></tr>`;
+    document.getElementById('tB').innerHTML=`<tr><td colspan="6"><div class="sb"><strong>Sheet not found or empty</strong><p>Make sure the Google Sheet tab is named exactly <strong>Agein_Stock</strong>.</p></div></td></tr>`;
     document.getElementById('rInfo').textContent='';
     return;
   }
@@ -760,9 +766,10 @@ function renderDemo(){
   ];
   const idxs=COL_DEFS.map(d=>{for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}return -1;});
   const mI=idxs[0];
-  const stI=fc(h,'Status');
+  // Status is in column P (index 15); fall back to header search if needed
+  const stI=15;
   let filtered=body.filter(r=>{
-    if(stI>=0&&String(r[stI]||'').trim().toLowerCase()!=='free')return false;
+    if(String(r[stI]||'').trim().toLowerCase()!=='free')return false;
     if(fM&&mI>=0&&String(r[mI]||'').trim()!==fM)return false;
     return true;
   });
@@ -774,8 +781,7 @@ function renderDemo(){
     `<th onclick="doSort(${i})" class="${sCol===i?'sorted':''}">${d.label}<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span></th>`
   ).join('');
   if(!filtered.length){
-    const msg=stI>=0?'No rows with Status = "Free" found. Check your sheet data.':'No records found. Try adjusting the Model filter.';
-    document.getElementById('tB').innerHTML=`<tr><td colspan="7"><div class="sb"><strong>No data to display</strong><p>${msg}</p></div></td></tr>`;return;
+    document.getElementById('tB').innerHTML=`<tr><td colspan="7"><div class="sb"><strong>No data to display</strong><p>No rows with Status = "Free" in column P. Check your Demo_stock sheet data.</p></div></td></tr>`;return;
   }
   document.getElementById('tB').innerHTML=filtered.map((r,ri)=>{
     return `<tr style="animation-delay:${Math.min(ri*.012,.25)}s">${idxs.map((ci,si)=>{
