@@ -708,7 +708,7 @@ function renderAgeing(){
     {label:'Colour',keys:['Colour','Color']},
     {label:'VY',keys:['VY','VIN Year']},
     {label:'Yard',keys:['Yard','Location']},
-    {label:'Warranty Start Date',keys:['Warranty Start Date']}
+    {label:'Warranty Start Date',keys:['DAN date','DAN Date','Warranty Start Date','Warranty Date']}
   ];
   const idxs=COL_DEFS.map(d=>{for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}return -1;});
   const mI=idxs[0];
@@ -838,7 +838,7 @@ async function changePw(){
   const e=document.getElementById('cpE');e.style.color='#f87171';e.textContent='';
   if(!o||!n||!c){e.textContent='Please fill in all fields.';return;}
   if(n!==c){e.textContent='New passwords do not match.';return;}
-  if(n.length<4){e.textContent='Password too short (min 4 chars).';return;}
+  if(n.length<6){e.textContent='Password too short (minimum 6 characters required).';return;}
   const norm=s=>String(s||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
   if(norm(curUser.password)!==norm(o)){e.textContent='Current password is incorrect.';return;}
   e.style.color='var(--text-muted)';e.textContent='Saving…';
