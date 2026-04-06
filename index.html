@@ -31,6 +31,8 @@ body{background:var(--bg-deep);color:var(--text-primary);font-family:var(--font-
 .li::placeholder{color:#99bfa8;}
 .lbtn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:var(--radius);padding:14px;font-family:var(--font-d);font-size:18px;font-weight:700;cursor:pointer;margin-top:10px;letter-spacing:.06em;box-shadow:0 3px 12px rgba(76,175,110,0.3);}
 .lbtn:active{opacity:.85;}
+.lrem{display:flex;align-items:center;gap:8px;margin:8px 0 4px;cursor:pointer;font-size:13px;color:#4a7a57;font-weight:500;user-select:none;}
+.lrem input[type=checkbox]{width:16px;height:16px;accent-color:#2e7d4f;cursor:pointer;flex-shrink:0;}
 .le{color:#dc2626;font-size:13px;margin-top:12px;min-height:20px;font-weight:500;}
 
 /* HEADER */
@@ -228,6 +230,7 @@ td.dim{color:var(--text-muted);}
       <div class="ls">Stock Viewer — Login</div>
       <div class="lf"><label class="ll">Username</label><input class="li" id="liU" type="text" placeholder="Enter username" autocomplete="username"></div>
       <div class="lf"><label class="ll">Password</label><div style="position:relative;"><input class="li" id="liP" type="password" placeholder="Enter password" autocomplete="current-password" style="padding-right:42px;width:100%;"><span onclick="togglePw('liP',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:18px;color:#4a7a57;user-select:none;">👁</span></div></div>
+      <label class="lrem"><input type="checkbox" id="liRem">Remember me on this device</label>
       <button class="lbtn" onclick="doLogin()">Sign In</button>
       <div class="le" id="liE"></div>
     </div>
@@ -300,6 +303,12 @@ td.dim{color:var(--text-muted);}
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.7;">Manage staff in your <strong>Users</strong> tab in the Stock Google Sheet.</p>
         <button class="abtn" onclick="loadAll()">↻ Refresh</button>
         <div id="staffWrap" style="margin-top:14px;"><div class="nu">Loading…</div></div>
+      </div>
+      <div class="as" id="loginLogSection" style="display:none">
+        <h3>Login Activity</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.7;">All staff login events are recorded here in real time.</p>
+        <button class="abtn" onclick="loadLoginLog()">↻ Refresh</button>
+        <div id="loginLogWrap" style="margin-top:14px;overflow-x:auto;"><div class="nu">Loading…</div></div>
       </div>
       <div class="as" id="pwSection">
         <h3>Change Password</h3>
@@ -423,6 +432,11 @@ function isFreeYard(mc,col,vy,yard){
 }
 
 /* ═══ LOGIN ═══ */
+function _saveRem(u,p){
+  const rem=document.getElementById('liRem');
+  if(rem&&rem.checked){localStorage.setItem('grd_rem','1');localStorage.setItem('grd_u',u);localStorage.setItem('grd_p',p);}
+  else{localStorage.removeItem('grd_rem');localStorage.removeItem('grd_u');localStorage.removeItem('grd_p');}
+}
 function doLogin(){
   const u=document.getElementById('liU').value.trim();
   const p=document.getElementById('liP').value.trim();
@@ -430,7 +444,7 @@ function doLogin(){
   e.textContent='';
   if(!u||!p){e.textContent='Please enter username and password.';return;}
   // Admin — instant, no network needed
-  if(u===ADMIN_USER&&p===ADMIN_PASS){loginOK({username:ADMIN_USER,name:'Admin',isAdmin:true});return;}
+  if(u===ADMIN_USER&&p===ADMIN_PASS){_saveRem(u,p);loginOK({username:ADMIN_USER,name:'Admin',isAdmin:true});return;}
   // Staff — check if list is ready
   if(!staffReady){
     e.textContent='Connecting… please wait and try again.';
@@ -452,12 +466,45 @@ function doLogin(){
 function _doStaffLogin(u,p,e){
   const norm=s=>String(s||'').replace(/[\u200B-\u200D\uFEFF]/g,'').trim();
   const found=staffList.find(s=>norm(s.username)===norm(u)&&norm(s.password)===norm(p));
-  if(found){loginOK({...found,isAdmin:false});return;}
+  if(found){_saveRem(u,p);loginOK({...found,isAdmin:false});return;}
   e.textContent='Incorrect username or password.';
+}
+
+function logLogin(user){
+  try{
+    const now=new Date();
+    const dt=now.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})+' '+now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const ua=navigator.userAgent;
+    const dev=ua.includes('Mobile')?'Mobile':ua.includes('Tablet')?'Tablet':'Desktop';
+    const browser=ua.includes('Edg')?'Edge':ua.includes('Chrome')&&!ua.includes('Edg')?'Chrome':ua.includes('Firefox')?'Firefox':ua.includes('Safari')&&!ua.includes('Chrome')?'Safari':'Browser';
+    const cb=`__ll_${Date.now()}`;
+    const s=document.createElement('script');
+    window[cb]=()=>{delete window[cb];};
+    s.onerror=()=>{delete window[cb];s.remove();};
+    s.onload=()=>s.remove();
+    s.src=`${API}?action=logLogin&sheet=Login_Log&username=${encodeURIComponent(user.username)}&name=${encodeURIComponent(user.name||user.username)}&loginTime=${encodeURIComponent(dt)}&device=${encodeURIComponent(dev+' / '+browser)}&callback=${encodeURIComponent(cb)}`;
+    document.head.appendChild(s);
+  }catch(ex){console.warn('logLogin error:',ex);}
+}
+
+async function loadLoginLog(){
+  const wrap=document.getElementById('loginLogWrap');
+  if(!wrap)return;
+  wrap.innerHTML='<div class="nu">Loading…</div>';
+  try{
+    const rows=await jFetch('Login_Log');
+    if(!rows||rows.length<2){wrap.innerHTML='<div class="nu">No login activity recorded yet.</div>';return;}
+    const h=rows[0].map(x=>String(x||'').trim());
+    const body=[...rows.slice(1)].reverse(); // newest first
+    wrap.innerHTML=`<table class="st"><thead><tr>${h.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${
+      body.map(r=>`<tr>${h.map((_,i)=>`<td>${fmtCell(r[i])||'—'}</td>`).join('')}</tr>`).join('')
+    }</tbody></table>`;
+  }catch(ex){wrap.innerHTML='<div class="nu">Failed to load login activity.</div>';}
 }
 
 function loginOK(user){
   curUser=user;
+  logLogin(user);
   document.getElementById('appU').textContent=user.name||user.username;
   document.getElementById('appSub').textContent=user.isAdmin?'Admin Panel':'Stock Viewer';
   document.getElementById('pwBtn').style.display=user.isAdmin?'none':'';
@@ -476,7 +523,9 @@ function loginOK(user){
 function doLogout(){
   curUser=null;lClicks=0;
   if(arTimer){clearInterval(arTimer);arTimer=null;}
-  ['liU','liP'].forEach(id=>document.getElementById(id).value='');
+  if(localStorage.getItem('grd_rem')!=='1'){
+    ['liU','liP'].forEach(id=>document.getElementById(id).value='');
+  }
   document.getElementById('liE').textContent='';
   document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
   document.getElementById('pgLogin').classList.add('active');
@@ -517,9 +566,11 @@ function setupTab(){
 function setupManage(){
   const isAdmin=curUser&&curUser.isAdmin;
   document.getElementById('staffSection').style.display=isAdmin?'block':'none';
+  document.getElementById('loginLogSection').style.display=isAdmin?'block':'none';
   document.getElementById('pwSection').style.display='block';
   document.getElementById('manTitle').textContent=isAdmin?'Manage Staff':'Change Password';
   renderStaffList();
+  if(isAdmin)loadLoginLog();
 }
 
 function showPwChange(){goTab(4);}
@@ -864,6 +915,16 @@ async function changePw(){
 }
 
 /* ═══ INIT ═══ */
+// Pre-fill login form if Remember Me was previously saved
+(function(){
+  if(localStorage.getItem('grd_rem')==='1'){
+    const u=localStorage.getItem('grd_u')||'',p=localStorage.getItem('grd_p')||'';
+    const uEl=document.getElementById('liU'),pEl=document.getElementById('liP'),rEl=document.getElementById('liRem');
+    if(uEl&&u)uEl.value=u;
+    if(pEl&&p)pEl.value=p;
+    if(rEl)rEl.checked=true;
+  }
+})();
 // Preload staff list immediately when page opens
 let staffReady=false;
 jFetch('Users').then(j=>{
