@@ -1765,7 +1765,7 @@ function setupFilters(){
       const scBody7=fBr7&&brI7>=0?body7.filter(r=>String(r[brI7]||'').trim().toUpperCase()===fBr7):body7;
       if(scI>=0){const v=[...new Set(scBody7.map(r=>String(r[scI]||'').trim()).filter(x=>x&&!x.startsWith('#')))].sort();v.forEach(x=>scSel.add(new Option(x,x)));if(v.includes(curSC))scSel.value=curSC;}
       // Allotment Status — dynamic lookup from header, fallback index 24
-      const asI=(()=>{for(const k of['Allotment Status','ALLOTMENT STATUS','Allot Status','AllotmentStatus']){const i=fce(h,k)>=0?fce(h,k):fc(h,k);if(i>=0)return i;}return 24;})();
+      const asI=(()=>{for(const k of['Allotment Status','ALLOTMENT STATUS','Allot Status','AllotmentStatus']){const i=fc(h,k);if(i>=0)return i;}return 24;})();
       const asSel=document.getElementById('fAllotStat'),curAS=asSel.value;
       asSel.innerHTML='<option value="">All Status</option>';
       {const v=[...new Set(body7.map(r=>String(r[asI]||'').trim()).filter(x=>x&&!x.startsWith('#')))].sort();v.forEach(x=>asSel.add(new Option(x,x)));if(v.includes(curAS))asSel.value=curAS;}
@@ -2851,7 +2851,7 @@ function renderAllotment(){
   const adI =fc(h,'Allotment Date');
   // No of Days — try multiple possible header names
   const agI =(()=>{for(const k of ['No of Days','No Of Days','NO OF DAYS','Ageing','AGEING','Days','AGE']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
-  const asI =(()=>{for(const k of['Allotment Status','ALLOTMENT STATUS','Allot Status','AllotmentStatus']){const i=fce(h,k)>=0?fce(h,k):fc(h,k);if(i>=0)return i;}return 24;})(); // Allotment Status (dynamic, fallback index 24)
+  const asI =(()=>{for(const k of['Allotment Status','ALLOTMENT STATUS','Allot Status','AllotmentStatus']){const i=fc(h,k);if(i>=0)return i;}return 24;})(); // Allotment Status (dynamic, fallback index 24)
   const syI =fc(h,'Stock yard')<0?fc(h,'Stock Yard'):fc(h,'Stock yard');
   const vaI =fc(h,'MODEL & VARIANT')<0?fc(h,'Model & Variant'):fc(h,'MODEL & VARIANT');
   const myI =fc(h,'MY');
@@ -4832,7 +4832,7 @@ function checkLevel3Warning(){
   const scI =(()=>{for(const k of ['SC Name','SC NAME','SC']){const v=fc(h,k);if(v>=0)return v;}return -1;})();
   const agI =(()=>{for(const k of ['No of Days','No Of Days','NO OF DAYS','Ageing','AGEING','Days','AGE']){const v=fc(h,k);if(v>=0)return v;}return -1;})();
   const brI =(()=>{const v=fc(h,'Branch Name');return v>=0?v:fc(h,'Branch');})();
-  const asI =(()=>{for(const k of['Allotment Status','ALLOTMENT STATUS','Allot Status','AllotmentStatus']){const i=fce(h,k)>=0?fce(h,k):fc(h,k);if(i>=0)return i;}return 24;})(); // Allotment Status (dynamic, fallback index 24)
+  const asI =(()=>{for(const k of['Allotment Status','ALLOTMENT STATUS','Allot Status','AllotmentStatus']){const i=fc(h,k);if(i>=0)return i;}return 24;})(); // Allotment Status (dynamic, fallback index 24)
   const vinMap=buildVinModelMap();
   const userBranch=(curUser.branch||'').trim().toUpperCase();
   const alerts=rows.slice(hi+1).map(r=>{
