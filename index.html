@@ -457,7 +457,7 @@ tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
       <button id="rfBtnRetail" onclick="onRFViewChange('retail')"
         style="padding:5px 18px;font-size:11px;font-weight:700;font-family:var(--font-d);letter-spacing:.05em;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;">RETAIL</button>
       <button id="rfBtnRoi" onclick="onRFViewChange('roi')"
-        style="padding:5px 18px;font-size:11px;font-weight:700;font-family:var(--font-d);letter-spacing:.05em;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;">ROI MASTER</button>
+        style="padding:5px 18px;font-size:11px;font-weight:700;font-family:var(--font-d);letter-spacing:.05em;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;">PAYOUT MASTER</button>
     </div>
     <div id="rfDateRange" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.35);border-radius:10px;padding:6px 14px;">
       <span style="font-size:10px;color:#4ade80;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">📅 From</span>
@@ -781,9 +781,10 @@ const CY=String(new Date().getFullYear());
 const LEVEL_TABS={
   1:  [0,1,2,3,4,5,6,7,8,9,10,11,12,13], // All tabs including Manage (tab 4)
   '1A':[0,1,2,3,5,6,7,8,9,10,11,12,13],  // Stock + Allocation + all except Manage
-  2:  [2,3,5,6,7,8,9,10,11,12],          // No Stock/Allocation/Manage + Retail Finance
+  2:  [2,3,5,6,7,8,9,10,11],             // No Stock/Allocation/Manage — no Retail Finance
+  '2F':[2,3,5,6,7,8,9,10,11,12],         // Same as L2 + Retail Finance (Retail + ROI sub-tabs only, no Allotment)
   3:  [2,3,5,6,7,8,9,10,11],             // Same as L2 — branch pre-filled, no Retail Finance
-  '3F':[2,3,5,6,7,8,9,10,11,12],         // Same as L3 + Retail Finance (Retail sub-tab only), branch pre-filled
+  '3F':[2,3,5,6,7,8,9,10,11,12],         // Same as L3 + Retail Finance (Retail + ROI sub-tabs only), branch pre-filled
   4:  [2,3,5,6,11]                        // Live RPO + Free Stock + VNA (SC-filtered)
 };
 
@@ -885,6 +886,7 @@ function setRInfo(filtered,total){
 const CM={white:'#f5f5f5',black:'#222',silver:'#b8b8b8',grey:'#888',gray:'#888',red:'#e53935',blue:'#1e88e5',navy:'#0d2b6e',green:'#43a047',brown:'#795548',beige:'#d4b896',gold:'#c9a227',yellow:'#fdd835',orange:'#fb8c00',pearl:'#ede8e0',maroon:'#880e4f',cyan:'#00bcd4',magnetic:'#4a5568',carbon:'#2d3748',steel:'#6b7f90',moon:'#d1ccc0',brilliant:'#c8d0d8',crystal:'#5b9bd5',lava:'#2c4f8c',ember:'#c0392b',graphite:'#4b5563',coral:'#ff6b6b'};
 function hue(n){if(!n)return'#556';const l=n.toLowerCase();for(const[k,v]of Object.entries(CM))if(l.includes(k))return v;let h=0;for(let i=0;i<l.length;i++)h=l.charCodeAt(i)+((h<<5)-h);return`hsl(${Math.abs(h)%360},38%,52%)`;}
 function fc(h,n){const nm=s=>String(s||'').replace(/^\uFEFF/,'').trim().toLowerCase();const nv=nm(n);let i=h.findIndex(x=>nm(x)===nv);if(i>=0)return i;return h.findIndex(x=>nm(x).includes(nv)||nv.includes(nm(x)));}
+function fce(h,k){const nm=s=>String(s||'').replace(/^\uFEFF/,'').trim().toLowerCase();const nv=nm(k);return h.findIndex(x=>nm(x)===nv);}
 
 /* ═══ JSONP ═══ */
 function jFetch(sheet){
@@ -1214,12 +1216,12 @@ function setupTab(){
     if(rfTB)rfTB.style.display=curTab===12?'flex':'none';
     const rfAAB=document.getElementById('rfAllotActionBar');
     if(rfAAB&&curTab!==12){rfAAB.style.display='none';window._srmActive=false;window._srmSelected=new Set();}
-    // Level 3F: hide Allotment button in RF tab (Retail sub-tab only)
-    const _is3F=curUser&&curUser.level==='3F';
+    // Level 2F / 3F: hide Allotment button — Retail + ROI sub-tabs only
+    const _isPartialRF=curUser&&(curUser.level==='2F'||curUser.level==='3F');
     const btnA=document.getElementById('rfBtnAllotment');
-    if(btnA)btnA.style.display=_is3F?'none':'';
-    // If L3F lands on RF tab, default to Retail view (not Allotment)
-    if(curTab===12&&_is3F&&getRFView()==='allotment')onRFViewChange('retail');
+    if(btnA)btnA.style.display=_isPartialRF?'none':'';
+    // If partial-RF user lands on RF tab in allotment view, redirect to Retail
+    if(curTab===12&&_isPartialRF&&getRFView()==='allotment')onRFViewChange('retail');
   }
   // Filter visibility per tab
   ['fVar','fCol','fYr'].forEach(id=>{
@@ -2038,8 +2040,8 @@ function onRFViewChange(v){
 }
 function clearF(r=true){
   ['fSrch','fBranch','fSC','fAllotStat','fMod','fVar','fCol','fYr','fStat','rfDateFrom','rfDateTo','daDtFrom','daDtTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  // Reset RF toggle bar — L3F defaults to Retail, others default to Allotment
-  if(curTab===12)onRFViewChange((curUser&&curUser.level==='3F')?'retail':'allotment');
+  // Reset RF toggle bar — 2F/3F default to Retail, others default to Allotment
+  if(curTab===12)onRFViewChange((curUser&&(curUser.level==='2F'||curUser.level==='3F'))?'retail':'allotment');
   // Re-apply L3, L3F & L4 branch pre-fill whenever filters are cleared
   if(curUser&&!curUser.isAdmin&&(curUser.level===3||curUser.level==='3F'||curUser.level===4)&&curUser.branch&&(curTab===1||curTab===2||curTab===7||curTab===8||curTab===10||curTab===12)){
     const brEl=document.getElementById('fBranch');
@@ -3267,8 +3269,8 @@ function renderDeallotted(){
 
 /* ── Retail Finance Tab (tab 12) — Allotment view OR Retail_Master date-range view ── */
 function renderRetailFinance(){
-  // Level 3F: Retail sub-tab only — redirect allotment view to retail
-  if(curUser&&curUser.level==='3F'&&getRFView()==='allotment')onRFViewChange('retail');
+  // Level 2F / 3F: Retail + ROI only — redirect allotment view to retail
+  if(curUser&&(curUser.level==='2F'||curUser.level==='3F')&&getRFView()==='allotment')onRFViewChange('retail');
   const v=getRFView();
   if(v==='retail'){renderRetailFinanceRetail();return;}
   if(v==='roi')   {renderRetailFinanceROI();return;}
