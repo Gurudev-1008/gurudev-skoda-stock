@@ -295,7 +295,7 @@ tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
 @keyframes rowIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
 
 /* MANAGE */
-.ap{padding:24px 20px;max-width:800px;}
+.ap{padding:24px 20px;max-width:1140px;}
 .ap h2{font-family:var(--font-d);font-size:19px;font-weight:700;color:var(--accent);margin-bottom:18px;}
 .as{background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
 .as h3{font-family:var(--font-d);font-size:15px;font-weight:600;color:var(--text-muted);margin-bottom:14px;letter-spacing:.05em;text-transform:uppercase;}
@@ -581,6 +581,78 @@ tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
         <p style="font-size:11px;color:var(--text-dim);margin-top:6px;">Changes take effect the next time a report is generated.</p>
         <span id="covSaveMsg" style="font-size:12px;color:var(--accent);display:block;margin-top:6px;"></span>
       </div>
+      <!-- Daily Report Emails — admin only -->
+      <div class="as" id="dailyRptSection" style="display:none">
+        <h3>📅 Daily Report Emails</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.6;">Manage email addresses that receive the automated daily report. Set each address to <strong>Send daily</strong> or <strong>Blocked</strong>, and choose the time at which the report is triggered.</p>
+        <!-- Scheduled Time picker -->
+        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:18px;padding:16px 18px;background:var(--bg-deep);border-radius:10px;border:1px solid var(--border);">
+          <div style="display:flex;flex-direction:column;gap:5px;">
+            <span class="afl">⏰ Scheduled Send Time</span>
+            <input type="time" class="afi" id="dailyRptTimeInput" value="08:00"
+              oninput="_syncTimeBadge()"
+              style="min-width:140px;font-size:15px;font-weight:700;letter-spacing:.04em;cursor:pointer;">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">
+            <span id="dailyRptTimeBadge" style="display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;font-family:var(--font-d);background:rgba(57,255,110,.1);color:#39ff6e;border:1px solid rgba(57,255,110,.3);">
+              🕐 <span id="dailyRptTimeDisplay">08:00 AM</span>
+            </span>
+            <span style="font-size:11px;color:var(--text-dim);margin-left:2px;">Daily report will be sent at this time to all active recipients</span>
+          </div>
+        </div>
+        <div id="dailyRptTableWrap" style="margin-bottom:16px;overflow-x:auto;"></div>
+        <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding:14px;background:var(--bg-deep);border-radius:8px;border:1px solid var(--border);">
+          <div style="flex:1;min-width:220px;">
+            <span class="afl" style="display:block;margin-bottom:5px;">Email Address</span>
+            <input class="afi" id="dailyRptEmailInput" type="email" placeholder="user@example.com" style="width:100%;">
+          </div>
+          <div>
+            <span class="afl" style="display:block;margin-bottom:5px;">Status</span>
+            <select class="afi" id="dailyRptStatusInput" style="min-width:140px;cursor:pointer;">
+              <option value="Send daily">Send daily</option>
+              <option value="Blocked">Blocked</option>
+            </select>
+          </div>
+          <div>
+            <span class="afl" style="display:block;margin-bottom:5px;">Location</span>
+            <button id="locBtnNew" onclick="toggleLocPicker('new',event)"
+              style="background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;min-width:130px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <span id="locLblNew">🌐 All Locations</span><span style="font-size:10px;color:var(--text-dim);">▾</span>
+            </button>
+          </div>
+          <div>
+            <span class="afl" style="display:block;margin-bottom:5px;">Reports</span>
+            <button id="rptBtnNew" onclick="toggleRptPicker('new',event)"
+              style="background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;min-width:130px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+              <span id="rptLblNew">📋 All Reports</span><span style="font-size:10px;color:var(--text-dim);">▾</span>
+            </button>
+          </div>
+          <button class="abtn" onclick="addDailyEmail()" style="white-space:nowrap;">+ Add Email</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="abtn" onclick="saveDailyEmails()">💾 Save All</button>
+          <span id="dailyRptSaveMsg" style="font-size:13px;color:var(--accent);"></span>
+        </div>
+        <!-- Branch selector for Send Report Now -->
+        <div id="sendBranchSelectorWrap" style="margin-top:18px;padding:14px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;">📍 Branches to send report:</span>
+            <button onclick="toggleAllSendBranches()" id="sendBranchAllBtn"
+              style="font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-muted);cursor:pointer;">All</button>
+          </div>
+          <div id="sendBranchGrid" style="display:flex;flex-wrap:wrap;gap:8px 18px;"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;">
+          <button class="abtn" onclick="sendDailyReportNow()"
+            style="background:rgba(57,255,110,.12);border-color:rgba(57,255,110,.4);color:#39ff6e;"
+            id="sendNowBtn">📧 Send Report Now</button>
+          <span id="sendNowMsg" style="font-size:13px;color:var(--accent);"></span>
+        </div>
+        <!-- Send result panel -->
+        <div id="sendRptResult" style="display:none;margin-top:14px;padding:14px 18px;background:var(--bg-deep);border-radius:8px;border:1px solid var(--border);font-size:13px;line-height:1.8;"></div>
+        <p style="font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.6;">Note: Add a row with <strong>Daily Report Emails</strong> in column A of the App_Settings sheet so this setting persists across sessions for all users.</p>
+      </div>
+
       <div class="as" id="pwSection">
         <h3>Change Password</h3>
         <div class="af">
@@ -594,6 +666,10 @@ tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
     </div>
   </div>
 </div>
+
+<!-- Global floating pickers for Daily Report Email location/report selection -->
+<div id="locPickerFloat" style="display:none;position:fixed;min-width:210px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.55);z-index:9990;padding:8px 0;max-height:280px;overflow-y:auto;"></div>
+<div id="rptPickerFloat" style="display:none;position:fixed;min-width:220px;background:var(--bg-card);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.55);z-index:9990;padding:8px 0;max-height:320px;overflow-y:auto;"></div>
 
 <!-- APP LOCK OVERLAY — shown to non-admin users when admin locks the app -->
 <div id="lockOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(10,14,23,0.97);flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:30px;">
@@ -1307,6 +1383,7 @@ function setupManage(){
   document.getElementById('lockSection').style.display=isAdmin?'block':'none';
   document.getElementById('cutoffSection').style.display=isAdmin?'block':'none';
   document.getElementById('coverageSection').style.display=isAdmin?'block':'none';
+  document.getElementById('dailyRptSection').style.display=isAdmin?'block':'none';
   document.getElementById('pwSection').style.display='block';
   document.getElementById('manTitle').textContent=isAdmin?'Manage':'Settings';
   if(isAdmin){
@@ -1317,6 +1394,7 @@ function setupManage(){
     refreshLockDisplay();
     refreshCutoffDisplay();
     loadCoverageSettings();
+    loadDailyReportEmails();
   }
 }
 function loadCoverageSettings(){
@@ -1577,6 +1655,576 @@ async function clearStockCutoff(){
   if(inp)inp.value='';
   await saveStockCutoff();
 }
+
+/* ── Daily Report Emails (App_Settings row "Daily Report Emails" | col B = JSON) ── */
+let _dailyEmails=[];
+let _dailyScheduleTime='08:00';
+let _locState={};  // location picker state: key (row idx or 'new') → string[]
+let _rptState={};  // report picker state:   key (row idx or 'new') → string[]
+let _sendBranchSel=[];  // branches selected for Send Report Now ([] = all)
+
+// Parse saved data — supports both legacy array format and new {emails,scheduledTime} format
+function _parseDailyData(raw){
+  if(!raw)return null;
+  try{
+    const p=JSON.parse(raw);
+    if(Array.isArray(p))return{emails:p,scheduledTime:'08:00'};   // legacy
+    if(p&&Array.isArray(p.emails))return{emails:p.emails,scheduledTime:p.scheduledTime||'08:00'};
+  }catch(e){}
+  return null;
+}
+
+function getDailyReportEmails(){
+  // Try SD[17] (App_Settings) first
+  const rows=SD[17]||[];
+  for(const r of rows){
+    if(!Array.isArray(r))continue;
+    const key=String(r[0]||'').trim().toLowerCase();
+    if(key.includes('daily report')){
+      const d=_parseDailyData(String(r[1]||'').trim());
+      if(d)return d.emails;
+    }
+  }
+  // Fallback localStorage
+  const d=_parseDailyData(localStorage.getItem('grd_daily_report_emails'));
+  return d?d.emails:[];
+}
+
+function getDailyReportScheduleTime(){
+  const rows=SD[17]||[];
+  for(const r of rows){
+    if(!Array.isArray(r))continue;
+    if(String(r[0]||'').trim().toLowerCase().includes('daily report')){
+      const d=_parseDailyData(String(r[1]||'').trim());
+      if(d)return d.scheduledTime||'08:00';
+    }
+  }
+  const d=_parseDailyData(localStorage.getItem('grd_daily_report_emails'));
+  return d?d.scheduledTime||'08:00':'08:00';
+}
+
+// Convert "HH:MM" 24-h to "HH:MM AM/PM" display
+function _fmt12h(t){
+  if(!t)return'—';
+  const[hh,mm]=t.split(':').map(Number);
+  if(isNaN(hh)||isNaN(mm))return t;
+  const ampm=hh<12?'AM':'PM';
+  const h12=hh%12||12;
+  return`${String(h12).padStart(2,'0')}:${String(mm).padStart(2,'0')} ${ampm}`;
+}
+
+function _syncTimeBadge(){
+  const inp=document.getElementById('dailyRptTimeInput');
+  const disp=document.getElementById('dailyRptTimeDisplay');
+  if(!inp||!disp)return;
+  disp.textContent=_fmt12h(inp.value||_dailyScheduleTime);
+}
+
+function loadDailyReportEmails(){
+  _dailyEmails=getDailyReportEmails();
+  _dailyScheduleTime=getDailyReportScheduleTime();
+  const inp=document.getElementById('dailyRptTimeInput');
+  if(inp)inp.value=_dailyScheduleTime;
+  _syncTimeBadge();
+  renderDailyEmailTable();
+  renderSendBranchGrid();
+}
+
+function renderDailyEmailTable(){
+  const wrap=document.getElementById('dailyRptTableWrap');
+  if(!wrap)return;
+  if(!_dailyEmails.length){
+    wrap.innerHTML=`<p style="font-size:13px;color:var(--text-muted);padding:10px 0;">No email addresses added yet. Use the form below to add one.</p>`;
+    return;
+  }
+  const thS='padding:6px 10px;font-size:10px;font-family:var(--font-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--bg-surface);border-bottom:2px solid var(--border);text-align:left;color:var(--text-muted);white-space:nowrap;';
+  const tdS='padding:5px 8px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle;';
+  const btnS='background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer;min-width:110px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:5px;white-space:nowrap;';
+  // Sync picker states from current email data
+  _dailyEmails.forEach((entry,idx)=>{
+    _locState[idx]=entry.locations&&entry.locations.length?[...entry.locations]:['All'];
+    _rptState[idx]=entry.reports&&entry.reports.length?[...entry.reports]:['All'];
+  });
+  const rows=_dailyEmails.map((entry,idx)=>{
+    const isSend=entry.status==='Send daily';
+    const badge=`<span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:700;
+      background:${isSend?'rgba(74,222,128,.12)':'rgba(248,113,113,.12)'};
+      color:${isSend?'#4ade80':'#f87171'};
+      border:1px solid ${isSend?'rgba(74,222,128,.4)':'rgba(248,113,113,.4)'};">
+      ${isSend?'● Send daily':'○ Blocked'}</span>`;
+    return`<tr>
+      <td style="${tdS}font-weight:500;">${entry.email}</td>
+      <td style="${tdS}">
+        <button id="locBtn_${idx}" onclick="toggleLocPicker(${idx},event)" style="${btnS}">
+          <span id="locLbl_${idx}">${_locLabel(_locState[idx])}</span>
+          <span style="font-size:10px;color:var(--text-dim);">▾</span>
+        </button>
+      </td>
+      <td style="${tdS}">
+        <button id="rptBtn_${idx}" onclick="toggleRptPicker(${idx},event)" style="${btnS}">
+          <span id="rptLbl_${idx}">${_rptLabel(_rptState[idx])}</span>
+          <span style="font-size:10px;color:var(--text-dim);">▾</span>
+        </button>
+      </td>
+      <td style="${tdS}">
+        <select data-idx="${idx}" onchange="updateDailyEmailStatus(${idx},this.value)"
+          style="background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);
+                 border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;">
+          <option value="Send daily"${isSend?' selected':''}>Send daily</option>
+          <option value="Blocked"${!isSend?' selected':''}>Blocked</option>
+        </select>
+      </td>
+      <td style="${tdS}">${badge}</td>
+      <td style="${tdS}text-align:center;">
+        <button onclick="removeDailyEmail(${idx})"
+          style="background:none;border:1px solid rgba(248,113,113,.4);color:#f87171;cursor:pointer;
+                 border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;"
+          title="Remove email">✕ Remove</button>
+      </td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML=`<table style="border-collapse:collapse;width:100%;table-layout:auto;">
+    <thead><tr>
+      <th style="${thS}">Email Address</th>
+      <th style="${thS}">Location</th>
+      <th style="${thS}">Reports</th>
+      <th style="${thS}">Change Status</th>
+      <th style="${thS}">Current Status</th>
+      <th style="${thS}text-align:center;">Action</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+window.addDailyEmail=function(){
+  const emailEl=document.getElementById('dailyRptEmailInput');
+  const statusEl=document.getElementById('dailyRptStatusInput');
+  const email=(emailEl?emailEl.value:'').trim();
+  if(!email){alert('Please enter an email address.');return;}
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){alert('Please enter a valid email address.');return;}
+  if(_dailyEmails.some(e=>e.email.toLowerCase()===email.toLowerCase())){alert('This email address is already in the list.');return;}
+  const status=statusEl?statusEl.value:'Send daily';
+  // Capture selected locations from the "new" picker state
+  const locs=(_locState['new']&&_locState['new'].length)?_locState['new']:['All'];
+  const rpts=(_rptState['new']&&_rptState['new'].length)?_rptState['new']:['All'];
+  _dailyEmails.push({email,status,locations:locs,reports:rpts});
+  if(emailEl)emailEl.value='';
+  // Reset new-entry pickers back to All
+  _locState['new']=['All'];_updateLocBtn('new');
+  _rptState['new']=['All'];_updateRptBtn('new');
+  renderDailyEmailTable();
+};
+
+window.removeDailyEmail=function(idx){
+  _dailyEmails.splice(idx,1);
+  renderDailyEmailTable();
+};
+
+window.updateDailyEmailStatus=function(idx,status){
+  if(_dailyEmails[idx])_dailyEmails[idx].status=status;
+  // Re-render just the badge cell — col order: 0=Email,1=Loc,2=Reports,3=ChangeStatus,4=Badge,5=Action
+  const wrap=document.getElementById('dailyRptTableWrap');
+  if(!wrap){renderDailyEmailTable();return;}
+  const trs=wrap.querySelectorAll('tbody tr');
+  if(trs[idx]){
+    const isSend=status==='Send daily';
+    const badgeTd=trs[idx].querySelectorAll('td')[4];
+    if(badgeTd)badgeTd.innerHTML=`<span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:700;
+      background:${isSend?'rgba(74,222,128,.12)':'rgba(248,113,113,.12)'};
+      color:${isSend?'#4ade80':'#f87171'};
+      border:1px solid ${isSend?'rgba(74,222,128,.4)':'rgba(248,113,113,.4)'};">
+      ${isSend?'● Send daily':'○ Blocked'}</span>`;
+  }
+};
+
+window.saveDailyEmails=async function(){
+  const msg=document.getElementById('dailyRptSaveMsg');
+  if(msg){msg.style.color='var(--accent)';msg.textContent='Saving…';}
+  // Pick up the current time-picker value
+  const timeInp=document.getElementById('dailyRptTimeInput');
+  _dailyScheduleTime=(timeInp&&timeInp.value)||_dailyScheduleTime||'08:00';
+  _syncTimeBadge();
+  const json=JSON.stringify({emails:_dailyEmails,scheduledTime:_dailyScheduleTime});
+  localStorage.setItem('grd_daily_report_emails',json);
+  // Re-fetch App_Settings to get correct row number
+  try{const j=await jFetch('App_Settings');if(j&&j.length>=1)SD[17]=j;}catch(e){}
+  const rows=SD[17]||[];
+  let targetRow=-1;
+  for(let i=0;i<rows.length;i++){
+    if(!Array.isArray(rows[i]))continue;
+    const key=String(rows[i][0]||'').trim().toLowerCase();
+    if(key.includes('daily report')){targetRow=i+1;break;}
+  }
+  if(targetRow>0){
+    const cb=`__dre_${Date.now()}`;
+    const result=await new Promise(res=>{
+      const t=setTimeout(()=>{delete window[cb];res({success:false,error:'Timeout'});},12000);
+      window[cb]=d=>{clearTimeout(t);delete window[cb];res(d);};
+      const s=document.createElement('script');
+      s.src=`${API}?action=updateCell&sheet=App_Settings&row=${targetRow}&col=2&value=${encodeURIComponent(json)}&callback=${encodeURIComponent(cb)}`;
+      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();res({success:false,error:'Network error'});};
+      s.onload=()=>s.remove();
+      document.head.appendChild(s);
+    });
+    if(result&&result.success){
+      if(SD[17][targetRow-1])SD[17][targetRow-1][1]=json;
+      if(msg){msg.style.color='#4ade80';msg.textContent='✓ Saved to sheet';}
+    }else{
+      if(msg){msg.style.color='#fb923c';msg.textContent='⚠ Saved locally only (check network)';}
+    }
+  }else{
+    if(msg){msg.style.color='#fb923c';msg.textContent='⚠ Saved locally — add "Daily Report Emails" row in App_Settings column A';}
+  }
+  // Also save to ScriptProperties so server-side code can always read CC config
+  try{
+    const cb2=`__drc_${Date.now()}`;
+    window[cb2]=d=>{delete window[cb2];};
+    const s2=document.createElement('script');
+    s2.src=`${API}?action=saveDailyConfig&config=${encodeURIComponent(json)}&callback=${encodeURIComponent(cb2)}`;
+    s2.onerror=()=>{delete window[cb2];s2.remove();};
+    s2.onload=()=>s2.remove();
+    document.head.appendChild(s2);
+  }catch(e){}
+  if(msg)setTimeout(()=>{msg.textContent='';msg.style.color='';},4000);
+};
+
+// ── Location & Report picker helpers ─────────────────────────────────────────
+// State maps — declared up near _dailyEmails so they exist before first use
+// _locState and _rptState are declared above
+
+// Available daily report types — matches exact rCard titles in renderReports()
+const DAILY_REPORT_OPTS=[
+  'Stock Summary',
+  'Live RPO Status',
+  'New Car Allotment Status',
+  'Ageing & Demo Allotment Status',
+  'ETBR (Overall)',
+  'ETBR — Source Wise',
+  'Target vs Actuals'
+];
+
+// Track which picker key is currently open for each floating panel
+let _openLocKey=null, _openRptKey=null;
+
+function _getAppBranches(){
+  const sel=document.getElementById('fBranch');
+  if(sel&&sel.options.length>1)
+    return Array.from(sel.options).slice(1).map(o=>(o.value||o.text).trim()).filter(Boolean);
+  const rows=SD[7]||[];
+  if(!rows.length)return[];
+  const h=rows[0]||[];
+  const brI=h.findIndex(c=>/(branch|location)/i.test(String(c||'')));
+  if(brI<0)return[];
+  const set=new Set();
+  rows.slice(1).forEach(r=>{const v=String(r[brI]||'').trim();if(v)set.add(v);});
+  return[...set].sort();
+}
+
+function _locLabel(locs){
+  if(!locs||!locs.length||locs.includes('All'))return'🌐 All Locations';
+  if(locs.length===1)return locs[0];
+  return`${locs.length} Locations`;
+}
+function _rptLabel(rpts){
+  if(!rpts||!rpts.length||rpts.includes('All'))return'📋 All Reports';
+  if(rpts.length===1)return rpts[0];
+  return`${rpts.length} Reports`;
+}
+
+function _updateLocBtn(key){
+  const lbl=document.getElementById(key==='new'?'locLblNew':`locLbl_${key}`);
+  if(lbl)lbl.textContent=_locLabel(_locState[key]||['All']);
+}
+function _updateRptBtn(key){
+  const lbl=document.getElementById(key==='new'?'rptLblNew':`rptLbl_${key}`);
+  if(lbl)lbl.textContent=_rptLabel(_rptState[key]||['All']);
+}
+
+// Generic: position a floating picker div below a trigger button using fixed coords
+function _positionFloatPicker(floatEl, btnEl){
+  const r=btnEl.getBoundingClientRect();
+  const spaceBelow=window.innerHeight-r.bottom;
+  const spaceAbove=r.top;
+  const pickerH=Math.min(300,floatEl.scrollHeight||300);
+  if(spaceBelow>=pickerH+8||spaceBelow>=spaceAbove){
+    floatEl.style.top=(r.bottom+4)+'px';
+    floatEl.style.bottom='';
+  }else{
+    floatEl.style.top=(r.top-pickerH-4)+'px';
+    floatEl.style.bottom='';
+  }
+  let left=r.left;
+  if(left+220>window.innerWidth)left=window.innerWidth-224;
+  floatEl.style.left=Math.max(4,left)+'px';
+}
+
+// Sync all checkboxes inside a floating picker from current state (no full re-render)
+function _syncPickerChecks(floatEl, cur){
+  if(!floatEl||floatEl.style.display==='none')return;
+  const isAll=cur.includes('All');
+  floatEl.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+    const val=cb.getAttribute('data-val');
+    if(!val)return;
+    cb.checked=val==='All'?isAll:(!isAll&&cur.includes(val));
+  });
+}
+
+// closePicker('loc'|'rpt') — Done button action: force-commit label then close
+window.closePickerFloat=function(type,e){
+  if(e)e.stopPropagation();
+  if(type==='loc'){
+    const k=_openLocKey;
+    if(k!==null){
+      // Force label update from definitive state
+      _updateLocBtn(k);
+      // Ensure _dailyEmails persisted
+      if(k!=='new'&&_dailyEmails[k])_dailyEmails[k].locations=[..._locState[k]||['All']];
+    }
+    document.getElementById('locPickerFloat').style.display='none';
+    _openLocKey=null;
+  }else{
+    const k=_openRptKey;
+    if(k!==null){
+      _updateRptBtn(k);
+      if(k!=='new'&&_dailyEmails[k])_dailyEmails[k].reports=[..._rptState[k]||['All']];
+    }
+    document.getElementById('rptPickerFloat').style.display='none';
+    _openRptKey=null;
+  }
+};
+
+function _buildPickerHTML(items, cur, allLabel, allIcon, changeFn, key, pickerType){
+  const isAll=cur.includes('All');
+  const itemS='display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px;color:var(--text-primary);';
+  const cbS='width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;';
+  const hov="onmouseover=\"this.style.background='rgba(255,255,255,.06)'\" onmouseout=\"this.style.background=''\"";
+  let html=`<label style="${itemS}" ${hov}>
+    <input type="checkbox" data-val="All" style="${cbS}" ${isAll?'checked':''} onchange="${changeFn}(${JSON.stringify(key)},'All',this.checked)">
+    <span>${allIcon} ${allLabel}</span>
+  </label>`;
+  if(items.length){
+    html+=`<div style="height:1px;background:var(--border);margin:4px 0;"></div>`;
+    html+=items.map(item=>{
+      const chk=!isAll&&cur.includes(item)?'checked':'';
+      return`<label style="${itemS}" ${hov}>
+        <input type="checkbox" data-val='${item.replace(/'/g,"&apos;")}' style="${cbS}" ${chk} onchange="${changeFn}(${JSON.stringify(key)},this.getAttribute('data-val'),this.checked)">
+        <span>${item}</span>
+      </label>`;
+    }).join('');
+  }
+  // ── Done / confirm button ──
+  html+=`<div style="height:1px;background:var(--border);margin:4px 0;"></div>
+  <div style="padding:6px 10px 8px;">
+    <button onclick="closePickerFloat('${pickerType}',event)"
+      style="width:100%;padding:6px 0;background:var(--accent);color:#000;border:none;border-radius:6px;
+             font-size:12px;font-weight:700;font-family:var(--font-d);letter-spacing:.04em;cursor:pointer;">
+      ✓ Done
+    </button>
+  </div>`;
+  return html;
+}
+
+window.toggleLocPicker=function(key,e){
+  if(e){e.stopPropagation();e.preventDefault();}
+  const floatEl=document.getElementById('locPickerFloat');
+  if(!floatEl)return;
+  // If same key open → close
+  if(_openLocKey===key&&floatEl.style.display!=='none'){floatEl.style.display='none';_openLocKey=null;return;}
+  // Close both pickers
+  floatEl.style.display='none'; _openLocKey=null;
+  document.getElementById('rptPickerFloat').style.display='none'; _openRptKey=null;
+  // Populate
+  const branches=_getAppBranches();
+  const cur=_locState[key]||['All'];
+  floatEl.innerHTML=_buildPickerHTML(branches,cur,'All Locations','🌐','onLocPickerChange',key,'loc');
+  floatEl.style.display='block';
+  _openLocKey=key;
+  // Position after display so scrollHeight is known
+  const btnEl=document.getElementById(key==='new'?'locBtnNew':`locBtn_${key}`);
+  if(btnEl)_positionFloatPicker(floatEl,btnEl);
+};
+
+window.onLocPickerChange=function(key,loc,checked){
+  if(!_locState[key])_locState[key]=['All'];
+  if(loc==='All'){
+    _locState[key]=checked?['All']:[];
+  }else{
+    _locState[key]=_locState[key].filter(l=>l!=='All');
+    if(checked)_locState[key].push(loc);
+    else _locState[key]=_locState[key].filter(l=>l!==loc);
+    if(!_locState[key].length)_locState[key]=['All'];
+  }
+  // Persist immediately into email entry
+  if(key!=='new'&&_dailyEmails[key])_dailyEmails[key].locations=[..._locState[key]];
+  // Update table button label
+  _updateLocBtn(key);
+  // Sync checkbox states in-place (no full re-render)
+  _syncPickerChecks(document.getElementById('locPickerFloat'),_locState[key]);
+};
+
+window.toggleRptPicker=function(key,e){
+  if(e){e.stopPropagation();e.preventDefault();}
+  const floatEl=document.getElementById('rptPickerFloat');
+  if(!floatEl)return;
+  if(_openRptKey===key&&floatEl.style.display!=='none'){floatEl.style.display='none';_openRptKey=null;return;}
+  floatEl.style.display='none'; _openRptKey=null;
+  document.getElementById('locPickerFloat').style.display='none'; _openLocKey=null;
+  const cur=_rptState[key]||['All'];
+  floatEl.innerHTML=_buildPickerHTML(DAILY_REPORT_OPTS,cur,'All Reports','📋','onRptPickerChange',key,'rpt');
+  floatEl.style.display='block';
+  _openRptKey=key;
+  const btnEl=document.getElementById(key==='new'?'rptBtnNew':`rptBtn_${key}`);
+  if(btnEl)_positionFloatPicker(floatEl,btnEl);
+};
+
+window.onRptPickerChange=function(key,rpt,checked){
+  if(!_rptState[key])_rptState[key]=['All'];
+  if(rpt==='All'){
+    _rptState[key]=checked?['All']:[];
+  }else{
+    _rptState[key]=_rptState[key].filter(r=>r!=='All');
+    if(checked)_rptState[key].push(rpt);
+    else _rptState[key]=_rptState[key].filter(r=>r!==rpt);
+    if(!_rptState[key].length)_rptState[key]=['All'];
+  }
+  // Persist immediately into email entry
+  if(key!=='new'&&_dailyEmails[key])_dailyEmails[key].reports=[..._rptState[key]];
+  // Update table button label
+  _updateRptBtn(key);
+  // Sync checkbox states in-place (no full re-render)
+  _syncPickerChecks(document.getElementById('rptPickerFloat'),_rptState[key]);
+};
+
+// Close floating pickers on outside click or scroll
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#locPickerFloat')&&!e.target.closest('[id^="locBtn"]')){
+    document.getElementById('locPickerFloat').style.display='none';_openLocKey=null;
+  }
+  if(!e.target.closest('#rptPickerFloat')&&!e.target.closest('[id^="rptBtn"]')){
+    document.getElementById('rptPickerFloat').style.display='none';_openRptKey=null;
+  }
+});
+document.addEventListener('scroll',function(){
+  // Reposition open pickers on scroll
+  const locF=document.getElementById('locPickerFloat');
+  if(locF&&locF.style.display!=='none'&&_openLocKey!==null){
+    const btn=document.getElementById(_openLocKey==='new'?'locBtnNew':`locBtn_${_openLocKey}`);
+    if(btn)_positionFloatPicker(locF,btn);else{locF.style.display='none';_openLocKey=null;}
+  }
+  const rptF=document.getElementById('rptPickerFloat');
+  if(rptF&&rptF.style.display!=='none'&&_openRptKey!==null){
+    const btn=document.getElementById(_openRptKey==='new'?'rptBtnNew':`rptBtn_${_openRptKey}`);
+    if(btn)_positionFloatPicker(rptF,btn);else{rptF.style.display='none';_openRptKey=null;}
+  }
+},true);
+// ── End picker helpers ────────────────────────────────────────────────────────
+
+// ── Branch selector for Send Report Now ──────────────────────────────────────
+function renderSendBranchGrid(){
+  const grid=document.getElementById('sendBranchGrid');
+  const allBtn=document.getElementById('sendBranchAllBtn');
+  if(!grid)return;
+  const branches=_getAppBranches();
+  if(!branches.length){grid.innerHTML='<span style="font-size:12px;color:var(--text-dim);">No branches found</span>';return;}
+  // If _sendBranchSel is empty, treat as all selected
+  if(!_sendBranchSel.length)_sendBranchSel=[...branches];
+  const allSelected=_sendBranchSel.length===branches.length;
+  if(allBtn)allBtn.textContent=allSelected?'None':'All';
+  grid.innerHTML=branches.map(br=>{
+    const chk=_sendBranchSel.includes(br);
+    const cbId='sbr_'+br.replace(/\s+/g,'_');
+    return `<label for="${cbId}" style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-primary);cursor:pointer;white-space:nowrap;">
+      <input type="checkbox" id="${cbId}" ${chk?'checked':''} onchange="onSendBranchChange('${br.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',this.checked)"
+        style="accent-color:var(--accent);width:13px;height:13px;cursor:pointer;">
+      ${br}
+    </label>`;
+  }).join('');
+}
+window.onSendBranchChange=function(br,checked){
+  if(checked){if(!_sendBranchSel.includes(br))_sendBranchSel.push(br);}
+  else{_sendBranchSel=_sendBranchSel.filter(b=>b!==br);}
+  // Update All/None button label
+  const branches=_getAppBranches();
+  const allBtn=document.getElementById('sendBranchAllBtn');
+  if(allBtn)allBtn.textContent=(_sendBranchSel.length===branches.length)?'None':'All';
+};
+window.toggleAllSendBranches=function(){
+  const branches=_getAppBranches();
+  const allSelected=_sendBranchSel.length===branches.length;
+  _sendBranchSel=allSelected?[]:[...branches];
+  renderSendBranchGrid();
+};
+
+// ── Send Report Now (manual trigger from Manage tab) ─────────────────────────
+window.sendDailyReportNow=async function(){
+  const btn=document.getElementById('sendNowBtn');
+  const result=document.getElementById('sendRptResult');
+  const msg=document.getElementById('sendNowMsg');
+
+  // Determine which branches to send
+  const allBranches=_getAppBranches();
+  const selBranches=_sendBranchSel.length?_sendBranchSel:[...allBranches];
+  if(!selBranches.length){
+    if(msg){msg.style.color='#fb923c';msg.textContent='⚠ No branches selected.';}
+    setTimeout(()=>{if(msg){msg.textContent='';msg.style.color='';}},4000);
+    return;
+  }
+
+  const brLabel=selBranches.length===allBranches.length?'all branches':`${selBranches.length} branch${selBranches.length>1?'es':''}`;
+  if(!confirm(`Send daily report now for ${brLabel}?\n\n${selBranches.join(', ')}`))return;
+
+  if(btn){btn.disabled=true;btn.textContent='⏳ Sending…';}
+  if(result){result.style.display='none';}
+  if(msg){msg.style.color='var(--accent)';msg.textContent='Sending…';}
+
+  const cb=`__sbr_${Date.now()}`;
+  try{
+    const res=await new Promise((resolve)=>{
+      const t=setTimeout(()=>{delete window[cb];resolve({success:false,error:'Timeout — reports may still be sending. Check inboxes in a minute.'});},90000);
+      window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
+      const s=document.createElement('script');
+      s.src=`${API}?action=sendBranchReports&branches=${encodeURIComponent(JSON.stringify(selBranches))}&callback=${encodeURIComponent(cb)}`;
+      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();resolve({success:false,error:'Network error'});};
+      s.onload=()=>s.remove();
+      document.head.appendChild(s);
+    });
+
+    if(result){
+      result.style.display='block';
+      if(res.success){
+        // res.results = [{branch, sent:[name<email>,...], failed:[...], cc:[...], skipped:bool}]
+        const rows=(res.results||[]);
+        let html=`<strong style="color:#4ade80;">📧 Reports dispatched</strong><br><br>`;
+        if(rows.length){
+          rows.forEach(r=>{
+            const sentStr=(r.sent&&r.sent.length)?r.sent.map(n=>`<span style="color:#4ade80;">✓ ${n}</span>`).join(', '):(r.skipped?'':`<span style="color:var(--text-dim);">—</span>`);
+            const ccStr=(r.cc&&r.cc.length)?` &nbsp;|&nbsp; <span style="color:#60a5fa;">CC: ${r.cc.join(', ')}</span>`:'';
+            const failStr=(r.failed&&r.failed.length)?`<br><span style="color:#f87171;font-size:11px;">Failed: ${r.failed.join(', ')}</span>`:'';
+            const skipNote=r.skipped?`<span style="color:#fb923c;font-size:11px;"> (no Level-3 SM user found — skipped)</span>`:'';
+            html+=`<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+              <strong style="color:var(--text-muted);font-size:11px;text-transform:uppercase;">${r.branch}</strong>${skipNote}<br>
+              ${sentStr}${ccStr}${failStr}
+            </div>`;
+          });
+        }else{
+          html+=`<span style="color:var(--text-dim);">No branch data returned.</span>`;
+        }
+        result.innerHTML=html;
+        if(msg){msg.style.color='#4ade80';msg.textContent='✓ Reports sent';}
+      }else{
+        result.innerHTML=`<strong style="color:#f87171;">⚠ Send failed</strong><br>
+          <span style="color:var(--text-dim);font-size:12px;">${res.error||'Unknown error'}</span>`;
+        if(msg){msg.style.color='#fb923c';msg.textContent='⚠ Send failed';}
+      }
+    }
+  }catch(e){
+    if(result){result.style.display='block';result.innerHTML=`<strong style="color:#f87171;">⚠ Error:</strong> ${e.message}`;}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='📧 Send Report Now';}
+    setTimeout(()=>{if(msg){msg.textContent='';msg.style.color='';}},6000);
+  }
+};
+// ─────────────────────────────────────────────────────────────────────────────
 
 function loadNotifEmails(){
   // Fetch saved emails from server into textarea + local cache
@@ -6065,8 +6713,8 @@ function renderReports(){
   let _srcWise='';
   try{_srcWise=(()=>{
     // ── Data ─────────────────────────────────────────
-    const LD=SD[10]||[],TDD=SD[12]||[],AD=SD[7]||[],GD=SD[8]||[],RD=SD[2]||[];
-    if(LD.length<2&&TDD.length<2&&AD.length<2)
+    const LD=SD[10]||[],QLD=SD[11]||[],TDD=SD[12]||[],AD=SD[7]||[],GD=SD[8]||[],RD=SD[2]||[];
+    if(LD.length<2&&QLD.length<2&&TDD.length<2&&AD.length<2)
       return`<div style="padding:18px;text-align:center;color:var(--text-dim);font-size:13px;">Data not loaded yet. <button onclick="renderReports()" style="margin-left:8px;padding:4px 12px;background:var(--accent);color:var(--bg-deep);border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px;">Refresh</button></div>`;
 
     // ── Current month / year ─────────────────────────
@@ -6248,8 +6896,11 @@ function renderReports(){
     const bkgDateCols=['Booking Date','RPO Date','Order Date','Created Date','Created On','Date','Allotment Date'];
     const retDateCols=['Booking Date','Invoice Date','Invoiced Date','Retail Date','Delivery Date','Created Date','Date'];
     const buildTab=(matchFn)=>{
-      // ENQ — Leads sheet, Lead Source col, all-time, owner→branch fallback for non-L3
+      // ENQ — Leads + QL Sheet, Lead Source col, all-time (matches ETBR Overall: Enq = Leads + QL)
       const enqM=cnt(LD,['Lead Source','LeadSource','Source','Enquiry Source'],matchFn,null,null,null,true);
+      // Merge QL Sheet enquiries (same source filter) into enqM
+      const qlEnqM=cnt(QLD,['Lead Source','LeadSource','Source','Enquiry Source'],matchFn,null,null,null,true);
+      Object.keys(qlEnqM).forEach(k=>{enqM[k]=(enqM[k]||0)+qlEnqM[k];});
       // TD — TD sheet, "Lead Source (Lead)" primary; "Lead Source (Qualified)" fallback if blank
       const tdM =cnt(TDD,['Lead Source (Lead)','Lead Source','LeadSource','Source'],matchFn,null,null,null,true,['Lead Source (Qualified)']);
       // BKG — Allotment, Source col, CURRENT MONTH
