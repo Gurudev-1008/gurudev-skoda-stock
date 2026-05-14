@@ -3609,6 +3609,7 @@ function renderAllotment(){
   // De-allot pending detection — columns written by Apps Script when request is raised
   const daReasonI=(()=>{for(const k of['De-allot Reason','DeAllot Reason','Deallot Reason','DA Reason','De-Allot Reason']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   const daRaisedByI=(()=>{for(const k of['Raised By','De-allot Raised By','DA Raised By','RaisedBy']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
+  const daSMRemarksI=(()=>{for(const k of['De-allot SM Remarks','Deallot SM Remarks','DA SM Remarks','De-Allot SM Remarks']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   // Corporate / Loyalty / Exchange editable columns
   const corpI    =(()=>{for(const k of['Corp','Corporate','CORP']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   const loyalI   =(()=>{for(const k of['Loyalty','LOYALTY']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
@@ -3749,7 +3750,7 @@ function renderAllotment(){
       <td class="ecol">${editCellDD(corpTypeVal,'Allotment',sheetRow,corpTypeI,CORP_TYPE_OPTS)}</td>
       <td class="ecol">${editCell(corpNameVal,'Allotment',sheetRow,corpNameI>=0?corpNameI:frI+2)}</td>
       <td class="ecol">${editCell(exchBrVal,'Allotment',sheetRow,exchBrI>=0?exchBrI:frI+3)}</td>
-      <td>${(()=>{const _dr=daReasonI>=0?String(r[daReasonI]||'').trim():'';const _drb=daRaisedByI>=0?String(r[daRaisedByI]||'').trim():'';const _rsl=rowStat.toLowerCase();if((_dr||_rsl.includes('deallot')||_rsl.includes('de-allot')||_rsl.includes('de allot'))&&!deallotRaisedRows.has(sheetRow)){deallotRaisedRows.set(sheetRow,{cust,sc,branch,model,variant,colour,reason:_dr||rowStat,raisedBy:_drb,smRemarks:smRem,sourceSheet:'Allotment'});}return renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,'Allotment');})()}</td>
+      <td>${(()=>{const _dr=daReasonI>=0?String(r[daReasonI]||'').trim():'';const _drb=daRaisedByI>=0?String(r[daRaisedByI]||'').trim():'';const _dsmr=daSMRemarksI>=0?String(r[daSMRemarksI]||'').trim():'';const _rsl=rowStat.toLowerCase();if((_dr||_rsl.includes('deallot')||_rsl.includes('de-allot')||_rsl.includes('de allot'))&&!deallotRaisedRows.has(sheetRow)){deallotRaisedRows.set(sheetRow,{cust,sc,branch,model,variant,colour,reason:_dr||rowStat,raisedBy:_drb,smRemarks:_dsmr||smRem,sourceSheet:'Allotment'});}return renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,'Allotment');})()}</td>
     </tr>`;
 
   }).join('');
@@ -3787,6 +3788,7 @@ function renderAGDMAllotment(){
   const smrI=fc(h,'SM Remarks');
   const daReasonI8=(()=>{for(const k of['De-allot Reason','DeAllot Reason','Deallot Reason','DA Reason','De-Allot Reason']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   const daRaisedByI8=(()=>{for(const k of['Raised By','De-allot Raised By','DA Raised By','RaisedBy']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
+  const daSMRemarksI8=(()=>{for(const k of['De-allot SM Remarks','Deallot SM Remarks','DA SM Remarks','De-Allot SM Remarks']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   const vinMap=buildVinModelMap();
   const vinDetailMap=buildVinDetailMap();
   const bodyWithIdx=rows.slice(hi+1).map((r,j)=>({r,sheetRow:hi+2+j}));
@@ -3886,7 +3888,7 @@ function renderAGDMAllotment(){
       <td class="ecol" data-bank-td="1">${editCellBankDD(mode,bank,'AG/DM Allotment',sheetRow,bnI,-1)}</td>
       <td class="ecol">${editCell(finRem,'AG/DM Allotment',sheetRow,frI)}</td>
       <td class="ecol">${editCell(smRem,'AG/DM Allotment',sheetRow,smrI>=0?smrI:frI+1)}</td>
-      <td>${(()=>{const _dr=daReasonI8>=0?String(r[daReasonI8]||'').trim():'';const _drb=daRaisedByI8>=0?String(r[daRaisedByI8]||'').trim():'';const _rsl=rowStat.toLowerCase();if((_dr||_rsl.includes('deallot')||_rsl.includes('de-allot')||_rsl.includes('de allot'))&&!deallotRaisedRows.has(sheetRow)){deallotRaisedRows.set(sheetRow,{cust,sc,branch,model,variant,colour,reason:_dr||rowStat,raisedBy:_drb,smRemarks:smRem,sourceSheet:'AG/DM Allotment'});}return renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,'AG/DM Allotment');})()}</td>
+      <td>${(()=>{const _dr=daReasonI8>=0?String(r[daReasonI8]||'').trim():'';const _drb=daRaisedByI8>=0?String(r[daRaisedByI8]||'').trim():'';const _dsmr8=daSMRemarksI8>=0?String(r[daSMRemarksI8]||'').trim():'';const _rsl=rowStat.toLowerCase();if((_dr||_rsl.includes('deallot')||_rsl.includes('de-allot')||_rsl.includes('de allot'))&&!deallotRaisedRows.has(sheetRow)){deallotRaisedRows.set(sheetRow,{cust,sc,branch,model,variant,colour,reason:_dr||rowStat,raisedBy:_drb,smRemarks:_dsmr8||smRem,sourceSheet:'AG/DM Allotment'});}return renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,'AG/DM Allotment');})()}</td>
     </tr>`;
   }).join('');
 }
@@ -6540,18 +6542,50 @@ function renderReports(){
       return m;
     })();
 
-    // Phase 2: Add SCs from scZohoNames (Users sheet) whose internal name has the branch suffix.
-    // e.g. "ARAVIND_TEY" gets added for branch TEYNAMPET even if not in Allotment/LiveRPO.
+    // Phase 2 + 3: Add branch SCs from Users sheet (Phase 2) and Target Sheet (Phase 3).
+    // Both use the same isBranchSC check so filtering is consistent and reliable.
+    // isBranchSC checks the SC name's branch suffix against the logged-in user's branch:
+    //   - Exact: "ARAVIND_TEYNAMPET" → last token "teynampet" === brSfx ✓
+    //   - Abbreviation: "Kaviyarasan_Tey" → "tey" is prefix of "teynampet" ✓
     if(uBranch){
-      const brSfx=uBranch.toLowerCase();
-      const brParts=brSfx.split(/\s+/);
+      const brSfx=uBranch.toLowerCase();        // e.g. "teynampet"
+      const brParts=brSfx.split(/\s+/);         // e.g. ["teynampet"]
       const brN=brParts.length;
       const isBranchSC=k=>{
         const parts=k.toLowerCase().split(/[_\s]+/);
-        if(parts.length<brN+1)return false;
-        return parts.slice(-brN).join(' ')===brSfx;
+        if(parts.length<2)return false;
+        const sfx=parts[parts.length-1]; // suffix token, e.g. "tey"
+        // Exact: last N tokens match full branch name
+        if(parts.length>=brN+1&&parts.slice(-brN).join(' ')===brSfx)return true;
+        // Abbreviation: suffix is a leading prefix of any branch word (min 2 chars)
+        // "tey" → "teynampet".startsWith("tey") ✓  |  "por" → "porur".startsWith("por") ✓
+        return sfx.length>=2&&brParts.some(bp=>bp.startsWith(sfx));
       };
+
+      // Phase 2: Users sheet — SCs with a Zoho name who haven't appeared in Allotment/LiveRPO yet
       Object.keys(scZohoNames).filter(k=>isBranchSC(k)).forEach(k=>addSC(k,false));
+
+      // Phase 3: Target Sheet — SCs who have a non-zero target but zero activity everywhere else
+      // (e.g. Kaviyarasan_Tey who is new and hasn't booked anything yet)
+      // Uses isBranchSC so branch filtering is purely by SC name suffix — no Branch column needed.
+      const tgtSh=SD[13]||[];
+      if(tgtSh.length>1){
+        const {h:tgH,hi:tgHi}=hdr(tgtSh);
+        const fcTg=n=>{const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(n);let i=tgH.findIndex(x=>nm(x)===nv);if(i>=0)return i;return tgH.findIndex(x=>nm(x).includes(nv));};
+        const scI_tg=fcTg('SC Name')>=0?fcTg('SC Name'):fcTg('SC');
+        const bkI_tg=fcTg('Booking')>=0?fcTg('Booking'):fcTg('Booking Target');
+        const rtI_tg=fcTg('New & Ageing Car Retail')>=0?fcTg('New & Ageing Car Retail'):fcTg('Retail');
+        if(scI_tg>=0){
+          tgtSh.slice(tgHi+1).forEach(r=>{
+            if(!r.some(c=>String(c||'').trim()))return;
+            const sc=String(r[scI_tg]||'').trim();
+            if(!sc||!isBranchSC(sc))return; // reuse same branch check — no Branch column ambiguity
+            const bkTg=parseFloat(String(r[bkI_tg>=0?bkI_tg:0]||'').replace(/,/g,''))||0;
+            const rtTg=parseFloat(String(r[rtI_tg>=0?rtI_tg:0]||'').replace(/,/g,''))||0;
+            if(bkTg>0||rtTg>0)addSC(sc,false);
+          });
+        }
+      }
     }
 
     // Final sorted list (if empty, no SCs at all for this branch)
@@ -6669,6 +6703,7 @@ function renderReports(){
     // Cache actuals for Target vs Actual report (keyed by SC name) — reset each run
     window.__etbrActuals={};
     window.__etbrActualsBranch=uBranch||'';
+    window.__etbrSCList=[...scList]; // branch-filtered SC list for Target vs Actual filter
     const _covTypesL3=getCoverageTypes();
     scList.forEach(sc=>{
       const isCR=isCRHead(sc);
@@ -6766,22 +6801,35 @@ function renderReports(){
         const zoI=cI(uH,['Zoho Name','ZohoName','Zoho','Zoho name','Zoho ID']);
         const nmI=cI(uH,['Internal Name','Internal name','InternalName','SC Name','Name','Emp Name','Employee Name']);
         const uBI=cI(uH,brCN);
-        ud.slice(uHi+1).forEach(r=>{
+        // Helper: register both underscore and space variants so "Ganesh Ann" ↔ "Ganesh_Ann" both resolve
+      const regMap=(map,key,val)=>{
+        const kl=key.toLowerCase();
+        map[kl]=val;
+        const swapped=kl.includes('_')?kl.replace(/_/g,' '):kl.replace(/ /g,'_');
+        if(swapped!==kl)map[swapped]=val;
+      };
+      ud.slice(uHi+1).forEach(r=>{
           if(!Array.isArray(r))return;
           const z=zoI>=0?String(r[zoI]||'').trim():'';
           const n=nmI>=0?String(r[nmI]||'').trim():'';
-          if(z&&n)zohoMapSW[z.toLowerCase()]=n;        // Zoho name → internal name
-          if(n)zohoMapSW[n.toLowerCase()]=n;            // internal name → itself (identity)
+          if(z&&n)regMap(zohoMapSW,z,n);               // Zoho name (+ variant) → internal name
+          if(n)regMap(zohoMapSW,n,n);                  // internal name (+ variant) → itself
           if(uBI>=0){
             const br=String(r[uBI]||'').trim().toUpperCase();if(!br)return;
-            if(z)ownerToBr[z.toLowerCase()]=br;
-            if(n)ownerToBr[n.toLowerCase()]=br;
+            if(z)regMap(ownerToBr,z,br);
+            if(n)regMap(ownerToBr,n,br);
           }
         });
       }
     }
-    // Normalise any raw name to canonical internal name (falls back to original if not in map)
-    const toIntSW=name=>{const n=String(name||'').trim();return zohoMapSW[n.toLowerCase()]||n;};
+    // Normalise any raw name to canonical internal name — tries swapped underscore/space variant on miss
+    const toIntSW=name=>{
+      const n=String(name||'').trim();if(!n)return n;
+      const nl=n.toLowerCase();
+      if(zohoMapSW[nl])return zohoMapSW[nl];
+      const sw=nl.includes('_')?nl.replace(/_/g,' '):nl.replace(/ /g,'_');
+      return zohoMapSW[sw]||n;
+    };
 
     const brF=isL3?uBranch:null;
 
@@ -6799,6 +6847,8 @@ function renderReports(){
       const sI=srcCols&&srcCols.length?cI(h,srcCols):-1;
       // Fallback source column: used per-row when primary sI column value is blank
       const sI2=srcColsFallback&&srcColsFallback.length?cI(h,srcColsFallback):-1;
+      // Guard: source cols were requested but none found in this sheet → can't attribute → return empty
+      if(srcCols&&srcCols.length&&sI<0&&sI2<0) return out;
       const bFI=brF?cI(h,brCN):-1;           // branch filter for L3
       let dI=-1;
       if(dateMode==='curmon'&&dateCols){
@@ -6813,15 +6863,19 @@ function renderReports(){
 
       // When L3 and no Branch col in data, resolve SC→branch via ownerToBr for filtering
       const scFallbackI=(isL3&&brF&&bFI<0)?cI(h,scCN):-1;
+      // Normalise branch string: uppercase, strip spaces/underscores/hyphens for loose comparison
+      const normBr=s=>s.toUpperCase().replace(/[\s_\-\.]/g,'');
+      const brFN=normBr(brF||'');
+      const brMatch=(b)=>!b||b===brF||normBr(b)===brFN;
       const rowPassesBranch=(r)=>{
         if(!brF)return true;
-        if(bFI>=0){const b=String(r[bFI]||'').trim().toUpperCase();return !b||b===brF;}
+        if(bFI>=0){const b=String(r[bFI]||'').trim().toUpperCase();return brMatch(b);}
         // No branch col — normalise to internal name first, then look up branch
         if(scFallbackI>=0){
           const raw=String(r[scFallbackI]||'').trim();
           const intName=toIntSW(raw);
           const br=ownerToBr[intName.toLowerCase()]||ownerToBr[raw.toLowerCase()]||'';
-          return !br||br===brF;
+          return brMatch(br);
         }
         return true; // can't determine → include
       };
@@ -6903,10 +6957,14 @@ function renderReports(){
       Object.keys(qlEnqM).forEach(k=>{enqM[k]=(enqM[k]||0)+qlEnqM[k];});
       // TD — TD sheet, "Lead Source (Lead)" primary; "Lead Source (Qualified)" fallback if blank
       const tdM =cnt(TDD,['Lead Source (Lead)','Lead Source','LeadSource','Source'],matchFn,null,null,null,true,['Lead Source (Qualified)']);
-      // BKG — Allotment, Source col, CURRENT MONTH
-      const bkgM=cnt(AD,['Source','Lead Source','Enquiry Source'],matchFn,'curmon',bkgDateCols,null,false);
-      // RET — Live RPO, Source col, CURRENT MONTH
-      const retM=cnt(RD,['Source','Lead Source'],matchFn,'curmon',retDateCols,null,false);
+      // BKG — Live RPO, Source col, CURRENT MONTH (consistent with ETBR Overall BKG which uses LiveRPO)
+      const bkgM=cnt(RD,['Source','Lead Source','Enquiry Source'],matchFn,'curmon',bkgDateCols,null,false);
+      // RET — Allotment, Source col, invoiced/retail status, ALL-TIME (consistent with ETBR Overall RET)
+      const retM=cnt(AD,['Source','Lead Source','Enquiry Source'],matchFn,null,null,(r,h)=>{
+        const stI=cI(h,['Allotment Status','AllotmentStatus','Status','Retail Status','Booking Status']);
+        if(stI<0)return true; // no status col → include all
+        return String(r[stI]||'').trim().toLowerCase().match(/retail|invoic/)?true:false;
+      },false);
 
       // NC Cov — Allotment, Source col, current month, exclude CF + ageing/demo
       const ncM=cnt(AD,['Source','Lead Source','Enquiry Source'],matchFn,'curmon',bkgDateCols,(r,h)=>{
@@ -6957,9 +7015,9 @@ function renderReports(){
           ${cTh('Enq','Enquiries — Leads sheet, Lead Source col, all-time')}
           ${cTh('TD','Test Drives — TD sheet, Lead Source col, all-time')}
           ${cTh('TD%','TD / Enquiry %')}
-          ${cTh('Bkg','Bookings — Allotment, Source col, current month')}
+          ${cTh('Bkg','Bookings — Live RPO, Source col, current month')}
           ${cTh('E→B%','Booking / Enquiry %')}
-          ${cTh('Ret','Retail — Live RPO, Source col, current month')}
+          ${cTh('Ret','Retail — Allotment (invoiced/retail status), Source col, all-time')}
           ${cTh('E→R%','Retail / Enquiry %')}
           ${cTh('T→B%','Booking / TD %')}
           ${cTh('B→R%','Retail / Booking %')}
@@ -7552,13 +7610,29 @@ function buildTargetVsActual(){
       : (fcT('New Car')>=0?fcT('New Car'):(fcT('New & Ageing Car Retail')>=0?fcT('New & Ageing Car Retail'):fcT('Retail')));
     const keyIdx=isL3?scI_t:brI_t;
     const norm=s=>String(s||'').trim().toLowerCase().replace(/[\s_]+/g,' ');
+    const normBrT=s=>String(s||'').toUpperCase().replace(/[\s_\-\.]/g,'');
+    // Build allowlist from ETBR's already-branch-filtered scList (saved when ETBR ran)
+    const _etbrSCRaw=window.__etbrSCList||[];
+    const _etbrSCSet=_etbrSCRaw.length?new Set(_etbrSCRaw.map(s=>norm(s))):null;
     targetData.slice(tHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
       const key=keyIdx>=0?String(r[keyIdx]||'').trim():'';
       if(!key)return;
+      // L3 filter: only include SCs that belong to this branch
+      if(isL3){
+        if(_etbrSCSet){
+          // Primary: match against ETBR's branch-filtered SC list (most reliable)
+          if(!_etbrSCSet.has(norm(key)))return;
+        } else if(brI_t>=0&&curUser&&curUser.branch){
+          // Fallback: use Branch column in Target Sheet (if available)
+          const rowBr=normBrT(String(r[brI_t]||'').trim());
+          const userBr=normBrT(curUser.branch);
+          if(rowBr&&rowBr!==userBr)return;
+        }
+      }
       const bkTgt=parseFloat(String(r[bkI_t>=0?bkI_t:0]||'').replace(/,/g,''))||0;
       const rtTgt=parseFloat(String(r[rtI_t>=0?rtI_t:0]||'').replace(/,/g,''))||0;
-      tgtMap.set(norm(key),{bkTgt,rtTgt});
+      tgtMap.set(norm(key),{bkTgt,rtTgt,origKey:key}); // also store original name for display
     });
   }
 
@@ -7575,14 +7649,24 @@ function buildTargetVsActual(){
     return{bkTgt:0,rtTgt:0};
   };
 
-  // ── Build unified rows (one per ETBR key), skip rows with no target AND no actual ──
-  const targets=etbrKeys
-    .filter(k=>k!=='__BRANCH__'&&k)
-    .map(key=>{
-      const {bkTgt,rtTgt}=findTgt(key);
-      const {booking:bkAct=0,retail:rtAct=0,coverage:cvAct=0}=etbrCache[key]||{};
-      return{key,bkTgt,rtTgt,bkAct,rtAct,cvAct};
+  // ── Build unified rows (one per ETBR key + any Target Sheet SCs not already included) ──
+  const seenKeys=new Set();
+  const makeRow=(key)=>{
+    const {bkTgt,rtTgt}=findTgt(key);
+    const {booking:bkAct=0,retail:rtAct=0,coverage:cvAct=0}=etbrCache[key]||{};
+    return{key,bkTgt,rtTgt,bkAct,rtAct,cvAct};
+  };
+  const targets=[
+    // ETBR SC keys (from activity data)
+    ...etbrKeys.filter(k=>k!=='__BRANCH__'&&k).map(k=>{seenKeys.add(norm(k));return makeRow(k);}),
+    // Target Sheet SCs not already in etbrCache (e.g. Kaviyarasan with target but no activity yet)
+    ...[...tgtMap.keys()].filter(nk=>!seenKeys.has(nk)).map(nk=>{
+      const tgt=tgtMap.get(nk)||{bkTgt:0,rtTgt:0};
+      const displayKey=tgt.origKey||nk; // use original case from Target Sheet
+      const {booking:bkAct=0,retail:rtAct=0,coverage:cvAct=0}=etbrCache[nk]||{};
+      return{key:displayKey,bkTgt:tgt.bkTgt,rtTgt:tgt.rtTgt,bkAct,rtAct,cvAct};
     })
+  ]
     .filter(t=>t.bkTgt||t.rtTgt||t.bkAct||t.rtAct||t.cvAct) // drop all-zero rows
     .sort((a,b)=>{const aC=a.key.toUpperCase().includes('CORPORATE'),bC=b.key.toUpperCase().includes('CORPORATE');if(aC&&!bC)return 1;if(!aC&&bC)return-1;return a.key.localeCompare(b.key);});
 
