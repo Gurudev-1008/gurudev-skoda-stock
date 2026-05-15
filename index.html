@@ -4840,7 +4840,7 @@ function renderRetailFinanceRetail(){
       <td class="ecol" data-la-td="1">${editCellPP(loanAmt,'Retail_Master',sheetRow,laI,ppI,laI,paI)}</td>
       <td class="ecol">${editCellNum(disbAmt,'Retail_Master',sheetRow,daI)}</td>
       <td class="ecol">${eCell(roiVal,'Retail_Master',sheetRow,roiI)}</td>
-      <td class="ecol" data-tat-td="1">${eCell(tatVal,'Retail_Master',sheetRow,tatI)}</td>
+      <td data-tat-td="1" style="text-align:right;padding:4px 8px;"><span style="font-size:11px;color:var(--text-primary);">${tatVal||'—'}</span></td>
       <td data-pa-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${paVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${paVal||'—'}</span></td>
       <td data-np-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${npVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${npVal||'—'}</span></td>
       <td data-ga-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${gaVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${gaVal||'—'}</span></td>
@@ -5850,12 +5850,28 @@ window.rptTab=function(id,tab){
 };
 
 // ── Shared CSV export helper ──────────────────────────
+function _cellText(cell){
+  // Priority 1: <select> — return selected option value
+  const sel=cell.querySelector('select');
+  if(sel)return sel.value||'';
+  // Priority 2: <input type=date> or <input> — return input value
+  const inp=cell.querySelector('input');
+  if(inp)return inp.value||'';
+  // Priority 3: [data-val] span (read-only computed cells like Payout Amount)
+  const dvSpan=cell.querySelector('[data-val]');
+  if(dvSpan){const v=dvSpan.dataset.val||dvSpan.textContent||'';return v==='—'?'':v;}
+  // Priority 4: .ev span (pencil-edit cells) — get the display value span
+  const evSpan=cell.querySelector('.ev');
+  if(evSpan)return(evSpan.textContent||'').trim();
+  // Fallback: plain text content
+  return(cell.innerText||cell.textContent||'').trim().replace(/[\r\n]+/g,' ');
+}
 function _tblToCSV(tbl){
   const rows=[];
   tbl.querySelectorAll('tr').forEach(tr=>{
     const cells=[];
     tr.querySelectorAll('th,td').forEach(cell=>{
-      const txt=(cell.innerText||cell.textContent||'').trim().replace(/[\r\n]+/g,' ').replace(/"/g,'""');
+      const txt=_cellText(cell).replace(/"/g,'""');
       cells.push('"'+txt+'"');
     });
     if(cells.length)rows.push(cells.join(','));
@@ -5871,12 +5887,17 @@ function _downloadCSV(csv,filename){
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-// ── Export current toolbar-tab table (tabs 0,1,2,7,8,10) ──
+// ── Export current toolbar-tab table (tabs 0,1,2,7,8,10,12) ──
 const _tabNames={0:'Stock',1:'Allocation',2:'Live RPO',7:'New Car Allotment',8:'Ageing & Demo Allotment',10:'De-allotted'};
 window.exportCurrentTab=function(){
   const tbl=document.querySelector('#tblArea table');
   if(!tbl){alert('No data to export.');return;}
-  _downloadCSV(_tblToCSV(tbl),_tabNames[curTab]||'Data');
+  let name=_tabNames[curTab]||'Data';
+  if(curTab===12){
+    const v=getRFView();
+    name=v==='retail'?'Retail Finance - Retail':v==='roi'?'Retail Finance - Payout Master':'Retail Finance - Allotment';
+  }
+  _downloadCSV(_tblToCSV(tbl),name);
 };
 
 // ── Export VNA Summary ────────────────────────────────
