@@ -496,7 +496,7 @@ tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
     <div class="fw" id="fBranchWrap" style="display:none"><span class="fl">Branch</span><select class="fs" id="fBranch" onchange="onBranchChange()"><option value="">All Branches</option><option>TEYNAMPET</option><option>AMBATTUR</option><option>ANNA NAGAR</option><option>PORUR</option><option>TRICHY</option><option>TANJORE</option><option>VELLORE</option><option>CORPORATE TEAM</option></select></div>
     <div class="fw" id="fSCWrap" style="display:none"><span class="fl">SC Name</span><select class="fs" id="fSC" onchange="renderTable()"><option value="">All SCs</option></select></div>
     <div class="fw" id="fAllotStatWrap" style="display:none"><span class="fl">Status</span><select class="fs" id="fAllotStat" onchange="renderTable()"><option value="">All Status</option></select></div>
-    <div class="fw" id="rfModeWrap" style="display:none"><span class="fl">Mode</span><select class="fs" id="fMode" onchange="renderTable()"><option value="">All Modes</option></select></div>
+    <div class="fw" id="rfModeWrap" style="display:none"><span class="fl">Mode</span><select class="fs" id="fMode" onchange="renderTable()"><option value="">All Modes</option><option value="Inhouse">Inhouse</option><option value="Outhouse">Outhouse</option><option value="Own Fund">Own Fund</option><option value="Lease">Lease</option><option value="__BLANK__">Blank</option></select></div>
     <div class="fw" id="rfBankWrap" style="display:none"><span class="fl">Bank</span><select class="fs" id="fBank" onchange="renderTable()"><option value="">All Banks</option></select></div>
     <div class="fw" id="rfPayTypWrap" style="display:none"><span class="fl">Payout Type</span><select class="fs" id="fRoiPT" onchange="renderTable()"><option value="">All Types</option><option>Fixed</option><option>Variable</option></select></div>
     <div class="fw" id="rfGSTWrap" style="display:none"><span class="fl">GST</span><select class="fs" id="fRoiGST" onchange="renderTable()"><option value="">All</option><option>Included</option><option>Excluded</option></select></div>
@@ -2609,30 +2609,17 @@ function setupFilters(){
       const scVals12=[...new Set(filtBrBody12.map(({r,scI})=>scI>=0?String(r[scI]||'').trim():'').filter(x=>x&&!x.startsWith('#')))].sort();
       scVals12.forEach(x=>scSel12.add(new Option(x,x)));
       if(scVals12.includes(curSC12))scSel12.value=curSC12;
-      // Mode (Finance Type) dropdown — scan ALL allotment rows (not just invoiced) for maximum coverage
-      // Use same column detection variants as renderRetailFinanceAllotment (exact match fce)
+      // Mode dropdown is hardcoded (fixed list) — no dynamic population needed
+      // Bank (Bank Name) dropdown — from allotment rows + financier list from ROI
       const fce12=(hh,k)=>{const nm=s=>String(s||'').replace(/^﻿/,'').trim().toLowerCase();const nv=nm(k);return hh.findIndex(x=>nm(x)===nv);};
-      const ftI7sf=(()=>{for(const k of['Finance Type','FinanceType','Mode','Finance Mode']){const i=fce12(h7,k);if(i>=0)return i;}return -1;})();
-      const ftI8sf=(()=>{for(const k of['Finance Type','FinanceType','Mode','Finance Mode']){const i=fce12(h8,k);if(i>=0)return i;}return -1;})();
-      // ipdI7sf/ipdI8sf: Invoice Plan Date column — for "focus invoiced" filter (same as render function)
       const ipdI7sf=(()=>{for(const k of['Invoice Plan Date','InvoicePlanDate']){const i=fce12(h7,k);if(i>=0)return i;}return -1;})();
       const ipdI8sf=(()=>{for(const k of['Invoice Plan Date','InvoicePlanDate']){const i=fce12(h8,k);if(i>=0)return i;}return -1;})();
-      // Build full allotment body (not pre-filtered) to get all Mode/Bank values
       const body7all=rows7.slice(hi7+1).filter(r=>Array.isArray(r)&&!String(r[1]||'').trim().toUpperCase().startsWith('CF')&&(cnI7b<0||String(r[cnI7b]||'').trim()));
       const body8all=rows8.slice(hi8+1).filter(r=>Array.isArray(r)&&!String(r[1]||'').trim().toUpperCase().startsWith('CF')&&(cnI8b<0||String(r[cnI8b]||'').trim()));
-      // Also build "focus invoiced" filtered bodies (same filter as render) for accurate mode values
       const body7fi=ipdI7sf>=0?body7all.filter(r=>String(r[ipdI7sf]||'').trim().toLowerCase()==='focus invoiced'):body7all;
       const body8fi=ipdI8sf>=0?body8all.filter(r=>String(r[ipdI8sf]||'').trim().toLowerCase()==='focus invoiced'):body8all;
-      // Use focus-invoiced rows first; fall back to all rows if none found
       const modeRows7=body7fi.length?body7fi:body7all;
       const modeRows8=body8fi.length?body8fi:body8all;
-      const modeVals12=[...new Set([
-        ...(ftI7sf>=0?modeRows7.map(r=>String(r[ftI7sf]||'').trim()):[]),
-        ...(ftI8sf>=0?modeRows8.map(r=>String(r[ftI8sf]||'').trim()):[])
-      ].filter(Boolean))].sort();
-      const modeSel12=document.getElementById('fMode'),curMode12=modeSel12?modeSel12.value:'';
-      if(modeSel12){modeSel12.innerHTML='<option value="">All Modes</option>';modeVals12.forEach(x=>modeSel12.add(new Option(x,x)));if(modeVals12.includes(curMode12))modeSel12.value=curMode12;}
-      // Bank (Bank Name) dropdown — from allotment focus-invoiced rows + financier list from ROI
       const bnI7sf=(()=>{for(const k of['Bank Name','Bank','Financier','Lender Name','Lender','Finance Bank','Banker']){const i=fce12(h7,k);if(i>=0)return i;}return -1;})();
       const bnI8sf=(()=>{for(const k of['Bank Name','Bank','Financier','Lender Name','Lender','Finance Bank','Banker']){const i=fce12(h8,k);if(i>=0)return i;}return -1;})();
       const bankVals12=[...new Set([
@@ -3269,20 +3256,24 @@ function recalcPayoutAmt(el,sheet,sheetRow,ppCol,laCol,paCol){
     C=Math.round(B*0.18);
     A=B+C;
   }
+  // Helper: update read-only span display and save value to sheet
+  const saveRO=(td,col,val)=>{
+    if(!td)return;
+    const sp=td.querySelector('[data-val]');
+    if(sp){const old=sp.dataset.val||'';sp.textContent=val?String(val):'—';sp.dataset.val=String(val);if(col>0)saveROICell(sp,sheet,sheetRow,col,String(val),old);}
+  };
   // Save Payout Amount (A) to sheet and DOM
-  const paIn=paTd.querySelector('input');
-  if(paIn){const old=paIn.dataset.orig||'';paIn.value=String(A);saveROICell(paIn,sheet,sheetRow,paCol,String(A),old);}
+  saveRO(paTd,paCol,A);
   // Get Net Payout and GST Amount column indices from payout TD data attributes
   const npI_da=parseInt(ppTd.dataset.npi??'-1');
   const gaI_da=parseInt(ppTd.dataset.gai??'-1');
   const npCol=npI_da>=0?npI_da+1:0;
   const gaCol=gaI_da>=0?gaI_da+1:0;
-  // Save Net Payout (B)
+  // Save Net Payout (B) and GST Amount (C)
   const npTd=tr.querySelector('td[data-np-td]');
-  if(npTd&&npCol>0){const npIn=npTd.querySelector('input');if(npIn){const old=npIn.dataset.orig||'';npIn.value=String(B);saveROICell(npIn,sheet,sheetRow,npCol,String(B),old);}}
-  // Save GST Amount (C)
   const gaTd=tr.querySelector('td[data-ga-td]');
-  if(gaTd&&gaCol>0){const gaIn=gaTd.querySelector('input');if(gaIn){const old=gaIn.dataset.orig||'';gaIn.value=String(C);saveROICell(gaIn,sheet,sheetRow,gaCol,String(C),old);}}
+  saveRO(npTd,npCol,B);
+  saveRO(gaTd,gaCol,C);
 }
 // Inline dropdown — always-visible select, auto-saves on change (no pencil button)
 function editCellDD(val,sheet,sheetRow,colIdx,options){
@@ -4494,7 +4485,7 @@ function renderRetailFinanceAllotment(){
     if(fM&&modelName!==fM)return false;
     if(fVar12&&detail.variant!==fVar12)return false;
     if(fCol12&&detail.colour!==fCol12)return false;
-    if(fMode12&&ftI>=0&&String(r[ftI]||'').trim()!==fMode12)return false;
+    if(fMode12){const mv=ftI>=0?String(r[ftI]||'').trim():'';if(fMode12==='__BLANK__'?mv!=='':mv!==fMode12)return false;}
     if(fBank12&&bnI>=0&&String(r[bnI]||'').trim()!==fBank12)return false;
     if(srch&&!r.map(c=>String(c||'').toLowerCase()).join(' ').includes(srch))return false;
     return true;
@@ -4535,7 +4526,7 @@ function renderRetailFinanceAllotment(){
     `;
   }
   const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Model','Variant','Colour','MY','VY','Invoice Status','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Payout %','Login Date','Loan Disbursed Date','Loan Amount','Disbursed Amount','ROI','TAT','Payout Amount','Net Payout','GST Amount'];
-  const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]);
+  const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24,25,26]);
   const NCOLS_RF=HEADERS.length;
   const _srmCheckHdr=window._srmActive?'<th style="width:30px;text-align:center;padding:4px 6px;font-size:10px;color:var(--text-muted);">✓</th>':'';
   document.getElementById('tH').innerHTML=_srmCheckHdr+HEADERS.map((d,i)=>
@@ -4613,9 +4604,9 @@ function renderRetailFinanceAllotment(){
       <td class="ecol">${editCellNum(disbAmt,sheetName,sheetRow,daI)}</td>
       <td class="ecol">${eCell(roiVal,sheetName,sheetRow,roiI)}</td>
       <td class="ecol" data-tat-td="1">${eCell(tatVal,sheetName,sheetRow,tatI)}</td>
-      <td class="ecol" data-pa-td="1">${eCell(paVal,sheetName,sheetRow,paI)}</td>
-      <td class="ecol" data-np-td="1">${eCell(npVal,sheetName,sheetRow,npI)}</td>
-      <td class="ecol" data-ga-td="1">${eCell(gaVal,sheetName,sheetRow,gaI)}</td>
+      <td data-pa-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${paVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${paVal||'—'}</span></td>
+      <td data-np-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${npVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${npVal||'—'}</span></td>
+      <td data-ga-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${gaVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${gaVal||'—'}</span></td>
     </tr>`;
   }).join('');
 }
@@ -4760,7 +4751,7 @@ function renderRetailFinanceRetail(){
     const detail=vinDetailMap[vin]||{};
     const modelName=detail.model||vinMap[vin]||'';
     if(fM&&modelName!==fM)return false;
-    if(fMode14&&ftI>=0&&String(r[ftI]||'').trim()!==fMode14)return false;
+    if(fMode14){const mv=ftI>=0?String(r[ftI]||'').trim():'';if(fMode14==='__BLANK__'?mv!=='':mv!==fMode14)return false;}
     if(fBank14&&bnI>=0&&String(r[bnI]||'').trim()!==fBank14)return false;
     if(srch&&!r.map(c=>String(c||'').toLowerCase()).join(' ').includes(srch))return false;
     return true;
@@ -4779,7 +4770,7 @@ function renderRetailFinanceRetail(){
   });
   setRInfo(filtered.length,allRowsIdx.length);
   const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Model','Variant','Colour','MY','VY','Invoice Date','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Payout %','Login Date','Loan Disbursed Date','Loan Amount','Disbursed Amount','ROI','TAT','Payout Amount','Net Payout','GST Amount'];
-  const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]);
+  const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24,25,26]);
   const NCOLS_RF=HEADERS.length;
   document.getElementById('tH').innerHTML=HEADERS.map((d,i)=>
     `<th onclick="${i<NCOLS_RF-1?`doSort(${i})`:'void(0)'}" class="${sCol===i?'sorted':''}${EDITABLE_COLS.has(i)?' ecol':''}">${d}${i<NCOLS_RF-1?`<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span>`:''}</th>`
@@ -4850,9 +4841,9 @@ function renderRetailFinanceRetail(){
       <td class="ecol">${editCellNum(disbAmt,'Retail_Master',sheetRow,daI)}</td>
       <td class="ecol">${eCell(roiVal,'Retail_Master',sheetRow,roiI)}</td>
       <td class="ecol" data-tat-td="1">${eCell(tatVal,'Retail_Master',sheetRow,tatI)}</td>
-      <td class="ecol" data-pa-td="1">${eCell(paVal,'Retail_Master',sheetRow,paI)}</td>
-      <td class="ecol" data-np-td="1">${eCell(npVal,'Retail_Master',sheetRow,npI)}</td>
-      <td class="ecol" data-ga-td="1">${eCell(gaVal,'Retail_Master',sheetRow,gaI)}</td>
+      <td data-pa-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${paVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${paVal||'—'}</span></td>
+      <td data-np-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${npVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${npVal||'—'}</span></td>
+      <td data-ga-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${gaVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${gaVal||'—'}</span></td>
     </tr>`;
   }).join('');
 }
