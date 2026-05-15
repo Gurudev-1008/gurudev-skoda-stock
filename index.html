@@ -496,6 +496,10 @@ tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
     <div class="fw" id="fBranchWrap" style="display:none"><span class="fl">Branch</span><select class="fs" id="fBranch" onchange="onBranchChange()"><option value="">All Branches</option><option>TEYNAMPET</option><option>AMBATTUR</option><option>ANNA NAGAR</option><option>PORUR</option><option>TRICHY</option><option>TANJORE</option><option>VELLORE</option><option>CORPORATE TEAM</option></select></div>
     <div class="fw" id="fSCWrap" style="display:none"><span class="fl">SC Name</span><select class="fs" id="fSC" onchange="renderTable()"><option value="">All SCs</option></select></div>
     <div class="fw" id="fAllotStatWrap" style="display:none"><span class="fl">Status</span><select class="fs" id="fAllotStat" onchange="renderTable()"><option value="">All Status</option></select></div>
+    <div class="fw" id="rfModeWrap" style="display:none"><span class="fl">Mode</span><select class="fs" id="fMode" onchange="renderTable()"><option value="">All Modes</option></select></div>
+    <div class="fw" id="rfBankWrap" style="display:none"><span class="fl">Bank</span><select class="fs" id="fBank" onchange="renderTable()"><option value="">All Banks</option></select></div>
+    <div class="fw" id="rfPayTypWrap" style="display:none"><span class="fl">Payout Type</span><select class="fs" id="fRoiPT" onchange="renderTable()"><option value="">All Types</option><option>Fixed</option><option>Variable</option></select></div>
+    <div class="fw" id="rfGSTWrap" style="display:none"><span class="fl">GST</span><select class="fs" id="fRoiGST" onchange="renderTable()"><option value="">All</option><option>Included</option><option>Excluded</option></select></div>
     <div class="fw"><span class="fl">Model</span><select class="fs" id="fMod" onchange="onMod()"><option value="">All Models</option></select></div>
     <div class="fw"><span class="fl">Variant</span><select class="fs" id="fVar" onchange="onVar()"><option value="">All Variants</option></select></div>
     <div class="fw"><span class="fl">Colour</span><select class="fs" id="fCol" onchange="onCol()"><option value="">All Colours</option></select></div>
@@ -1351,7 +1355,7 @@ function setupTab(){
   });
   // Excel export button — Admin / L1 / L1A only
   {
-    const canExp=curUser&&(curUser.isAdmin||curUser.level===1||curUser.level==='1'||curUser.level==='1A');
+    const canExp=curUser&&(curUser.isAdmin||curUser.level===1||curUser.level==='1'||curUser.level==='1A'||(curTab===12&&(curUser.level==='2F'||curUser.level==='3F')));
     const teb=document.getElementById('tabExportBtn');
     if(teb)teb.style.display=(canExp&&[0,1,2,7,8,10,12].includes(curTab))?'inline-flex':'none';
     const veb=document.getElementById('vnaExportBtn');
@@ -2605,6 +2609,39 @@ function setupFilters(){
       const scVals12=[...new Set(filtBrBody12.map(({r,scI})=>scI>=0?String(r[scI]||'').trim():'').filter(x=>x&&!x.startsWith('#')))].sort();
       scVals12.forEach(x=>scSel12.add(new Option(x,x)));
       if(scVals12.includes(curSC12))scSel12.value=curSC12;
+      // Mode (Finance Type) dropdown — scan ALL allotment rows (not just invoiced) for maximum coverage
+      // Use same column detection variants as renderRetailFinanceAllotment (exact match fce)
+      const fce12=(hh,k)=>{const nm=s=>String(s||'').replace(/^﻿/,'').trim().toLowerCase();const nv=nm(k);return hh.findIndex(x=>nm(x)===nv);};
+      const ftI7sf=(()=>{for(const k of['Finance Type','FinanceType','Mode','Finance Mode']){const i=fce12(h7,k);if(i>=0)return i;}return -1;})();
+      const ftI8sf=(()=>{for(const k of['Finance Type','FinanceType','Mode','Finance Mode']){const i=fce12(h8,k);if(i>=0)return i;}return -1;})();
+      // ipdI7sf/ipdI8sf: Invoice Plan Date column — for "focus invoiced" filter (same as render function)
+      const ipdI7sf=(()=>{for(const k of['Invoice Plan Date','InvoicePlanDate']){const i=fce12(h7,k);if(i>=0)return i;}return -1;})();
+      const ipdI8sf=(()=>{for(const k of['Invoice Plan Date','InvoicePlanDate']){const i=fce12(h8,k);if(i>=0)return i;}return -1;})();
+      // Build full allotment body (not pre-filtered) to get all Mode/Bank values
+      const body7all=rows7.slice(hi7+1).filter(r=>Array.isArray(r)&&!String(r[1]||'').trim().toUpperCase().startsWith('CF')&&(cnI7b<0||String(r[cnI7b]||'').trim()));
+      const body8all=rows8.slice(hi8+1).filter(r=>Array.isArray(r)&&!String(r[1]||'').trim().toUpperCase().startsWith('CF')&&(cnI8b<0||String(r[cnI8b]||'').trim()));
+      // Also build "focus invoiced" filtered bodies (same filter as render) for accurate mode values
+      const body7fi=ipdI7sf>=0?body7all.filter(r=>String(r[ipdI7sf]||'').trim().toLowerCase()==='focus invoiced'):body7all;
+      const body8fi=ipdI8sf>=0?body8all.filter(r=>String(r[ipdI8sf]||'').trim().toLowerCase()==='focus invoiced'):body8all;
+      // Use focus-invoiced rows first; fall back to all rows if none found
+      const modeRows7=body7fi.length?body7fi:body7all;
+      const modeRows8=body8fi.length?body8fi:body8all;
+      const modeVals12=[...new Set([
+        ...(ftI7sf>=0?modeRows7.map(r=>String(r[ftI7sf]||'').trim()):[]),
+        ...(ftI8sf>=0?modeRows8.map(r=>String(r[ftI8sf]||'').trim()):[])
+      ].filter(Boolean))].sort();
+      const modeSel12=document.getElementById('fMode'),curMode12=modeSel12?modeSel12.value:'';
+      if(modeSel12){modeSel12.innerHTML='<option value="">All Modes</option>';modeVals12.forEach(x=>modeSel12.add(new Option(x,x)));if(modeVals12.includes(curMode12))modeSel12.value=curMode12;}
+      // Bank (Bank Name) dropdown — from allotment focus-invoiced rows + financier list from ROI
+      const bnI7sf=(()=>{for(const k of['Bank Name','Bank','Financier','Lender Name','Lender','Finance Bank','Banker']){const i=fce12(h7,k);if(i>=0)return i;}return -1;})();
+      const bnI8sf=(()=>{for(const k of['Bank Name','Bank','Financier','Lender Name','Lender','Finance Bank','Banker']){const i=fce12(h8,k);if(i>=0)return i;}return -1;})();
+      const bankVals12=[...new Set([
+        ...(bnI7sf>=0?modeRows7.map(r=>String(r[bnI7sf]||'').trim()):[]),
+        ...(bnI8sf>=0?modeRows8.map(r=>String(r[bnI8sf]||'').trim()):[]),
+        ...getFinancierList()
+      ].filter(Boolean))].sort();
+      const bankSel12=document.getElementById('fBank'),curBank12=bankSel12?bankSel12.value:'';
+      if(bankSel12){bankSel12.innerHTML='<option value="">All Banks</option>';bankVals12.forEach(x=>bankSel12.add(new Option(x,x)));if(bankVals12.includes(curBank12))bankSel12.value=curBank12;}
       return;
     }
     if(curTab===0){
@@ -2740,12 +2777,26 @@ function onRFViewChange(v){
   });
   ['fMod','fVar','fCol'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el&&el.parentElement)el.parentElement.style.display=isROI?'none':'';
+    if(el&&el.parentElement){
+      // Variant and Colour are hidden for both ROI view and Retail view
+      if(id==='fVar'||id==='fCol')el.parentElement.style.display=(isROI||isR)?'none':'';
+      else el.parentElement.style.display=isROI?'none':'';
+    }
+  });
+  // Mode & Bank filters: visible for allotment and retail, hidden for ROI
+  ['rfModeWrap','rfBankWrap'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=isROI?'none':'';
+  });
+  // Payout Type & GST filters: visible only for ROI (Payout Master) view
+  ['rfPayTypWrap','rfGSTWrap'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display=isROI?'':'none';
   });
   renderTable();
 }
 function clearF(r=true){
-  ['fSrch','fBranch','fSC','fAllotStat','fMod','fVar','fCol','fYr','fStat','rfDateFrom','rfDateTo','daDtFrom','daDtTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['fSrch','fBranch','fSC','fAllotStat','fMod','fVar','fCol','fYr','fStat','rfDateFrom','rfDateTo','daDtFrom','daDtTo','fMode','fBank','fRoiPT','fRoiGST'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   // Reset RF toggle bar — 2F/3F default to Retail, others default to Allotment
   if(curTab===12)onRFViewChange((curUser&&(curUser.level==='2F'||curUser.level==='3F'))?'retail':'allotment');
   // Re-apply L3, L3F & L4 branch pre-fill whenever filters are cleared
@@ -3180,8 +3231,10 @@ function editCellNum(val,sheet,sheetRow,colIdx){
     onfocus="this.select()">`;
 }
 // recalcPayoutAmt — called when Payout % or Loan Amount changes;
-// reads both values from the row, computes Payout Amount = (PP%/100)*LA,
-// updates the Payout Amount cell in the DOM and saves it to the sheet.
+// GST-aware: reads bank from same row, looks up GST type in ROI sheet,
+// computes A (Payout Amount), B (Net Payout), C (GST Amount) and saves all three.
+// GST Included: A=loan*pct%, B=Round(A/1.18,0), C=A-B
+// GST Excluded: B=loan*pct%, C=Round(B*18%,0), A=B+C
 function recalcPayoutAmt(el,sheet,sheetRow,ppCol,laCol,paCol){
   if(!paCol||paCol<1)return;
   const tr=el.closest('tr');
@@ -3197,13 +3250,39 @@ function recalcPayoutAmt(el,sheet,sheetRow,ppCol,laCol,paCol){
   const ppVal=parseFloat(ppStr)||0;
   const laVal=parseFloat(laStr)||0;
   if(!ppVal||!laVal)return;
-  const payoutAmt=Math.round((ppVal/100)*laVal);
-  const paIn=paTd.querySelector('input');
-  if(paIn){
-    const old=paIn.dataset.orig||'';
-    paIn.value=String(payoutAmt);
-    saveROICell(paIn,sheet,sheetRow,paCol,String(payoutAmt),old);
+  // Get bank name from bank dropdown in same row
+  const bankTd=tr.querySelector('td[data-bank-td]');
+  const bankSel=bankTd?bankTd.querySelector('select'):null;
+  const bankName=bankSel?bankSel.value.trim():'';
+  // Get GST type from ROI bank map
+  const bankInfo=bankName?getROIBankMap()[bankName.toLowerCase()]||{}:{};
+  const gstType=String(bankInfo.gst||'').trim().toLowerCase();
+  // GST-aware payout calculation
+  let A,B,C;
+  if(gstType==='included'){
+    A=Math.round((ppVal/100)*laVal);
+    B=Math.round(A/1.18);
+    C=A-B;
+  } else {
+    // Excluded or unknown → treat as Excluded
+    B=Math.round((ppVal/100)*laVal);
+    C=Math.round(B*0.18);
+    A=B+C;
   }
+  // Save Payout Amount (A) to sheet and DOM
+  const paIn=paTd.querySelector('input');
+  if(paIn){const old=paIn.dataset.orig||'';paIn.value=String(A);saveROICell(paIn,sheet,sheetRow,paCol,String(A),old);}
+  // Get Net Payout and GST Amount column indices from payout TD data attributes
+  const npI_da=parseInt(ppTd.dataset.npi??'-1');
+  const gaI_da=parseInt(ppTd.dataset.gai??'-1');
+  const npCol=npI_da>=0?npI_da+1:0;
+  const gaCol=gaI_da>=0?gaI_da+1:0;
+  // Save Net Payout (B)
+  const npTd=tr.querySelector('td[data-np-td]');
+  if(npTd&&npCol>0){const npIn=npTd.querySelector('input');if(npIn){const old=npIn.dataset.orig||'';npIn.value=String(B);saveROICell(npIn,sheet,sheetRow,npCol,String(B),old);}}
+  // Save GST Amount (C)
+  const gaTd=tr.querySelector('td[data-ga-td]');
+  if(gaTd&&gaCol>0){const gaIn=gaTd.querySelector('input');if(gaIn){const old=gaIn.dataset.orig||'';gaIn.value=String(C);saveROICell(gaIn,sheet,sheetRow,gaCol,String(C),old);}}
 }
 // Inline dropdown — always-visible select, auto-saves on change (no pencil button)
 function editCellDD(val,sheet,sheetRow,colIdx,options){
@@ -3265,6 +3344,7 @@ function getROIBankMap(){
   const finI=(()=>{for(const k of['Financier','Bank','Bank Name','Lender','Lender Name']){const i=fc(h,k);if(i>=0)return i;}return 0;})();
   const ptI =(()=>{for(const k of['Payout Type','PayoutType','Payout type','Type']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   const ppI =(()=>{for(const k of['Payout %','Payout%','Payout Percent','Payout']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
+  const gstI2=(()=>{for(const k of['GST','Gst','GST Type','GST Status']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   const map={};
   rows.slice(hi+1).forEach(r=>{
     if(!Array.isArray(r))return;
@@ -3272,7 +3352,8 @@ function getROIBankMap(){
     if(!name)return;
     map[name.toLowerCase()]={
       payoutType:ptI>=0?String(r[ptI]||'').trim():'',
-      payoutPct :ppI>=0?String(r[ppI]||'').trim():''
+      payoutPct :ppI>=0?String(r[ppI]||'').trim():'',
+      gst       :gstI2>=0?String(r[gstI2]||'').trim():''
     };
   });
   return map;
@@ -4330,7 +4411,7 @@ function renderRetailFinanceAllotment(){
   const ivdI7=(()=>{for(const k of['Invoice Done Date','Invoice Date','Invoiced Date']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
   const ipdI7=fce(h7,'Invoice Plan Date');
   const clrI7=(()=>{for(const k of['Colour','Color','COLOUR','COLOR']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
-  const ftI7 =(()=>{for(const k of['Finance Type','FinanceType']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
+  const ftI7 =(()=>{for(const k of['Finance Type','FinanceType','Mode','Finance Mode']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
   const bnI7 =(()=>{for(const k of['Bank Name','Bank','Financier','Lender Name','Lender','Finance Bank','Banker']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
   const frI7 =(()=>{for(const k of['Finance Remarks','Finance Remark','FinanceRemarks']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
   const smrI7=(()=>{for(const k of['SM Remarks','SM Remark','SMRemarks']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
@@ -4342,13 +4423,15 @@ function renderRetailFinanceAllotment(){
   const roiI7=(()=>{for(const k of['ROI','Roi','Rate of Interest']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
   const tatI7=(()=>{for(const k of['TAT','Tat','Turn Around Time','Turnaround Time']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
   const paI7 =(()=>{for(const k of['Payout amount','Payout Amount','Payout Amt','PAYOUT AMOUNT']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
+  const npI7 =(()=>{for(const k of['Net Payout','Net payout','NET PAYOUT','NetPayout']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
+  const gaI7 =(()=>{for(const k of['GST Amount','GST amount','GST Amt','GSTAmount']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
   const retMI7=(()=>{for(const k of['Ret_Master','Ret Master','RetMaster','RET_MASTER']){const i=fce(h7,k);if(i>=0)return i;}return -1;})();
   const body7=rows7.slice(hi7+1).map((r,j)=>({r,j})).filter(({r})=>{
     if(!Array.isArray(r))return false;
     const sno=String(r[1]||'').trim();if(sno.toUpperCase().startsWith('CF'))return false;
     if(cnI7>=0&&!String(r[cnI7]||'').trim())return false;
     return ipdI7>=0?String(r[ipdI7]||'').trim().toLowerCase()==='focus invoiced':false;
-  }).map(({r,j})=>({r,src:7,sheetRow:hi7+2+j,cnI:cnI7,brI:brI7,scI:scI7,adI:adI7,agI:agI7,syI:syI7,vaI:vaI7,myI:myI7,vyI:vyI7,ivdI:ivdI7,ipdI:ipdI7,clrI:clrI7,ftI:ftI7,bnI:bnI7,frI:frI7,smrI:smrI7,ppI:ppI7,ldI:ldI7,lddI:lddI7,laI:laI7,daI:daI7,roiI:roiI7,tatI:tatI7,paI:paI7,retMI:retMI7}));
+  }).map(({r,j})=>({r,src:7,sheetRow:hi7+2+j,cnI:cnI7,brI:brI7,scI:scI7,adI:adI7,agI:agI7,syI:syI7,vaI:vaI7,myI:myI7,vyI:vyI7,ivdI:ivdI7,ipdI:ipdI7,clrI:clrI7,ftI:ftI7,bnI:bnI7,frI:frI7,smrI:smrI7,ppI:ppI7,ldI:ldI7,lddI:lddI7,laI:laI7,daI:daI7,roiI:roiI7,tatI:tatI7,paI:paI7,npI:npI7,gaI:gaI7,retMI:retMI7}));
   // ── SD[8] (AG/DM Allotment) column detection ──
   const rows8=SD[8]||[];let hi8=0;
   for(let i=0;i<Math.min(3,rows8.length);i++){const r=rows8[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('customer')||r.includes('branch')||r.includes('allotment')){hi8=i;break;}}
@@ -4365,7 +4448,7 @@ function renderRetailFinanceAllotment(){
   const ipdI8=fce(h8,'Invoice Plan Date');
   const clrI8=(()=>{for(const k of['Colour','Color','COLOUR','COLOR']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
   const asI8 =fc(h8,'Allotment Status'); // kept for other usages
-  const ftI8 =(()=>{for(const k of['Finance Type','FinanceType']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
+  const ftI8 =(()=>{for(const k of['Finance Type','FinanceType','Mode','Finance Mode']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
   const bnI8 =(()=>{for(const k of['Bank Name','Bank','Financier','Lender Name','Lender','Finance Bank','Banker']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
   const frI8 =(()=>{for(const k of['Finance Remarks','Finance Remark','FinanceRemarks']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
   const smrI8=(()=>{for(const k of['SM Remarks','SM Remark','SMRemarks']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
@@ -4377,13 +4460,15 @@ function renderRetailFinanceAllotment(){
   const roiI8=(()=>{for(const k of['ROI','Roi','Rate of Interest']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
   const tatI8=(()=>{for(const k of['TAT','Tat','Turn Around Time','Turnaround Time']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
   const paI8 =(()=>{for(const k of['Payout amount','Payout Amount','Payout Amt','PAYOUT AMOUNT']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
+  const npI8 =(()=>{for(const k of['Net Payout','Net payout','NET PAYOUT','NetPayout']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
+  const gaI8 =(()=>{for(const k of['GST Amount','GST amount','GST Amt','GSTAmount']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
   const retMI8=(()=>{for(const k of['Ret_Master','Ret Master','RetMaster','RET_MASTER']){const i=fce(h8,k);if(i>=0)return i;}return -1;})();
   const body8=rows8.slice(hi8+1).map((r,j)=>({r,j})).filter(({r})=>{
     if(!Array.isArray(r))return false;
     const sno=String(r[1]||'').trim();if(sno.toUpperCase().startsWith('CF'))return false;
     if(cnI8>=0&&!String(r[cnI8]||'').trim())return false;
     return ipdI8>=0?String(r[ipdI8]||'').trim().toLowerCase()==='focus invoiced':false;
-  }).map(({r,j})=>({r,src:8,sheetRow:hi8+2+j,cnI:cnI8,brI:brI8,scI:scI8,adI:adI8,agI:agI8,syI:syI8,vaI:vaI8,myI:myI8,vyI:vyI8,ivdI:ivdI8,ipdI:ipdI8,clrI:clrI8,ftI:ftI8,bnI:bnI8,frI:frI8,smrI:smrI8,ppI:ppI8,ldI:ldI8,lddI:lddI8,laI:laI8,daI:daI8,roiI:roiI8,tatI:tatI8,paI:paI8,retMI:retMI8}));
+  }).map(({r,j})=>({r,src:8,sheetRow:hi8+2+j,cnI:cnI8,brI:brI8,scI:scI8,adI:adI8,agI:agI8,syI:syI8,vaI:vaI8,myI:myI8,vyI:vyI8,ivdI:ivdI8,ipdI:ipdI8,clrI:clrI8,ftI:ftI8,bnI:bnI8,frI:frI8,smrI:smrI8,ppI:ppI8,ldI:ldI8,lddI:lddI8,laI:laI8,daI:daI8,roiI:roiI8,tatI:tatI8,paI:paI8,npI:npI8,gaI:gaI8,retMI:retMI8}));
   if(!body7.length&&!body8.length){
     document.getElementById('tH').innerHTML='';
     document.getElementById('tB').innerHTML=`<tr><td colspan="27"><div class="sb"><strong>No data found</strong><p>No rows with <em>Focus Invoiced</em> in the Invoice Plan Date column were found in the Allotment or AG/DM Allotment sheets.</p></div></td></tr>`;
@@ -4396,9 +4481,11 @@ function renderRetailFinanceAllotment(){
   const fM     =document.getElementById('fMod').value;
   const fVar12 =document.getElementById('fVar').value;
   const fCol12 =document.getElementById('fCol').value;
+  const fMode12=(document.getElementById('fMode')||{}).value||'';
+  const fBank12=(document.getElementById('fBank')||{}).value||'';
   const srch   =(document.getElementById('fSrch').value||'').toLowerCase().trim();
   const cleanVal=v=>{const s=String(v||'').trim();return s.startsWith('#')?'':s;};
-  let filtered=combined.filter(({r,brI,scI,cnI,clrI})=>{
+  let filtered=combined.filter(({r,brI,scI,cnI,clrI,ftI,bnI})=>{
     if(fBranch&&brI>=0&&cleanVal(r[brI]).toUpperCase()!==fBranch)return false;
     if(fSC&&scI>=0&&cleanVal(r[scI])!==fSC)return false;
     const vin=String(r[0]||'').trim();
@@ -4407,6 +4494,8 @@ function renderRetailFinanceAllotment(){
     if(fM&&modelName!==fM)return false;
     if(fVar12&&detail.variant!==fVar12)return false;
     if(fCol12&&detail.colour!==fCol12)return false;
+    if(fMode12&&ftI>=0&&String(r[ftI]||'').trim()!==fMode12)return false;
+    if(fBank12&&bnI>=0&&String(r[bnI]||'').trim()!==fBank12)return false;
     if(srch&&!r.map(c=>String(c||'').toLowerCase()).join(' ').includes(srch))return false;
     return true;
   });
@@ -4445,8 +4534,8 @@ function renderRetailFinanceAllotment(){
       ${_srmOn?`<span style="font-size:10px;color:var(--text-muted);margin-left:4px;">${_selCnt} selected — click rows to select/deselect</span>`:''}
     `;
   }
-  const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Model','Variant','Colour','MY','VY','Invoice Status','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Payout %','Login Date','Loan Disbursed Date','Loan Amount','Disbursed Amount','ROI','TAT','Payout Amount'];
-  const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24,25,26]);
+  const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Model','Variant','Colour','MY','VY','Invoice Status','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Payout %','Login Date','Loan Disbursed Date','Loan Amount','Disbursed Amount','ROI','TAT','Payout Amount','Net Payout','GST Amount'];
+  const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]);
   const NCOLS_RF=HEADERS.length;
   const _srmCheckHdr=window._srmActive?'<th style="width:30px;text-align:center;padding:4px 6px;font-size:10px;color:var(--text-muted);">✓</th>':'';
   document.getElementById('tH').innerHTML=_srmCheckHdr+HEADERS.map((d,i)=>
@@ -4456,7 +4545,7 @@ function renderRetailFinanceAllotment(){
     document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS_RF}"><div class="sb"><strong>No matches</strong><p>Try adjusting your filters.</p></div></td></tr>`;return;
   }
   const eCell=(val,sheet,row,idx)=>idx>=0?editCell(val,sheet,row,idx):`<span style="font-size:11px;color:var(--text-muted);">—</span>`;
-  document.getElementById('tB').innerHTML=filtered.map(({r,src,sheetRow,brI,cnI,scI,adI,agI,syI,vaI,myI,vyI,ivdI,ipdI,clrI,ftI,bnI,frI,smrI,ppI,ldI,lddI,laI,daI,roiI,tatI,paI,retMI},ri)=>{
+  document.getElementById('tB').innerHTML=filtered.map(({r,src,sheetRow,brI,cnI,scI,adI,agI,syI,vaI,myI,vyI,ivdI,ipdI,clrI,ftI,bnI,frI,smrI,ppI,ldI,lddI,laI,daI,roiI,tatI,paI,npI,gaI,retMI},ri)=>{
     const vin       =String(r[0]||'').trim();
     const detail    =vinDetailMap[vin]||{};
     const model     =detail.model||vinMap[vin]||'—';
@@ -4487,6 +4576,8 @@ function renderRetailFinanceAllotment(){
     const roiVal    =String(roiI>=0?r[roiI]||'':'');
     const tatVal    =String(tatI>=0?r[tatI]||'':'');
     const paVal     =String(paI>=0?r[paI]||'':'');
+    const npVal     =String(npI>=0?r[npI]||'':'');
+    const gaVal     =String(gaI>=0?r[gaI]||'':'');
     const sheetName =src===7?'Allotment':'AG/DM Allotment';
     const vyCell    =vy!=='—'?`<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${vyColor(vy)}22;color:${vyColor(vy)};border:1px solid ${vyColor(vy)}55;">${vy}</span>`:vy;
     const _srmKey=`${src}:${sheetRow}`;
@@ -4515,7 +4606,7 @@ function renderRetailFinanceAllotment(){
       <td class="ecol" data-bank-td="1">${editCellBankDD(mode,bank,sheetName,sheetRow,bnI,ppI)}</td>
       <td class="ecol">${eCell(finRem,sheetName,sheetRow,frI)}</td>
       <td class="ecol">${eCell(smRem,sheetName,sheetRow,smrI)}</td>
-      <td class="ecol" data-payout-td="1" data-lai="${laI}" data-pai="${paI}">${renderPayoutCell(mode,bank,payoutPct,sheetName,sheetRow,ppI,laI,paI)}</td>
+      <td class="ecol" data-payout-td="1" data-lai="${laI}" data-pai="${paI}" data-npi="${npI}" data-gai="${gaI}">${renderPayoutCell(mode,bank,payoutPct,sheetName,sheetRow,ppI,laI,paI)}</td>
       <td class="ecol" data-ld-td="1">${editCellDateTAT(loginDate,sheetName,sheetRow,ldI,tatI+1)}</td>
       <td class="ecol" data-ldd-td="1">${editCellDateTAT(loanDisbDt,sheetName,sheetRow,lddI,tatI+1)}</td>
       <td class="ecol" data-la-td="1">${editCellPP(loanAmt,sheetName,sheetRow,laI,ppI,laI,paI)}</td>
@@ -4523,6 +4614,8 @@ function renderRetailFinanceAllotment(){
       <td class="ecol">${eCell(roiVal,sheetName,sheetRow,roiI)}</td>
       <td class="ecol" data-tat-td="1">${eCell(tatVal,sheetName,sheetRow,tatI)}</td>
       <td class="ecol" data-pa-td="1">${eCell(paVal,sheetName,sheetRow,paI)}</td>
+      <td class="ecol" data-np-td="1">${eCell(npVal,sheetName,sheetRow,npI)}</td>
+      <td class="ecol" data-ga-td="1">${eCell(gaVal,sheetName,sheetRow,gaI)}</td>
     </tr>`;
   }).join('');
 }
@@ -4593,7 +4686,7 @@ function renderRetailFinanceRetail(){
   // Invoice Plan Date      → Focus Invoiced/Plan Date
   const ipdI =(()=>{for(const k of['Focus Invoiced/Plan Date','Invoice Plan Date','Plan Date','Focus Invoice/Plan Date']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
   // Mode                   → Finance Type   (MUST be exact — 'Mode' partial matches 'Model & Variant')
-  const ftI  =(()=>{for(const k of['Finance Type','FinanceType']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+  const ftI  =(()=>{for(const k of['Finance Type','FinanceType','Mode','Finance Mode']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
   // Bank Name              → Bank Name
   const bnI  =(()=>{for(const k of['Bank Name','Bank','Financier','Lender Name','Lender','Finance Bank','Banker']){const i=fce(h,k);if(i>=0)return i;}
     console.warn('[RetailFinance] Bank col not found. Headers:',h); return -1;})();
@@ -4617,6 +4710,9 @@ function renderRetailFinanceRetail(){
   const tatI =(()=>{for(const k of['TAT','Tat','Turn Around Time','Turnaround Time']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
   // Payout Amount          → Payout amount  (computed: Payout% / 100 × Loan Amount)
   const paI  =(()=>{for(const k of['Payout amount','Payout Amount','Payout Amt','PAYOUT AMOUNT','PayoutAmount']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+  // Net Payout and GST Amount columns
+  const npI  =(()=>{for(const k of['Net Payout','Net payout','NET PAYOUT','NetPayout']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+  const gaI  =(()=>{for(const k of['GST Amount','GST amount','GST Amt','GSTAmount']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
   console.log('[RetailFinance] col-idx → ipdI:'+ipdI+' ftI:'+ftI+' bnI:'+bnI+' frI:'+frI+' smrI:'+smrI+' ppI:'+ppI+' ldI:'+ldI+' lddI:'+lddI+' laI:'+laI+' daI:'+daI+' roiI:'+roiI+' tatI:'+tatI);
   // Invoice Date for date-range filter — exact match, Column P (idx 15) as last resort
   const invDateI=(()=>{
@@ -4642,8 +4738,8 @@ function renderRetailFinanceRetail(){
   const fBranch=(document.getElementById('fBranch').value||'').toUpperCase();
   const fSC    =document.getElementById('fSC').value;
   const fM     =document.getElementById('fMod').value;
-  const fVar12 =document.getElementById('fVar').value;
-  const fCol12 =document.getElementById('fCol').value;
+  const fMode14=(document.getElementById('fMode')||{}).value||'';
+  const fBank14=(document.getElementById('fBank')||{}).value||'';
   const srch   =(document.getElementById('fSrch').value||'').toLowerCase().trim();
   // Build with original sheet-row index preserved (hi+2+i = 1-indexed row in Google Sheet)
   const allRowsIdx=rows.slice(hi+1).map((r,i)=>({r,sheetRow:hi+2+i})).filter(({r})=>{
@@ -4664,8 +4760,8 @@ function renderRetailFinanceRetail(){
     const detail=vinDetailMap[vin]||{};
     const modelName=detail.model||vinMap[vin]||'';
     if(fM&&modelName!==fM)return false;
-    if(fVar12&&detail.variant!==fVar12)return false;
-    if(fCol12&&detail.colour!==fCol12)return false;
+    if(fMode14&&ftI>=0&&String(r[ftI]||'').trim()!==fMode14)return false;
+    if(fBank14&&bnI>=0&&String(r[bnI]||'').trim()!==fBank14)return false;
     if(srch&&!r.map(c=>String(c||'').toLowerCase()).join(' ').includes(srch))return false;
     return true;
   });
@@ -4682,8 +4778,8 @@ function renderRetailFinanceRetail(){
     return sAsc?av.localeCompare(bv):bv.localeCompare(av);
   });
   setRInfo(filtered.length,allRowsIdx.length);
-  const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Model','Variant','Colour','MY','VY','Invoice Date','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Payout %','Login Date','Loan Disbursed Date','Loan Amount','Disbursed Amount','ROI','TAT','Payout Amount'];
-  const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24,25,26]);
+  const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Model','Variant','Colour','MY','VY','Invoice Date','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Payout %','Login Date','Loan Disbursed Date','Loan Amount','Disbursed Amount','ROI','TAT','Payout Amount','Net Payout','GST Amount'];
+  const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24,25,26,27,28]);
   const NCOLS_RF=HEADERS.length;
   document.getElementById('tH').innerHTML=HEADERS.map((d,i)=>
     `<th onclick="${i<NCOLS_RF-1?`doSort(${i})`:'void(0)'}" class="${sCol===i?'sorted':''}${EDITABLE_COLS.has(i)?' ecol':''}">${d}${i<NCOLS_RF-1?`<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span>`:''}</th>`
@@ -4723,6 +4819,8 @@ function renderRetailFinanceRetail(){
     const roiVal     =String(roiI>=0?r[roiI]||'':'');
     const tatVal     =String(tatI>=0?r[tatI]||'':'');
     const paVal      =String(paI>=0?r[paI]||'':'');
+    const npVal      =String(npI>=0?r[npI]||'':'');
+    const gaVal      =String(gaI>=0?r[gaI]||'':'');
     const vyCell =vy!=='—'?`<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${vyColor(vy)}22;color:${vyColor(vy)};border:1px solid ${vyColor(vy)}55;">${vy}</span>`:vy;
     // sheetRow is now the actual 1-indexed sheet row (not filtered position)
     return`<tr class="row-invoiced" style="animation-delay:${Math.min(ri*.012,.25)}s">
@@ -4745,7 +4843,7 @@ function renderRetailFinanceRetail(){
       <td class="ecol" data-bank-td="1">${editCellBankDD(mode,bank,'Retail_Master',sheetRow,bnI,ppI)}</td>
       <td class="ecol">${eCell(finRem,'Retail_Master',sheetRow,frI)}</td>
       <td class="ecol">${eCell(smRem,'Retail_Master',sheetRow,smrI)}</td>
-      <td class="ecol" data-payout-td="1" data-lai="${laI}" data-pai="${paI}">${renderPayoutCell(mode,bank,payoutPct,'Retail_Master',sheetRow,ppI,laI,paI)}</td>
+      <td class="ecol" data-payout-td="1" data-lai="${laI}" data-pai="${paI}" data-npi="${npI}" data-gai="${gaI}">${renderPayoutCell(mode,bank,payoutPct,'Retail_Master',sheetRow,ppI,laI,paI)}</td>
       <td class="ecol" data-ld-td="1">${editCellDateTAT(loginDate,'Retail_Master',sheetRow,ldI,tatI+1)}</td>
       <td class="ecol" data-ldd-td="1">${editCellDateTAT(loanDisbDt,'Retail_Master',sheetRow,lddI,tatI+1)}</td>
       <td class="ecol" data-la-td="1">${editCellPP(loanAmt,'Retail_Master',sheetRow,laI,ppI,laI,paI)}</td>
@@ -4753,6 +4851,8 @@ function renderRetailFinanceRetail(){
       <td class="ecol">${eCell(roiVal,'Retail_Master',sheetRow,roiI)}</td>
       <td class="ecol" data-tat-td="1">${eCell(tatVal,'Retail_Master',sheetRow,tatI)}</td>
       <td class="ecol" data-pa-td="1">${eCell(paVal,'Retail_Master',sheetRow,paI)}</td>
+      <td class="ecol" data-np-td="1">${eCell(npVal,'Retail_Master',sheetRow,npI)}</td>
+      <td class="ecol" data-ga-td="1">${eCell(gaVal,'Retail_Master',sheetRow,gaI)}</td>
     </tr>`;
   }).join('');
 }
@@ -4822,9 +4922,16 @@ function renderRetailFinanceROI(){
   const ptI =(()=>{for(const k of['Payout Type','PayoutType','Payout type','Type']){const i=fc(h,k);if(i>=0)return i;}return-1;})();
   const ppI =(()=>{for(const k of['Payout %','Payout%','Payout Percent','Payout Percentage','Payout']){const i=fc(h,k);if(i>=0)return i;}return-1;})();
   const gstI=(()=>{for(const k of['GST','Gst','GST Type','GST Status']){const i=fc(h,k);if(i>=0)return i;}return-1;})();
-  const srch=(document.getElementById('fSrch').value||'').toLowerCase().trim();
+  const srch   =(document.getElementById('fSrch').value||'').toLowerCase().trim();
+  const fRoiPT =(document.getElementById('fRoiPT')||{}).value||'';
+  const fRoiGST=(document.getElementById('fRoiGST')||{}).value||'';
   const allRows=rows.slice(hi+1).filter(r=>Array.isArray(r)&&r.some(c=>String(c||'').trim()));
-  const filtered=srch?allRows.filter(r=>r.map(c=>String(c||'').toLowerCase()).join(' ').includes(srch)):allRows;
+  const filtered=allRows.filter(r=>{
+    if(fRoiPT&&ptI>=0&&String(r[ptI]||'').trim()!==fRoiPT)return false;
+    if(fRoiGST&&gstI>=0&&String(r[gstI]||'').trim()!==fRoiGST)return false;
+    if(srch&&!r.map(c=>String(c||'').toLowerCase()).join(' ').includes(srch))return false;
+    return true;
+  });
   setRInfo(filtered.length,allRows.length);
   // Compact headers
   const HEADERS=['#','Financier','Payout Type','Payout %','GST'];
