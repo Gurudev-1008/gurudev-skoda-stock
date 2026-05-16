@@ -1336,10 +1336,16 @@ function setupTab(){
     if(rfTB)rfTB.style.display=curTab===12?'flex':'none';
     const rfAAB=document.getElementById('rfAllotActionBar');
     if(rfAAB&&curTab!==12){rfAAB.style.display='none';window._srmActive=false;window._srmSelected=new Set();}
-    // Level 2F / 3F: hide Allotment button — Retail + ROI sub-tabs only
+    // Level 2F / 3F: hide Allotment button; show Retail, Payout Master, Finance Report
     const _isPartialRF=curUser&&(curUser.level==='2F'||curUser.level==='3F');
     const btnA=document.getElementById('rfBtnAllotment');
     if(btnA)btnA.style.display=_isPartialRF?'none':'';
+    if(_isPartialRF){
+      // Explicitly make sure Retail, Payout Master, Finance Report buttons are visible
+      ['rfBtnRetail','rfBtnRoi','rfBtnReport'].forEach(id=>{
+        const b=document.getElementById(id);if(b&&b.style.display==='none')b.style.display='';
+      });
+    }
     // If partial-RF user lands on RF tab in allotment view, redirect to Retail
     if(curTab===12&&_isPartialRF&&getRFView()==='allotment')onRFViewChange('retail');
   }
@@ -2747,10 +2753,15 @@ function onRFViewChange(v){
   const btnA=document.getElementById('rfBtnAllotment');
   const btnR=document.getElementById('rfBtnRetail');
   const btnROI=document.getElementById('rfBtnRoi');
-  if(btnA)  btnA.style.cssText  =(v==='allotment')?activeS:inactS;
+  const btnRpt=document.getElementById('rfBtnReport');
+  const _isPartialRF2=curUser&&(curUser.level==='2F'||curUser.level==='3F');
+  // Set active/inactive styles — but preserve display:none for Allotment btn on 2F/3F
+  if(btnA){
+    btnA.style.cssText=(v==='allotment')?activeS:inactS;
+    if(_isPartialRF2)btnA.style.display='none'; // keep Allotment hidden for 2F/3F
+  }
   if(btnR)  btnR.style.cssText  =isR?activeS:inactS;
   if(btnROI)btnROI.style.cssText=isROI?activeS:inactS;
-  const btnRpt=document.getElementById('rfBtnReport');
   if(btnRpt)btnRpt.style.cssText=isRpt?activeS:inactS;
   // Show/hide tblArea and rfFinReportArea
   const tblA=document.getElementById('tblArea');
