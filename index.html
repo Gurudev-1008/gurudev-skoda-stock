@@ -3713,11 +3713,29 @@ function renderAllotment(){
   const daSMRemarksI=(()=>{for(const k of['De-allot SM Remarks','Deallot SM Remarks','DA SM Remarks','De-Allot SM Remarks']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   // Corporate / Loyalty / Exchange editable columns
   const corpI    =(()=>{for(const k of['Corp','Corporate','CORP']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
-  const loyalI   =(()=>{for(const k of['Loyalty','LOYALTY']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
-  const exchI    =(()=>{for(const k of['Exchange','EXCHANGE']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
-  const corpTypeI=(()=>{for(const k of['Corp Type','Corporate Type','CORP TYPE','CorpType']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
-  const corpNameI=(()=>{for(const k of['Corp Name','Corporate Name','CORP NAME','CorpName']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
-  const exchBrI  =(()=>{for(const k of['Exchange Brand','EXCHANGE BRAND','ExchangeBrand','Exch Brand']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
+  const loyalI   =(()=>{for(const k of['Loyalty','LOYALTY']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+  // Exchange — exact match only to avoid fc partial-match collision with "Exchange Brand" or "Exchange Value"
+  const exchI    =(()=>{for(const k of['Exchange','Exchange Value','EXCHANGE','EXCHANGE VALUE','Exch']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+  const corpTypeI=(()=>{for(const k of['Corp Type','Corporate Type','CORP TYPE','CorpType']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+  const corpNameI=(()=>{for(const k of['Corp Name','Corporate Name','CORP NAME','CorpName']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+  // Exchange Brand — multi-strategy detection
+  const exchBrI  =(()=>{
+    // Strategy 1: exact match (case/space insensitive, BOM-stripped)
+    const aliases=['Exchange Brand','EXCHANGE BRAND','ExchangeBrand','Exch Brand','EXCH BRAND','Exch. Brand','ExchBrand','Exchange Br','Exch Br','Exch brand','exch brand'];
+    for(const k of aliases){const i=fce(h,k);if(i>=0)return i;}
+    // Strategy 2: aggressive normalise (strip all non-alphanumeric) then match
+    const strip=s=>String(s||'').replace(/[^a-z0-9]/gi,'').toLowerCase();
+    const targets=['exchangebrand','exchbrand','exchbr'];
+    const s2=h.findIndex(x=>targets.includes(strip(x)));
+    if(s2>=0)return s2;
+    // Strategy 3: header contains both "exch" and "brand"
+    const s3=h.findIndex(x=>{const v=strip(x);return v.includes('exch')&&v.includes('brand');});
+    if(s3>=0)return s3;
+    // Strategy 4: Corp Name is typically the column just before Exch Brand in the sheet
+    if(corpNameI>=0&&corpNameI+1<h.length)return corpNameI+1;
+    return -1;
+  })();
+  console.log('[Allotment] ExchBrand col detection → exchBrI='+exchBrI+' header="'+h[exchBrI]+'" | all headers: '+JSON.stringify(h));
   // Build VIN→Model and VIN→{model,variant,colour} maps from Stock sheet
   const vinMap=buildVinModelMap();
   const vinDetailMap=buildVinDetailMap();
@@ -3850,7 +3868,7 @@ function renderAllotment(){
       <td class="ecol">${editCellDD(exchVal,'Allotment',sheetRow,exchI,['Yes','No'])}</td>
       <td class="ecol">${editCellDD(corpTypeVal,'Allotment',sheetRow,corpTypeI,CORP_TYPE_OPTS)}</td>
       <td class="ecol">${editCell(corpNameVal,'Allotment',sheetRow,corpNameI>=0?corpNameI:frI+2)}</td>
-      <td class="ecol">${editCell(exchBrVal,'Allotment',sheetRow,exchBrI>=0?exchBrI:frI+3)}</td>
+      <td class="ecol" data-excbr-col="${exchBrI}" title="ExchBrand col:${exchBrI+1}">${editCell(exchBrVal,'Allotment',sheetRow,exchBrI)}</td>
       <td>${(()=>{const _dr=daReasonI>=0?String(r[daReasonI]||'').trim():'';const _drb=daRaisedByI>=0?String(r[daRaisedByI]||'').trim():'';const _dsmr=daSMRemarksI>=0?String(r[daSMRemarksI]||'').trim():'';const _rsl=rowStat.toLowerCase();if((_dr||_rsl.includes('deallot')||_rsl.includes('de-allot')||_rsl.includes('de allot'))&&!deallotRaisedRows.has(sheetRow)){deallotRaisedRows.set(sheetRow,{cust,sc,branch,model,variant,colour,reason:_dr||rowStat,raisedBy:_drb,smRemarks:_dsmr||smRem,sourceSheet:'Allotment'});}return renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,'Allotment');})()}</td>
     </tr>`;
 
@@ -4335,7 +4353,7 @@ async function moveToRetailMaster(){
     };
     _addField(['Corp','Corporate','CORP'],['Corp','Corporate','CORP']);
     _addField(['Loyalty','LOYALTY'],['Loyalty','LOYALTY']);
-    _addField(['Exchange','EXCHANGE'],['Exchange','EXCHANGE']);
+    _addField(['Exchange','Exchange Value','EXCHANGE','EXCHANGE VALUE','Exch'],['Exchange','Exchange Value','EXCHANGE','EXCHANGE VALUE','Exch']);
     _addField(['Corp Type','Corporate Type','CORP TYPE','CorpType'],['Corp Type','Corporate Type','CORP TYPE','CorpType']);
     _addField(['Corp Name','Corporate Name','CORP NAME','CorpName'],['Corp Name','Corporate Name','CORP NAME','CorpName']);
     _addField(['Exchange Brand','EXCHANGE BRAND','ExchangeBrand','Exch Brand'],['Exchange Brand','EXCHANGE BRAND','ExchangeBrand','Exch Brand']);
@@ -4902,6 +4920,15 @@ async function saveROICell(el,sheet,row,col,newVal,oldVal){
       el.style.opacity='1';
       // Update data-orig so repeated blurs with no further changes don't re-save
       if(el.dataset)el.dataset.orig=newVal;
+      // ── Update local SD[] cache so re-renders show the new value immediately ──
+      // sheet name → SD index map
+      const _sdMap={'Allotment':7,'AG/DM Allotment':8,'Retail_Master':14,'ROI':16};
+      const _sdIdx=_sdMap[sheet];
+      if(_sdIdx!==undefined&&SD[_sdIdx]){
+        // row is 1-based sheet row; SD[_sdIdx] is 0-based (SD[_sdIdx][0] = sheet row 1)
+        const _r=SD[_sdIdx][row-1];
+        if(_r)_r[col-1]=newVal; // col is 1-based → col-1 is 0-based array index
+      }
       el.title='Saved ✓';setTimeout(()=>{if(el)el.title='';},2000);
     } else {
       el.style.opacity='1';
