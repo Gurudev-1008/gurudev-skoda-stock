@@ -458,6 +458,8 @@ tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
         style="padding:5px 18px;font-size:11px;font-weight:700;font-family:var(--font-d);letter-spacing:.05em;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;">RETAIL</button>
       <button id="rfBtnRoi" onclick="onRFViewChange('roi')"
         style="padding:5px 18px;font-size:11px;font-weight:700;font-family:var(--font-d);letter-spacing:.05em;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;">PAYOUT MASTER</button>
+      <button id="rfBtnReport" onclick="onRFViewChange('report')"
+        style="padding:5px 18px;font-size:11px;font-weight:700;font-family:var(--font-d);letter-spacing:.05em;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;">FINANCE REPORT</button>
     </div>
     <div id="rfDateRange" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.35);border-radius:10px;padding:6px 14px;">
       <span style="font-size:10px;color:#4ade80;text-transform:uppercase;letter-spacing:.08em;font-weight:700;">📅 From</span>
@@ -521,6 +523,7 @@ tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
   <div id="tblArea">
     <div class="tw"><table><thead><tr id="tH"></tr></thead><tbody id="tB"><tr><td colspan="20"><div class="sb"><div class="sp"></div><strong>Loading…</strong></div></td></tr></tbody></table></div>
   </div>
+  <div id="rfFinReportArea" style="display:none;padding:0 20px 20px;"></div>
 
   <div id="manArea" style="display:none">
     <div class="ap">
@@ -2737,7 +2740,7 @@ function getRFView(){return(document.getElementById('rfToggleBar')||{}).dataset&
 function onRFViewChange(v){
   const bar=document.getElementById('rfToggleBar');if(!bar)return;
   bar.dataset.view=v;
-  const isR=v==='retail', isROI=v==='roi';
+  const isR=v==='retail', isROI=v==='roi', isRpt=v==='report';
   // Update pill button styles (active = accent filled, inactive = ghost)
   const activeS='padding:5px 18px;font-size:11px;font-weight:700;font-family:var(--font-d);letter-spacing:.05em;border-radius:20px;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--bg-deep);transition:all .15s;';
   const inactS ='padding:5px 18px;font-size:11px;font-weight:700;font-family:var(--font-d);letter-spacing:.05em;border-radius:20px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);transition:all .15s;';
@@ -2747,6 +2750,13 @@ function onRFViewChange(v){
   if(btnA)  btnA.style.cssText  =(v==='allotment')?activeS:inactS;
   if(btnR)  btnR.style.cssText  =isR?activeS:inactS;
   if(btnROI)btnROI.style.cssText=isROI?activeS:inactS;
+  const btnRpt=document.getElementById('rfBtnReport');
+  if(btnRpt)btnRpt.style.cssText=isRpt?activeS:inactS;
+  // Show/hide tblArea and rfFinReportArea
+  const tblA=document.getElementById('tblArea');
+  const finRepA=document.getElementById('rfFinReportArea');
+  if(tblA)tblA.style.display=isRpt?'none':'';
+  if(finRepA)finRepA.style.display=isRpt?'':'none';
   // Date range only visible for Retail view
   const drDiv=document.getElementById('rfDateRange');
   if(drDiv)drDiv.style.display=isR?'flex':'none';
@@ -2757,29 +2767,37 @@ function onRFViewChange(v){
   if(v!=='allotment'){window._srmActive=false;window._srmSelected=new Set();}
   // Clear dates when leaving Retail view
   if(!isR){const fd=document.getElementById('rfDateFrom'),td=document.getElementById('rfDateTo');if(fd)fd.value='';if(td)td.value='';}
-  // Standard filters (Branch, SC, Model, Variant, Colour): hide in ROI mode, restore for others
+  // Standard filters (Branch, SC, Model, Variant, Colour): hide in ROI/report mode, restore for others
   ['fBranchWrap','fSCWrap'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el)el.style.display=isROI?'none':(id==='fBranchWrap'?'':'');
+    if(el)el.style.display=(isROI||isRpt)?'none':(id==='fBranchWrap'?'':'');
   });
   ['fMod','fVar','fCol'].forEach(id=>{
     const el=document.getElementById(id);
     if(el&&el.parentElement){
-      // Variant and Colour are hidden for both ROI view and Retail view
-      if(id==='fVar'||id==='fCol')el.parentElement.style.display=(isROI||isR)?'none':'';
-      else el.parentElement.style.display=isROI?'none':'';
+      // Variant and Colour are hidden for ROI view, Retail view, and report view
+      if(id==='fVar'||id==='fCol')el.parentElement.style.display=(isROI||isR||isRpt)?'none':'';
+      else el.parentElement.style.display=(isROI||isRpt)?'none':'';
     }
   });
-  // Mode & Bank filters: visible for allotment and retail, hidden for ROI
+  // Mode & Bank filters: visible for allotment and retail, hidden for ROI and report
   ['rfModeWrap','rfBankWrap'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el)el.style.display=isROI?'none':'';
+    if(el)el.style.display=(isROI||isRpt)?'none':'';
   });
   // Payout Type & GST filters: visible only for ROI (Payout Master) view
   ['rfPayTypWrap','rfGSTWrap'].forEach(id=>{
     const el=document.getElementById(id);
     if(el)el.style.display=isROI?'':'none';
   });
+  // Hide search, clear button, and export button in report view
+  const sw=document.getElementById('searchWrap');
+  if(sw)sw.style.display=isRpt?'none':'';
+  const cb=document.querySelector('.cb[onclick="clearF()"]');
+  if(cb)cb.style.display=isRpt?'none':'';
+  const teb=document.getElementById('tabExportBtn');
+  if(teb&&isRpt)teb.style.display='none';
+  if(isRpt){renderRetailFinanceReport();return;}
   renderTable();
 }
 function clearF(r=true){
@@ -4129,6 +4147,7 @@ function renderRetailFinance(){
   const v=getRFView();
   if(v==='retail'){renderRetailFinanceRetail();return;}
   if(v==='roi')   {renderRetailFinanceROI();return;}
+  if(v==='report'){renderRetailFinanceReport();return;}
   renderRetailFinanceAllotment();
 }
 // ── SRM / MRM global state and helpers ──
@@ -4975,6 +4994,372 @@ function renderRetailFinanceROI(){
     </tr>`;
   }).join('');
 }
+
+/* ── Retail Finance — Finance Report (4 sub-reports) ── */
+function renderRetailFinanceReport(){
+  const area=document.getElementById('rfFinReportArea');
+  if(!area)return;
+  // Access check — Admin, L1, 1A, 2F, 3F only
+  const lvl=curUser?String(curUser.level||''):'';
+  const isAdmin=curUser&&curUser.isAdmin;
+  const canView=isAdmin||lvl==='1'||lvl==='1A'||lvl==='2F'||lvl==='3F';
+  if(!canView){area.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">Access restricted.</div>';return;}
+  // Auto-fetch Retail_Master (SD[14]) if not yet loaded
+  if(!SD[14]||SD[14].length<2){
+    if(!window._rfRpt14Loading){
+      window._rfRpt14Loading=true;
+      area.innerHTML=`<div style="padding:40px;text-align:center;"><div class="sb"><div class="sp"></div><strong>Loading Retail Master data…</strong></div></div>`;
+      jFetch('Retail_Master').then(j=>{SD[14]=j&&j.length>=1?j:[];window._rfRpt14Loading=false;renderRetailFinanceReport();}).catch(()=>{window._rfRpt14Loading=false;renderRetailFinanceReport();});
+    }
+    return;
+  }
+  const is3F=lvl==='3F';
+  const userBranch=is3F&&curUser.branch?curUser.branch.toUpperCase():'';
+  // ── Build combined finance rows from SD[7]+SD[8] filtered to "focus invoiced" ──
+  const fce2=(h,k)=>{const nm=s=>String(s||'').replace(/^﻿/,'').trim().toLowerCase();const nv=nm(k);return h.findIndex(x=>nm(x)===nv);};
+  function getSheetRows(sd){
+    const rows=sd||[];if(rows.length<2)return[];
+    let hi=0;for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('customer')||r.includes('branch')||r.includes('allotment')){hi=i;break;}}
+    const h=rows[hi].map(x=>String(x).replace(/^﻿/,'').trim());
+    const brI=(()=>{for(const k of['Branch Name','Branch']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const scI=(()=>{for(const k of['SC Name','SC']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const cnI=(()=>{for(const k of['Customer Name','Customer']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const ipdI=(()=>{for(const k of['Invoice Plan Date','InvoicePlanDate']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const ftI=(()=>{for(const k of['Finance Type','FinanceType','Mode','Finance Mode']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const bnI=(()=>{for(const k of['Bank Name','Bank','Financier','Lender Name','Lender','Finance Bank','Banker']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const paI=(()=>{for(const k of['Payout amount','Payout Amount','Payout Amt','PAYOUT AMOUNT']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const npI=(()=>{for(const k of['Net Payout','Net payout','NET PAYOUT','NetPayout']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const gaI=(()=>{for(const k of['GST Amount','GST amount','GST Amt','GSTAmount']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const ivdI=(()=>{for(const k of['Invoice Done Date','Invoice Date','Invoiced Date','InvoiceDate']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const _pd=v=>{if(!v&&v!==0)return null;const s=String(v).trim();const n=parseFloat(s);if(!isNaN(n)&&n>40000&&n<60000)return new Date(Math.round((n-25569)*86400*1000));const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m2)return new Date(+m2[1],+m2[2]-1,+m2[3]);const d=new Date(s);return isNaN(d)?null:d;};
+    return rows.slice(hi+1).filter(r=>{
+      if(!Array.isArray(r))return false;
+      if(String(r[1]||'').trim().toUpperCase().startsWith('CF'))return false;
+      if(cnI>=0&&!String(r[cnI]||'').trim())return false;
+      return ipdI<0||String(r[ipdI]||'').trim().toLowerCase()==='focus invoiced';
+    }).map(r=>({
+      branch :String(brI>=0?r[brI]||'':'').trim().toUpperCase()||'UNKNOWN',
+      sc     :String(scI>=0?r[scI]||'':'').trim()||'Unknown',
+      mode   :String(ftI>=0?r[ftI]||'':'').trim(),
+      bank   :String(bnI>=0?r[bnI]||'':'').trim()||'Unknown',
+      pa     :parseFloat(String(paI>=0?r[paI]||'0':'0').replace(/,/g,''))||0,
+      np     :parseFloat(String(npI>=0?r[npI]||'0':'0').replace(/,/g,''))||0,
+      ga     :parseFloat(String(gaI>=0?r[gaI]||'0':'0').replace(/,/g,''))||0,
+      invDate:ivdI>=0?_pd(r[ivdI]):null,
+    }));
+  }
+  // ── Also read Retail_Master (SD[14]) — payout data is stored here ──
+  function getRM14Rows(sd){
+    const rows=sd||[];if(rows.length<2)return[];
+    let hi=0;
+    for(let i=0;i<Math.min(5,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('customer')||r.includes('branch')||r.includes('invoice')||r.includes('sc name')){hi=i;break;}}
+    const h=rows[hi].map(x=>String(x||'').replace(/^﻿/,'').trim());
+    const brI2=(()=>{for(const k of['Branch Name','Branch']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const scI2=(()=>{for(const k of['SC Name','SC']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const cnI2=(()=>{for(const k of['Customer Name','Customer']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const ftI2=(()=>{for(const k of['Finance Type','FinanceType','Mode','Finance Mode']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const bnI2=(()=>{for(const k of['Bank Name','Bank','Financier','Lender Name','Finance Bank']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const paI2=(()=>{for(const k of['Payout amount','Payout Amount','Payout Amt','PAYOUT AMOUNT']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const npI2=(()=>{for(const k of['Net Payout','Net payout','NET PAYOUT','NetPayout']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const gaI2=(()=>{for(const k of['GST Amount','GST amount','GST Amt','GSTAmount']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const ivdI2=(()=>{for(const k of['Invoice Done Date','Invoice Date','Invoiced Date','InvoiceDate']){const i=fce2(h,k);if(i>=0)return i;}return 15;})();
+    const mobI2=(()=>{for(const k of['Mobile','Mobile Number','Mobile No','Phone','Contact No','Contact']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const mvI2=(()=>{for(const k of['MODEL & VARIANT','Model & Variant','Model and Variant','Model Name','Model']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const vnI2=(()=>{for(const k of['Variant','VARIANT','Variant Name']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const laI2=(()=>{for(const k of['Loan amount','Loan Amount','LOAN AMOUNT','Loan Amt']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const daI2=(()=>{for(const k of['Disbursed Amount','Disbursement Amount','DISBURSED AMOUNT','Disbursed Amt']){const i=fce2(h,k);if(i>=0)return i;}return -1;})();
+    const _pd2=v=>{if(!v&&v!==0)return null;const s=String(v).trim();const n=parseFloat(s);if(!isNaN(n)&&n>40000&&n<60000)return new Date(Math.round((n-25569)*86400*1000));const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m2)return new Date(+m2[1],+m2[2]-1,+m2[3]);const d=new Date(s);return isNaN(d)?null:d;};
+    return rows.slice(hi+1).filter(r=>{
+      if(!Array.isArray(r))return false;
+      if(String(r[1]||'').trim().toUpperCase().startsWith('CF'))return false;
+      if(cnI2>=0&&!String(r[cnI2]||'').trim())return false;
+      // For Retail_Master: must have a non-empty Invoice Done Date
+      const ivdVal=String(r[ivdI2]||'').trim();
+      return ivdVal!==''&&ivdVal.toLowerCase()!=='focus invoiced';
+    }).map(r=>{
+      const mvVal=String(mvI2>=0?r[mvI2]||'':'').trim();
+      const vnVal=String(vnI2>=0?r[vnI2]||'':'').trim();
+      const mv=mvVal&&vnVal?mvVal+' '+vnVal:mvVal||vnVal;
+      return {
+        branch :String(brI2>=0?r[brI2]||'':'').trim().toUpperCase()||'UNKNOWN',
+        sc     :String(scI2>=0?r[scI2]||'':'').trim()||'Unknown',
+        cn     :String(cnI2>=0?r[cnI2]||'':'').trim(),
+        mob    :String(mobI2>=0?r[mobI2]||'':'').trim(),
+        mv     :mv||'—',
+        mode   :String(ftI2>=0?r[ftI2]||'':'').trim(),
+        bank   :String(bnI2>=0?r[bnI2]||'':'').trim()||'Unknown',
+        la     :parseFloat(String(laI2>=0?r[laI2]||'0':'0').replace(/,/g,''))||0,
+        da     :parseFloat(String(daI2>=0?r[daI2]||'0':'0').replace(/,/g,''))||0,
+        pa     :parseFloat(String(paI2>=0?r[paI2]||'0':'0').replace(/,/g,''))||0,
+        np     :parseFloat(String(npI2>=0?r[npI2]||'0':'0').replace(/,/g,''))||0,
+        ga     :parseFloat(String(gaI2>=0?r[gaI2]||'0':'0').replace(/,/g,''))||0,
+        invDate:_pd2(r[ivdI2]),
+        _src   :'rm14',
+      };
+    });
+  }
+  // Combine: allotment sheets + Retail_Master (tag source to allow dedup if needed)
+  const allotRows=[...getSheetRows(SD[7]),...getSheetRows(SD[8])];
+  const rm14Rows=getRM14Rows(SD[14]);
+  // Prefer Retail_Master if loaded; if empty fall back to allotment rows only
+  let rows=rm14Rows.length>0?rm14Rows:allotRows;
+  // For 3F: restrict to user's branch
+  if(is3F&&userBranch)rows=rows.filter(r=>r.branch===userBranch);
+  // ── Date filter ──
+  const _rfFrom=window._rfRepFrom||'';
+  const _rfTo  =window._rfRepTo  ||'';
+  const _pdSimple=s=>{if(!s)return null;const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?new Date(+m[1],+m[2]-1,+m[3]):null;};
+  const fromD=_pdSimple(_rfFrom);
+  const toD  =_pdSimple(_rfTo);if(toD)toD.setHours(23,59,59,999);
+  if(fromD||toD)rows=rows.filter(r=>{
+    if(!r.invDate)return false;
+    if(fromD&&r.invDate<fromD)return false;
+    if(toD  &&r.invDate>toD  )return false;
+    return true;
+  });
+  // Group key: branch for Admin/1/1A/2F; SC for 3F
+  const grpKey=r=>is3F?r.sc:r.branch;
+  const grpLabel=is3F?'SC Name':'Branch';
+  // ── Style helpers ──
+  const fmt=n=>n?Math.round(n).toLocaleString('en-IN'):'—';
+  const pct=(a,b)=>b>0?(a/b*100).toFixed(1)+'%':'—';
+  const thS='padding:7px 10px;background:var(--bg-surface);color:var(--text-muted);font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;border-bottom:2px solid var(--border);white-space:nowrap;text-align:center;';
+  const thL=thS+'text-align:left;';
+  const tdS='padding:6px 10px;font-size:12px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;';
+  const tdL=tdS+'text-align:left;font-weight:600;';
+  const totS=tdS+'font-weight:700;background:rgba(74,222,128,0.07);border-top:2px solid var(--border);';
+  const totL=tdL+'background:rgba(74,222,128,0.07);border-top:2px solid var(--border);';
+  const tblWrap=html=>`<div style="overflow-x:auto;margin-top:12px;border:1px solid var(--border);border-radius:8px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">${html}</table></div>`;
+  // Export buttons HTML
+  const expBtns=(id,title)=>`<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+    <button onclick="rfRepExportXLSX('${id}','${title}')" style="padding:4px 12px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid #4caf6e;background:none;color:#4caf6e;display:flex;align-items:center;gap:4px;">&#x1F4E5; Excel</button>
+    <button onclick="rfRepExportPDF('${id}','${title}')" style="padding:4px 12px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid #60a5fa;background:none;color:#60a5fa;display:flex;align-items:center;gap:4px;">&#x1F5A8; PDF</button>
+  </div>`;
+  // ── Report 1: Mode wise ──
+  function buildR1(){
+    const map=new Map();
+    rows.forEach(r=>{const k=grpKey(r);if(!map.has(k))map.set(k,{total:0,inhouse:0,outhouse:0,own:0,lease:0,blank:0});const g=map.get(k);g.total++;const m=r.mode;if(m==='Inhouse')g.inhouse++;else if(m==='Outhouse')g.outhouse++;else if(m==='Own Fund')g.own++;else if(m==='Lease')g.lease++;else g.blank++;});
+    const keys=[...map.keys()].sort();
+    let tot={total:0,inhouse:0,outhouse:0,own:0,lease:0,blank:0};
+    keys.forEach(k=>{const g=map.get(k);Object.keys(tot).forEach(f=>tot[f]+=g[f]||0);});
+    const row=(k,g,cls)=>{const fin=g.inhouse+g.outhouse;return`<tr>
+      <td style="${cls||tdL}">${k}</td>
+      <td style="${cls||tdS}">${g.total}</td>
+      <td style="${cls||tdS}">${g.inhouse}</td>
+      <td style="${cls||tdS}">${g.outhouse}</td>
+      <td style="${cls||tdS}">${g.own}</td>
+      <td style="${cls||tdS}">${g.lease}</td>
+      <td style="${cls||tdS}">${g.blank}</td>
+      <td style="${cls||tdS};color:${g.total?'#4ade80':'var(--text-muted)'}">${pct(g.inhouse,g.total)}</td>
+      <td style="${cls||tdS};color:${fin?'#60a5fa':'var(--text-muted)'}">${pct(g.inhouse,fin)}</td>
+    </tr>`;};
+    const fin2=tot.inhouse+tot.outhouse;
+    const hdr=`<thead><tr><th style="${thL}">${grpLabel}</th><th style="${thS}">Total Retail</th><th style="${thS}">Inhouse</th><th style="${thS}">Outhouse</th><th style="${thS}">Own Fund</th><th style="${thS}">Lease</th><th style="${thS}">Blank</th><th style="${thS}">Inhouse% (Overall)</th><th style="${thS}">Inhouse% (Finance)</th></tr></thead>`;
+    const body=`<tbody>${keys.map(k=>row(k,map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.total}</td><td style="${totS}">${tot.inhouse}</td><td style="${totS}">${tot.outhouse}</td><td style="${totS}">${tot.own}</td><td style="${totS}">${tot.lease}</td><td style="${totS}">${tot.blank}</td><td style="${totS};color:#4ade80;">${pct(tot.inhouse,tot.total)}</td><td style="${totS};color:#60a5fa;">${pct(tot.inhouse,fin2)}</td></tr></tbody>`;
+    return`<div id="rfRpt1"><h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">1. ${grpLabel} wise &mdash; Mode wise Report</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Inhouse % on Overall Retail &amp; on Finance (Inhouse+Outhouse) cases.</p>${expBtns('rfRpt1Table','Mode Wise Report')}${tblWrap(hdr+body)}</div><table id="rfRpt1Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+  }
+  // ── Report 2: Bank wise Inhouse/Outhouse (bank overview + drill-down) ──
+  function buildR2(){
+    const finRows=rows.filter(r=>r.mode==='Inhouse'||r.mode==='Outhouse');
+    const drill=window._rfR2Drill||null;
+    const backBtn=`<button onclick="window._rfR2Drill=null;renderRetailFinanceReport()" style="padding:4px 14px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);margin-right:10px;">&#8592; Back to Banks</button>`;
+    if(drill){
+      // Drill-down: branch/SC breakdown for selected bank
+      const bankRows=finRows.filter(r=>r.bank===drill);
+      const map=new Map();
+      bankRows.forEach(r=>{const k=grpKey(r);if(!map.has(k))map.set(k,{grp:k,inhouse:0,outhouse:0});const g=map.get(k);if(r.mode==='Inhouse')g.inhouse++;else g.outhouse++;});
+      const keys=[...map.keys()].sort();
+      let tot={inhouse:0,outhouse:0};
+      keys.forEach(k=>{const g=map.get(k);tot.inhouse+=g.inhouse;tot.outhouse+=g.outhouse;});
+      const totFin=tot.inhouse+tot.outhouse;
+      const row=(g,cls)=>{const fin=g.inhouse+g.outhouse;return`<tr><td style="${cls||tdL}">${g.grp}</td><td style="${cls||tdS}">${g.inhouse}</td><td style="${cls||tdS}">${g.outhouse}</td><td style="${cls||tdS}">${fin}</td><td style="${cls||tdS};color:${fin?'#4ade80':'var(--text-muted)'}">${pct(g.inhouse,fin)}</td></tr>`;};
+      const hdr=`<thead><tr><th style="${thL}">${grpLabel}</th><th style="${thS}">Inhouse</th><th style="${thS}">Outhouse</th><th style="${thS}">Total Finance</th><th style="${thS}">Inhouse%</th></tr></thead>`;
+      const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.inhouse}</td><td style="${totS}">${tot.outhouse}</td><td style="${totS}">${totFin}</td><td style="${totS};color:#4ade80;">${pct(tot.inhouse,totFin)}</td></tr></tbody>`;
+      return`<div id="rfRpt2"><div style="display:flex;align-items:center;margin-bottom:8px;">${backBtn}<h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0;">2. Bank: <span style="color:var(--accent);">${drill}</span> &mdash; ${grpLabel} wise Breakdown</h3></div>${expBtns('rfRpt2Table','Bank '+drill+' Branch Wise')}${tblWrap(hdr+body)}</div><table id="rfRpt2Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+    }
+    // Bank overview
+    const map=new Map();
+    finRows.forEach(r=>{if(!map.has(r.bank))map.set(r.bank,{bank:r.bank,inhouse:0,outhouse:0});const g=map.get(r.bank);if(r.mode==='Inhouse')g.inhouse++;else g.outhouse++;});
+    const keys=[...map.keys()].sort();
+    let tot={inhouse:0,outhouse:0};
+    keys.forEach(k=>{const g=map.get(k);tot.inhouse+=g.inhouse;tot.outhouse+=g.outhouse;});
+    const totFin=tot.inhouse+tot.outhouse;
+    const row=(g,cls)=>{const fin=g.inhouse+g.outhouse;const safe=g.bank.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<tr style="cursor:pointer;" onclick="window._rfR2Drill='${safe}';renderRetailFinanceReport()"><td style="${cls||tdL};color:var(--accent);text-decoration:underline;cursor:pointer;">${g.bank}</td><td style="${cls||tdS}">${g.inhouse}</td><td style="${cls||tdS}">${g.outhouse}</td><td style="${cls||tdS}">${fin}</td><td style="${cls||tdS};color:${fin?'#4ade80':'var(--text-muted)'}">${pct(g.inhouse,fin)}</td></tr>`;};
+    const hdr=`<thead><tr><th style="${thL}">Bank <span style="font-size:9px;font-weight:400;color:var(--text-dim);">(click to drill down)</span></th><th style="${thS}">Inhouse</th><th style="${thS}">Outhouse</th><th style="${thS}">Total Finance</th><th style="${thS}">Inhouse%</th></tr></thead>`;
+    const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.inhouse}</td><td style="${totS}">${tot.outhouse}</td><td style="${totS}">${totFin}</td><td style="${totS};color:#4ade80;">${pct(tot.inhouse,totFin)}</td></tr></tbody>`;
+    return`<div id="rfRpt2"><h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">2. Bank wise &mdash; Inhouse &amp; Outhouse</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Click a bank name to see ${grpLabel.toLowerCase()}-wise breakdown.</p>${expBtns('rfRpt2Table','Bank Wise Inhouse Outhouse')}${tblWrap(hdr+body)}</div><table id="rfRpt2Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+  }
+  // ── Report 3: Bank wise Payout (bank overview + drill-down) ──
+  function buildR3(){
+    const drill=window._rfR3Drill||null;
+    const backBtn=`<button onclick="window._rfR3Drill=null;renderRetailFinanceReport()" style="padding:4px 14px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);margin-right:10px;">&#8592; Back to Banks</button>`;
+    if(drill){
+      // Drill-down: branch/SC payout breakdown for selected bank
+      const bankRows=rows.filter(r=>r.bank===drill&&(r.pa||r.np||r.ga));
+      const map=new Map();
+      bankRows.forEach(r=>{const k=grpKey(r);if(!map.has(k))map.set(k,{grp:k,pa:0,np:0,ga:0});const g=map.get(k);g.pa+=r.pa;g.np+=r.np;g.ga+=r.ga;});
+      const keys=[...map.keys()].sort();
+      let tot={pa:0,np:0,ga:0};
+      keys.forEach(k=>{const g=map.get(k);tot.pa+=g.pa;tot.np+=g.np;tot.ga+=g.ga;});
+      const row=(g,cls)=>`<tr><td style="${cls||tdL}">${g.grp}</td><td style="${cls||tdS}">${fmt(g.pa)}</td><td style="${cls||tdS}">${fmt(g.np)}</td><td style="${cls||tdS}">${fmt(g.ga)}</td></tr>`;
+      const hdr=`<thead><tr><th style="${thL}">${grpLabel}</th><th style="${thS}">Payout Amount (&#8377;)</th><th style="${thS}">Net Payout (&#8377;)</th><th style="${thS}">GST Amount (&#8377;)</th></tr></thead>`;
+      const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${fmt(tot.pa)}</td><td style="${totS}">${fmt(tot.np)}</td><td style="${totS}">${fmt(tot.ga)}</td></tr></tbody>`;
+      return`<div id="rfRpt3"><div style="display:flex;align-items:center;margin-bottom:8px;">${backBtn}<h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0;">3. Bank: <span style="color:var(--accent);">${drill}</span> &mdash; ${grpLabel} wise Payout</h3></div>${expBtns('rfRpt3Table','Bank '+drill+' Payout Branch Wise')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+    }
+    // Bank overview
+    const map=new Map();
+    rows.forEach(r=>{if(!r.pa&&!r.np&&!r.ga)return;if(!map.has(r.bank))map.set(r.bank,{bank:r.bank,pa:0,np:0,ga:0});const g=map.get(r.bank);g.pa+=r.pa;g.np+=r.np;g.ga+=r.ga;});
+    const keys=[...map.keys()].sort();
+    let tot={pa:0,np:0,ga:0};
+    keys.forEach(k=>{const g=map.get(k);tot.pa+=g.pa;tot.np+=g.np;tot.ga+=g.ga;});
+    const row=(g,cls)=>{const safe=g.bank.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<tr style="cursor:pointer;" onclick="window._rfR3Drill='${safe}';renderRetailFinanceReport()"><td style="${cls||tdL};color:var(--accent);text-decoration:underline;cursor:pointer;">${g.bank}</td><td style="${cls||tdS}">${fmt(g.pa)}</td><td style="${cls||tdS}">${fmt(g.np)}</td><td style="${cls||tdS}">${fmt(g.ga)}</td></tr>`;};
+    const hdr=`<thead><tr><th style="${thL}">Bank <span style="font-size:9px;font-weight:400;color:var(--text-dim);">(click to drill down)</span></th><th style="${thS}">Payout Amount (&#8377;)</th><th style="${thS}">Net Payout (&#8377;)</th><th style="${thS}">GST Amount (&#8377;)</th></tr></thead>`;
+    const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${fmt(tot.pa)}</td><td style="${totS}">${fmt(tot.np)}</td><td style="${totS}">${fmt(tot.ga)}</td></tr></tbody>`;
+    return`<div id="rfRpt3"><h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">3. Bank wise &mdash; Payout Report</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Click a bank name to see ${grpLabel.toLowerCase()}-wise payout breakdown.</p>${expBtns('rfRpt3Table','Bank Wise Payout Report')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+  }
+  // ── Report 4: Branch/SC Summary ──
+  function buildR4(){
+    const map=new Map();
+    rows.forEach(r=>{const k=grpKey(r);if(!map.has(k))map.set(k,{grp:k,pa:0,np:0,ga:0,cnt:0,inhouse:0,total:0});const g=map.get(k);g.total++;if(r.mode==='Inhouse')g.inhouse++;g.pa+=r.pa;g.np+=r.np;g.ga+=r.ga;if(r.pa||r.np||r.ga)g.cnt++;});
+    const keys=[...map.keys()].sort();
+    let tot={pa:0,np:0,ga:0,cnt:0,inhouse:0,total:0};
+    keys.forEach(k=>{const g=map.get(k);Object.keys(tot).forEach(f=>tot[f]+=g[f]||0);});
+    const row=(g,cls)=>`<tr><td style="${cls||tdL}">${g.grp}</td><td style="${cls||tdS}">${g.total}</td><td style="${cls||tdS}">${g.inhouse}</td><td style="${cls||tdS};color:${g.total?'#4ade80':'var(--text-muted)'}">${pct(g.inhouse,g.total)}</td><td style="${cls||tdS}">${fmt(g.pa)}</td><td style="${cls||tdS}">${fmt(g.np)}</td><td style="${cls||tdS}">${fmt(g.ga)}</td></tr>`;
+    const hdr=`<thead><tr><th style="${thL}">${grpLabel}</th><th style="${thS}">Total Records</th><th style="${thS}">Inhouse</th><th style="${thS}">Inhouse%</th><th style="${thS}">Payout Amount (&#8377;)</th><th style="${thS}">Net Payout (&#8377;)</th><th style="${thS}">GST Amount (&#8377;)</th></tr></thead>`;
+    const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.total}</td><td style="${totS}">${tot.inhouse}</td><td style="${totS};color:#4ade80;">${pct(tot.inhouse,tot.total)}</td><td style="${totS}">${fmt(tot.pa)}</td><td style="${totS}">${fmt(tot.np)}</td><td style="${totS}">${fmt(tot.ga)}</td></tr></tbody>`;
+    return`<div id="rfRpt4"><h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">4. ${grpLabel} wise &mdash; Summary Report</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Overall payout summary with Inhouse % per ${grpLabel.toLowerCase()}.</p>${expBtns('rfRpt4Table','Summary Report')}${tblWrap(hdr+body)}</div><table id="rfRpt4Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+  }
+  // ── Report 5: Statement (Inhouse cases detail list) ──
+  function buildR5(){
+    const stBranch=window._rfR5Branch||'';
+    const stBank  =window._rfR5Bank||'';
+    const ihRows=rows.filter(r=>r.mode==='Inhouse');
+    const branches=[...new Set(ihRows.map(r=>r.branch))].sort();
+    const banks   =[...new Set(ihRows.map(r=>r.bank))].sort();
+    let stRows=ihRows;
+    if(stBranch)stRows=stRows.filter(r=>r.branch===stBranch);
+    if(stBank)  stRows=stRows.filter(r=>r.bank===stBank);
+    const selS='padding:5px 10px;font-size:11px;border:1px solid var(--border);border-radius:6px;background:var(--bg-surface);color:var(--text-primary);';
+    const filterBar=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px;">
+      <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;">Filter</span>
+      <select style="${selS}" onchange="window._rfR5Branch=this.value;renderRetailFinanceReport()">
+        <option value="">All Branches</option>
+        ${branches.map(b=>`<option value="${b}"${b===stBranch?' selected':''}>${b}</option>`).join('')}
+      </select>
+      <select style="${selS}" onchange="window._rfR5Bank=this.value;renderRetailFinanceReport()">
+        <option value="">All Banks</option>
+        ${banks.map(b=>`<option value="${b}"${b===stBank?' selected':''}>${b}</option>`).join('')}
+      </select>
+      ${(stBranch||stBank)?`<button onclick="window._rfR5Branch='';window._rfR5Bank='';renderRetailFinanceReport()" style="padding:5px 12px;font-size:11px;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);">&#x2715; Clear</button>`:''}
+      <span style="font-size:11px;color:var(--accent);font-weight:600;">${stRows.length} Inhouse case${stRows.length!==1?'s':''}</span>
+    </div>`;
+    const totLa=stRows.reduce((s,r)=>s+(r.la||0),0);
+    const totDa=stRows.reduce((s,r)=>s+(r.da||0),0);
+    const totNp=stRows.reduce((s,r)=>s+(r.np||0),0);
+    const totGa=stRows.reduce((s,r)=>s+(r.ga||0),0);
+    const totPa=stRows.reduce((s,r)=>s+(r.pa||0),0);
+    const hdr=`<thead><tr>
+      <th style="${thS}">#</th>
+      <th style="${thL}">Customer Name</th>
+      <th style="${thL}">Mobile</th>
+      <th style="${thL}">SC Name</th>
+      <th style="${thL}">Model &amp; Variant</th>
+      <th style="${thS}">Loan Amount (&#8377;)</th>
+      <th style="${thS}">Disbursed Amt (&#8377;)</th>
+      <th style="${thS}">Net Payout (&#8377;)</th>
+      <th style="${thS}">GST Amount (&#8377;)</th>
+      <th style="${thS}">Payout Amount (&#8377;)</th>
+    </tr></thead>`;
+    const body=`<tbody>${stRows.map((r,i)=>`<tr style="${i%2===1?'background:rgba(255,255,255,0.025)':''}">
+      <td style="${tdS}text-align:center;">${i+1}</td>
+      <td style="${tdL}">${r.cn||'—'}</td>
+      <td style="${tdS}text-align:left;">${r.mob||'—'}</td>
+      <td style="${tdS}text-align:left;">${r.sc||'—'}</td>
+      <td style="${tdS}text-align:left;">${r.mv||'—'}</td>
+      <td style="${tdS}">${fmt(r.la)}</td>
+      <td style="${tdS}">${fmt(r.da)}</td>
+      <td style="${tdS}">${fmt(r.np)}</td>
+      <td style="${tdS}">${fmt(r.ga)}</td>
+      <td style="${tdS}">${fmt(r.pa)}</td>
+    </tr>`).join('')}<tr>
+      <td style="${totS}" colspan="5">TOTAL &mdash; ${stRows.length} cases</td>
+      <td style="${totS}">${fmt(totLa)}</td>
+      <td style="${totS}">${fmt(totDa)}</td>
+      <td style="${totS}">${fmt(totNp)}</td>
+      <td style="${totS}">${fmt(totGa)}</td>
+      <td style="${totS}">${fmt(totPa)}</td>
+    </tr></tbody>`;
+    const noData=`<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:12px;">No Inhouse records found${stBranch||stBank?' for selected filters':''}.</div>`;
+    return`<div id="rfRpt5"><h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">5. Finance Statement &mdash; Inhouse Cases</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Detailed Inhouse financed cases with full payout details.</p>${filterBar}${stRows.length>0?expBtns('rfRpt5Table','Finance Statement'):''}${stRows.length>0?tblWrap(hdr+body):noData}</div>${stRows.length>0?`<table id="rfRpt5Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`:''}`;
+  }
+  // ── Date filter UI bar ──
+  const inpS='padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-surface);color:var(--text-primary);font-family:var(--font-d,monospace);cursor:pointer;';
+  const clearBtnS='padding:5px 12px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);';
+  const dateBar=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 14px;border-bottom:1px solid var(--border);margin-bottom:16px;">
+    <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;">Invoice Date Filter</span>
+    <span style="font-size:11px;color:var(--text-muted);">From</span>
+    <input type="date" value="${_rfFrom}" onchange="window._rfRepFrom=this.value;renderRetailFinanceReport()" style="${inpS}">
+    <span style="font-size:11px;color:var(--text-muted);">To</span>
+    <input type="date" value="${_rfTo}" onchange="window._rfRepTo=this.value;renderRetailFinanceReport()" style="${inpS}">
+    ${(_rfFrom||_rfTo)?`<button onclick="window._rfRepFrom='';window._rfRepTo='';renderRetailFinanceReport()" style="${clearBtnS}">&#x2715; Clear</button>`:''}
+    ${(fromD||toD)?`<span style="font-size:11px;color:var(--accent);font-weight:600;">${rows.length} record${rows.length!==1?'s':''} in range</span>`:''}
+  </div>`;
+  if(rows.length===0){
+    area.innerHTML=`<div style="padding:16px 0;">${dateBar}<div style="padding:40px;text-align:center;"><strong style="color:var(--text-muted);">No finance data found${(fromD||toD)?' for selected date range':''}.</strong><p style="font-size:12px;color:var(--text-muted);margin-top:8px;">${(fromD||toD)?'Try adjusting or clearing the date filter.':'Ensure Allotment data is loaded and has rows with <em>Focus Invoiced</em> in the Invoice Plan Date column.'}</p></div></div>`;
+    return;
+  }
+  // Build sub-tabs layout
+  const activeTab=window._rfRepTab||'r1';
+  const tabBtn=(id,label)=>{const on=activeTab===id;return`<button onclick="window._rfRepTab='${id}';renderRetailFinanceReport()" style="padding:6px 16px;font-size:11px;font-weight:700;font-family:var(--font-d,monospace);letter-spacing:.05em;border-radius:20px;cursor:pointer;border:1px solid ${on?'var(--accent)':'var(--border)'};background:${on?'var(--accent)':'none'};color:${on?'var(--bg-deep)':'var(--text-muted)'};transition:all .15s;">${label}</button>`;};
+  const tabs=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--border);">
+    ${tabBtn('r1','Mode Wise')}${tabBtn('r2','Bank Wise - Inhouse/Outhouse')}${tabBtn('r3','Bank Wise - Payout')}${tabBtn('r4','Summary')}${tabBtn('r5','Statement')}
+  </div>`;
+  const content=activeTab==='r1'?buildR1():activeTab==='r2'?buildR2():activeTab==='r3'?buildR3():activeTab==='r4'?buildR4():buildR5();
+  area.innerHTML=`<div style="padding:16px 0;">${dateBar}${tabs}${content}</div>`;
+}
+// ── Finance Report Excel export ──
+window.rfRepExportXLSX=function(tableId,title){
+  const el=document.getElementById(tableId);
+  if(!el){alert('No table data found.');return;}
+  const tbl=el.tagName==='TABLE'?el:el.querySelector('table');
+  if(!tbl){alert('No table found for export.');return;}
+  const prevDisplay=el.style.display;
+  el.style.display='';
+  const loadXLSX=cb=>{if(typeof XLSX!=='undefined')return cb();const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=cb;s.onerror=()=>alert('Could not load Excel library.');document.head.appendChild(s);};
+  loadXLSX(()=>{
+    const ws=XLSX.utils.table_to_sheet(tbl);
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,title.substring(0,31));
+    XLSX.writeFile(wb,title.replace(/[<>:"\/\\|?*]/g,'_')+'.xlsx');
+    el.style.display=prevDisplay;
+  });
+};
+// ── Finance Report PDF export (browser print) ──
+window.rfRepExportPDF=function(tableId,title){
+  const el=document.getElementById(tableId);
+  if(!el){alert('No table data found.');return;}
+  // Get the <table> — el might be the table itself or a wrapper
+  const tbl=el.tagName==='TABLE'?el:el.querySelector('table');
+  if(!tbl){alert('No table found for export.');return;}
+  // Capture outerHTML while visible (temporarily show)
+  const prevDisplay=el.style.display;
+  el.style.display='';
+  const tblHTML=tbl.outerHTML;
+  el.style.display=prevDisplay;
+  const w=window.open('','_blank','width=1000,height=700');
+  if(!w){alert('Popup blocked. Please allow popups for this site.');return;}
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>
+    *{box-sizing:border-box;}
+    body{font-family:Arial,sans-serif;font-size:11px;padding:16px;margin:0;color:#111;}
+    h2{font-size:14px;margin:0 0 12px;font-weight:700;}
+    table{width:100%;border-collapse:collapse;font-size:11px;}
+    thead th{background:#e8f0e9;padding:6px 10px;text-align:left;border:1px solid #9ec5a0;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;}
+    tbody td{padding:5px 10px;border:1px solid #d1e0d3;}
+    tbody tr:nth-child(even) td{background:#f6fbf6;}
+    tbody tr:last-child td{font-weight:700;background:#e8f4ea;border-top:2px solid #6aaf6e;}
+    @media print{@page{margin:1cm;size:landscape;}body{padding:0;}h2{font-size:13px;}table{font-size:10px;}thead th,tbody td{padding:4px 7px;}}
+  </style></head><body><h2>${title}</h2>${tblHTML}<script>setTimeout(function(){window.print();},300);<\/script></body></html>`);
+  w.document.close();
+};
 
 function renderAnalytics(){
   const el=document.getElementById('anaContent');
