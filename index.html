@@ -128,6 +128,16 @@ tr.row-invoiced td:first-child{border-left:3px solid var(--accent);}
 tr.row-fpr td{background:rgba(251,191,36,0.1) !important;border-bottom-color:rgba(251,191,36,0.22) !important;}
 tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
 
+/* FROZEN COLUMNS (sticky horizontal scroll) */
+/* z-index ladder: normal th=10, frozen td=2, frozen th=30 (beats all).
+   Body cells MUST use fully-opaque colours — semi-transparent rgba lets
+   scrolled columns bleed through. Computed as: base #112a15 + row overlay. */
+td.col-frz{position:sticky;z-index:2;background:#112a15;}
+th.col-frz{position:sticky;top:0;z-index:30;background:rgba(22,59,28,0.95)!important;}/* 5% transparent per design */
+tr.row-invoiced td.col-frz{background:#193b21!important;}/* opaque blend of #112a15 + rgba(76,175,110,.13) */
+tr.row-fpr td.col-frz{background:#283816!important;}/* opaque blend of #112a15 + rgba(251,191,36,.1) */
+td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
+
 /* DEALLOT / REALLOT BUTTONS */
 .deallot-btn{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:5px;color:#f87171;cursor:pointer;font-size:11px;font-family:var(--font-d);font-weight:700;letter-spacing:.04em;padding:3px 10px;white-space:nowrap;transition:all .15s;}
 .deallot-btn:hover{background:rgba(239,68,68,0.22);border-color:#f87171;color:#fca5a5;}
@@ -990,6 +1000,27 @@ const CM={white:'#f5f5f5',black:'#222',silver:'#b8b8b8',grey:'#888',gray:'#888',
 function hue(n){if(!n)return'#556';const l=n.toLowerCase();for(const[k,v]of Object.entries(CM))if(l.includes(k))return v;let h=0;for(let i=0;i<l.length;i++)h=l.charCodeAt(i)+((h<<5)-h);return`hsl(${Math.abs(h)%360},38%,52%)`;}
 function fc(h,n){const nm=s=>String(s||'').replace(/^\uFEFF/,'').trim().toLowerCase();const nv=nm(n);let i=h.findIndex(x=>nm(x)===nv);if(i>=0)return i;return h.findIndex(x=>nm(x).includes(nv)||nv.includes(nm(x)));}
 function fce(h,k){const nm=s=>String(s||'').replace(/^\uFEFF/,'').trim().toLowerCase();const nv=nm(k);return h.findIndex(x=>nm(x)===nv);}
+
+
+/* ── fixFrozenCols: correct sticky left positions based on actual rendered widths ──
+   Called after table HTML is written to DOM. Reads offsetWidth of first 3 th cells
+   and applies correct left values to all frozen th/td so they never overlap. */
+function fixFrozenCols(){
+  const tH=document.getElementById('tH');
+  const tB=document.getElementById('tB');
+  if(!tH)return;
+  const ths=[...tH.querySelectorAll('th')];
+  if(ths.length<3)return;
+  const w0=ths[0].offsetWidth||44;
+  const w1=ths[1].offsetWidth||110;
+  const lefts=[0,w0,w0+w1];
+  [0,1,2].forEach(i=>{if(ths[i]&&ths[i].classList.contains('col-frz'))ths[i].style.left=lefts[i]+'px';});
+  if(!tB)return;
+  tB.querySelectorAll('tr').forEach(tr=>{
+    const tds=[...tr.querySelectorAll('td')];
+    [0,1,2].forEach(i=>{if(tds[i]&&tds[i].classList.contains('col-frz'))tds[i].style.left=lefts[i]+'px';});
+  });
+}
 
 /* ═══ JSONP ═══ */
 function jFetch(sheet,timeoutMs){
@@ -3803,9 +3834,13 @@ function renderAllotment(){
   const CORP_TYPE_OPTS=['National Corporates','MSME','Professionals','Government Employees','Leasing & Fleet','SAVWIPL Group Employees & Vendors','Government e-Market (GeM)','Bulk Deal','Canteen Store Department (CSD)','Dealer Regional'];
   const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Model','Variant','Colour','MY','VY','Invoice Status','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Corp','Loyalty','Exchange','Corp Type','Corp Name','Exch Brand','Action'];
   const NCOLS_A=HEADERS.length;
-  document.getElementById('tH').innerHTML=HEADERS.map((d,i)=>
-    `<th onclick="${i<NCOLS_A-1?`doSort(${i})`:'void(0)'}" class="${sCol===i?'sorted':''}${EDITABLE_COLS.has(i)?' ecol':''}">${d}${i<NCOLS_A-1?`<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span>`:''}</th>`
-  ).join('');
+  document.getElementById('tH').innerHTML=HEADERS.map((d,i)=>{
+    const frzCls=i<=2?('col-frz'+(i===2?' col-frz-last':'')):'';
+    const frzSt=i===0?'left:0;min-width:44px;':i===1?'left:44px;min-width:110px;':i===2?'left:154px;min-width:140px;':'';
+    const sortedCls=sCol===i?'sorted':'';
+    const editCls=EDITABLE_COLS.has(i)?' ecol':'';
+    return`<th class="${frzCls} ${sortedCls}${editCls}" ${frzSt?`style="${frzSt}"`:''}onclick="${i<NCOLS_A-1?`doSort(${i})`:'void(0)'}">${d}${i<NCOLS_A-1?`<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span>`:''}</th>`;
+  }).join('');
   if(!filtered.length){
     document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS_A}"><div class="sb"><strong>No matches</strong><p>Try adjusting your filters.</p></div></td></tr>`;return;
   }
@@ -3844,9 +3879,9 @@ function renderAllotment(){
     const rowCls=rowStat.toLowerCase()==='invoiced'?' class="row-invoiced"':rowStat.toUpperCase().startsWith('FPR')?' class="row-fpr"':'';
     const esc=s=>String(s||'').replace(/'/g,"&#39;");
     return `<tr${rowCls} style="animation-delay:${Math.min(ri*.012,.25)}s">
-      <td style="color:var(--text-dim);font-weight:600;">${ri+1}</td>
-      <td>${branch}</td>
-      <td>${cust}</td>
+      <td class="col-frz" style="left:0;color:var(--text-dim);font-weight:600;">${ri+1}</td>
+      <td class="col-frz" style="left:44px;">${branch}</td>
+      <td class="col-frz col-frz-last" style="left:154px;">${cust}</td>
       <td class="dim">${mobile}</td>
       <td>${sc}</td>
       <td>${aDate}</td>
@@ -3869,10 +3904,12 @@ function renderAllotment(){
       <td class="ecol">${editCellDD(corpTypeVal,'Allotment',sheetRow,corpTypeI,CORP_TYPE_OPTS)}</td>
       <td class="ecol">${editCell(corpNameVal,'Allotment',sheetRow,corpNameI>=0?corpNameI:frI+2)}</td>
       <td class="ecol" data-excbr-col="${exchBrI}" title="ExchBrand col:${exchBrI+1}">${editCell(exchBrVal,'Allotment',sheetRow,exchBrI)}</td>
-      <td>${(()=>{const _dr=daReasonI>=0?String(r[daReasonI]||'').trim():'';const _drb=daRaisedByI>=0?String(r[daRaisedByI]||'').trim():'';const _dsmr=daSMRemarksI>=0?String(r[daSMRemarksI]||'').trim():'';const _rsl=rowStat.toLowerCase();if((_dr||_rsl.includes('deallot')||_rsl.includes('de-allot')||_rsl.includes('de allot'))&&!deallotRaisedRows.has(sheetRow)){deallotRaisedRows.set(sheetRow,{cust,sc,branch,model,variant,colour,reason:_dr||rowStat,raisedBy:_drb,smRemarks:_dsmr||smRem,sourceSheet:'Allotment'});}return renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,'Allotment');})()}</td>
+      <td>${(()=>{const _dr=daReasonI>=0?String(r[daReasonI]||'').trim():'';const _drb=daRaisedByI>=0?String(r[daRaisedByI]||'').trim():'';const _dsmr=daSMRemarksI>=0?String(r[daSMRemarksI]||'').trim():'';const _rsl=rowStat.toLowerCase();if((_dr||_rsl.includes('deallot')||_rsl.includes('de-allot')||_rsl.includes('de allot'))&&!deallotRaisedRows.has(sheetRow)){/* Use _dr (actual De-allot Reason column) as reason — never rowStat which is "De-allot Pending" */deallotRaisedRows.set(sheetRow,{cust,sc,branch,model,variant,colour,reason:_dr,raisedBy:_drb,smRemarks:_dsmr||smRem,sourceSheet:'Allotment'});}return renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,'Allotment');})()}</td>
     </tr>`;
 
   }).join('');
+  // Correct frozen column left positions based on actual rendered widths
+  requestAnimationFrame(fixFrozenCols);
 }
 
 
@@ -4007,7 +4044,7 @@ function renderAGDMAllotment(){
       <td class="ecol" data-bank-td="1">${editCellBankDD(mode,bank,'AG/DM Allotment',sheetRow,bnI,-1)}</td>
       <td class="ecol">${editCell(finRem,'AG/DM Allotment',sheetRow,frI)}</td>
       <td class="ecol">${editCell(smRem,'AG/DM Allotment',sheetRow,smrI>=0?smrI:frI+1)}</td>
-      <td>${(()=>{const _dr=daReasonI8>=0?String(r[daReasonI8]||'').trim():'';const _drb=daRaisedByI8>=0?String(r[daRaisedByI8]||'').trim():'';const _dsmr8=daSMRemarksI8>=0?String(r[daSMRemarksI8]||'').trim():'';const _rsl=rowStat.toLowerCase();if((_dr||_rsl.includes('deallot')||_rsl.includes('de-allot')||_rsl.includes('de allot'))&&!deallotRaisedRows.has(sheetRow)){deallotRaisedRows.set(sheetRow,{cust,sc,branch,model,variant,colour,reason:_dr||rowStat,raisedBy:_drb,smRemarks:_dsmr8||smRem,sourceSheet:'AG/DM Allotment'});}return renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,'AG/DM Allotment');})()}</td>
+      <td>${(()=>{const _dr=daReasonI8>=0?String(r[daReasonI8]||'').trim():'';const _drb=daRaisedByI8>=0?String(r[daRaisedByI8]||'').trim():'';const _dsmr8=daSMRemarksI8>=0?String(r[daSMRemarksI8]||'').trim():'';const _rsl=rowStat.toLowerCase();if((_dr||_rsl.includes('deallot')||_rsl.includes('de-allot')||_rsl.includes('de allot'))&&!deallotRaisedRows.has(sheetRow)){/* Use _dr (actual De-allot Reason column) — never rowStat which would be "De-allot Pending" */deallotRaisedRows.set(sheetRow,{cust,sc,branch,model,variant,colour,reason:_dr,raisedBy:_drb,smRemarks:_dsmr8||smRem,sourceSheet:'AG/DM Allotment'});}return renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,'AG/DM Allotment');})()}</td>
     </tr>`;
   }).join('');
 }
@@ -4820,9 +4857,13 @@ function renderRetailFinanceRetail(){
   const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Model','Variant','Colour','MY','VY','Invoice Date','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Payout %','Login Date','Loan Disbursed Date','Loan Amount','Disbursed Amount','ROI','TAT','Payout Amount','Net Payout','GST Amount'];
   const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24,25,26]);
   const NCOLS_RF=HEADERS.length;
-  document.getElementById('tH').innerHTML=HEADERS.map((d,i)=>
-    `<th onclick="${i<NCOLS_RF-1?`doSort(${i})`:'void(0)'}" class="${sCol===i?'sorted':''}${EDITABLE_COLS.has(i)?' ecol':''}">${d}${i<NCOLS_RF-1?`<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span>`:''}</th>`
-  ).join('');
+  document.getElementById('tH').innerHTML=HEADERS.map((d,i)=>{
+    const frzCls=i<=2?('col-frz'+(i===2?' col-frz-last':'')):'';
+    const frzSt=i===0?'left:0;min-width:44px;':i===1?'left:44px;min-width:110px;':i===2?'left:154px;min-width:140px;':'';
+    const sortedCls=sCol===i?'sorted':'';
+    const editCls=EDITABLE_COLS.has(i)?' ecol':'';
+    return`<th class="${frzCls} ${sortedCls}${editCls}" ${frzSt?`style="${frzSt}"`:''}onclick="${i<NCOLS_RF-1?`doSort(${i})`:'void(0)'}">${d}${i<NCOLS_RF-1?`<span class="si2">${sCol===i?(sAsc?'↑':'↓'):'↕'}</span>`:''}</th>`;
+  }).join('');
   if(!filtered.length){
     document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS_RF}"><div class="sb"><strong>No matches</strong><p>${fromD||toD?'No retail records found in the selected date range.':'Enter a date range to filter retail records, or adjust filters.'}</p></div></td></tr>`;return;
   }
@@ -4863,9 +4904,9 @@ function renderRetailFinanceRetail(){
     const vyCell =vy!=='—'?`<span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${vyColor(vy)}22;color:${vyColor(vy)};border:1px solid ${vyColor(vy)}55;">${vy}</span>`:vy;
     // sheetRow is now the actual 1-indexed sheet row (not filtered position)
     return`<tr class="row-invoiced" style="animation-delay:${Math.min(ri*.012,.25)}s">
-      <td style="color:var(--text-dim);font-weight:600;">${ri+1}</td>
-      <td>${branch}</td>
-      <td>${cust}</td>
+      <td class="col-frz" style="left:0;color:var(--text-dim);font-weight:600;">${ri+1}</td>
+      <td class="col-frz" style="left:44px;">${branch}</td>
+      <td class="col-frz col-frz-last" style="left:154px;">${cust}</td>
       <td class="dim">${mobile}</td>
       <td>${sc}</td>
       <td>${aDate}</td>
@@ -4894,6 +4935,8 @@ function renderRetailFinanceRetail(){
       <td data-ga-td="1" style="text-align:right;padding:4px 8px;"><span data-val="${gaVal}" style="font-size:11px;color:var(--text-primary);font-weight:600;">${gaVal||'—'}</span></td>
     </tr>`;
   }).join('');
+  // Correct frozen column left positions based on actual rendered widths
+  requestAnimationFrame(fixFrozenCols);
 }
 
 /* ── ROI cell auto-save (inline controls — no pencil button) ── */
@@ -7607,6 +7650,91 @@ function renderReports(){
   const r6num=isL3?'R6':'R6';
   html+=rCard(r6num,'Target vs Actuals',buildTargetVsActual());
 
+  // ── REPORTS 7 & 8: Corporate Report & Exchange Report ──────────────────────
+  // buildPenetrationRpt: branch-wise penetration for a yes/no field
+  // fieldAliases = header name aliases; fieldLabel = display name; rptNum = card number
+  (()=>{
+    const thS=`padding:7px 10px;font-size:10px;font-family:var(--font-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--bg-surface);border-bottom:2px solid var(--border);white-space:nowrap;text-align:center;`;
+    const tdS=`padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);`;
+    const tdL=`padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);font-weight:600;color:var(--text-primary);white-space:nowrap;`;
+    const pct=(n,d)=>d>0?(n/d*100).toFixed(1)+'%':'—';
+    const noDataDiv=`<div style="padding:18px;text-align:center;color:var(--text-dim);font-size:13px;">No allotment data available.</div>`;
+
+    function buildPenetrationRpt(fieldAliases,fieldLabel){
+      const sources=[{data:SD[7]||[]},{data:SD[8]||[]}];
+      const brMap={}; // branch → {retail,retailYes,coverage,coverageYes}
+      for(const {data} of sources){
+        if(!data||data.length<2)continue;
+        const {h,hi}=hdr(data);
+        const body=data.slice(hi+1);
+        const brI2=(()=>{for(const k of['Branch Name','Branch']){const i=fce(h,k);if(i>=0)return i;}return fc(h,'Branch');})();
+        const cnI2=(()=>{for(const k of['Customer Name','Customer']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+        const stI2=(()=>{for(const k of['Allotment Status','Invoice Status','Status']){const i=fce(h,k);if(i>=0)return i;}return 24;})();
+        const fldI=(()=>{for(const k of fieldAliases){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+        body.forEach(r=>{
+          if(!r.some(c=>String(c||'').trim()))return;
+          if(String(r[1]||'').trim().toUpperCase().startsWith('CF'))return;
+          if(cnI2>=0&&!String(r[cnI2]||'').trim())return;
+          if(isL3&&uBranch&&brI2>=0&&String(r[brI2]||'').trim().toUpperCase()!==uBranch)return;
+          const br=brI2>=0?String(r[brI2]||'').trim():'Unknown';
+          if(!br)return;
+          if(!brMap[br])brMap[br]={retail:0,retailYes:0,coverage:0,coverageYes:0};
+          const fieldVal=fldI>=0?String(r[fldI]||'').trim().toLowerCase():'';
+          const isYes=fieldVal==='yes';
+          const st=String(r[stI2]||'').trim().toLowerCase();
+          const isInvoiced=st.includes('invoic')||st.includes('retail');
+          brMap[br].coverage++;
+          if(isYes)brMap[br].coverageYes++;
+          if(isInvoiced){brMap[br].retail++;if(isYes)brMap[br].retailYes++;}
+        });
+      }
+      const branches=Object.keys(brMap).filter(k=>k&&k!=='Unknown'||brMap[k].coverage>0).sort((a,b)=>a.localeCompare(b));
+      if(!branches.length)return{retailHtml:noDataDiv,coverageHtml:noDataDiv};
+      const makeTable=(type)=>{
+        let totTot=0,totYes=0;
+        const rows=branches.map((br,ri)=>{
+          const v=brMap[br];
+          const tot=type==='retail'?v.retail:v.coverage;
+          const yes=type==='retail'?v.retailYes:v.coverageYes;
+          totTot+=tot;totYes+=yes;
+          const p=pct(yes,tot);
+          const pColor=yes>0?(yes/Math.max(tot,1)>=0.3?'#4ade80':'#60a5fa'):'var(--text-dim)';
+          return`<tr style="${ri%2?'background:rgba(255,255,255,.02);':''}">
+            <td style="${tdL}">${br}</td>
+            <td style="${tdS}font-weight:700;color:var(--text-primary);">${tot||'—'}</td>
+            <td style="${tdS}color:#4ade80;font-weight:700;">${yes||'—'}</td>
+            <td style="${tdS}color:${pColor};font-weight:700;">${p}</td>
+          </tr>`;
+        }).join('');
+        const colLabel=type==='retail'?'Retail':'Coverage';
+        return`<div style="overflow-x:auto;"><table style="border-collapse:collapse;width:100%;min-width:350px;font-size:12px;">
+          <thead><tr>
+            <th style="${thS}text-align:left;">Branch Name</th>
+            <th style="${thS}color:var(--text-primary);">${colLabel}</th>
+            <th style="${thS}color:#4ade80;">${fieldLabel} (Yes)</th>
+            <th style="${thS}color:#60a5fa;">Penetration %</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr style="border-top:2px solid var(--border-strong);">
+            <td style="${tdL}color:var(--accent);font-family:var(--font-d);letter-spacing:.04em;">TOTAL</td>
+            <td style="${tdS}font-weight:700;color:var(--text-primary);">${totTot||'—'}</td>
+            <td style="${tdS}color:#4ade80;font-weight:700;">${totYes||'—'}</td>
+            <td style="${tdS}color:#60a5fa;font-weight:700;">${pct(totYes,totTot)}</td>
+          </tr></tfoot>
+        </table></div>`;
+      };
+      return{retailHtml:makeTable('retail'),coverageHtml:makeTable('coverage')};
+    }
+
+    const r7num=isL3?'R7':'R7';
+    const corpRpt=buildPenetrationRpt(['Corp','Corporate','CORP','CORPORATE'],'Corporate');
+    html+=rCard(r7num,'Corporate Report',corpRpt.retailHtml,'Retail Wise',corpRpt.coverageHtml,'Coverage Wise');
+
+    const r8num=isL3?'R8':'R8';
+    const exchRpt=buildPenetrationRpt(['Exchange','EXCHANGE','Exch','EXCH','Exchange Value','EXCHANGE VALUE'],'Exchange');
+    html+=rCard(r8num,'Exchange Report',exchRpt.retailHtml,'Retail Wise',exchRpt.coverageHtml,'Coverage Wise');
+  })();
+
   el.innerHTML=html;
 
   // ── Render bar charts after DOM is ready ────────────
@@ -8506,13 +8634,28 @@ async function raiseDeallotRequest(){
       for(let i=0;i<Math.min(4,_sd.length);i++){if(_sd[i]&&_sd[i].some(c=>/branch|customer/i.test(String(c||'')))){{_hi=i;break;}}}
       const _sh=(_sd[_hi]||[]).map(x=>String(x||'').trim());
       const _asI=(()=>{for(const k of['Allotment Status','ALLOTMENT STATUS','Allot Status','AllotmentStatus']){const i=fc(_sh,k);if(i>=0)return i;}return 24;})();
+      // Detect De-allot Reason and Raised By columns so we can persist actual reason to sheet
+      const _drI=(()=>{for(const k of['De-allot Reason','DeAllot Reason','Deallot Reason','DA Reason','De-Allot Reason']){const i=fc(_sh,k);if(i>=0)return i;}return -1;})();
+      const _rbI=(()=>{for(const k of['Raised By','De-allot Raised By','DA Raised By','RaisedBy']){const i=fc(_sh,k);if(i>=0)return i;}return -1;})();
       // Store original status (before overwriting) so we can restore on rejection
       const _origStat=String((_sd[_hi+sr-1]||[])[_asI]||'').trim()||'Allotted';
       deallotRaisedRows.set(sr,{cust,sc,branch,model,variant,colour,raisedBy,reason:fullReason,smRemarks:smRem,sourceSheet:_srcSheet,asColNum:_asI+1,origStatus:_origStat});
       // Write "De-allot Pending" to the Allotment Status cell → visible to admin in any session
       (()=>{const _ucb=`__dastat_${Date.now()}`;window[_ucb]=()=>delete window[_ucb];const _us=document.createElement('script');_us.src=`${API}?action=updateCell&sheet=${encodeURIComponent(_srcSheet)}&row=${sr}&col=${_asI+1}&value=${encodeURIComponent('De-allot Pending')}&callback=${_ucb}`;_us.onerror=()=>{delete window[_ucb];_us.remove();};_us.onload=()=>_us.remove();document.head.appendChild(_us);})();
+      // Write actual reason to De-allot Reason column → survives page refresh / other sessions
+      if(_drI>=0){
+        (()=>{const _rcb=`__dareason_${Date.now()}`;window[_rcb]=()=>delete window[_rcb];const _rs=document.createElement('script');_rs.src=`${API}?action=updateCell&sheet=${encodeURIComponent(_srcSheet)}&row=${sr}&col=${_drI+1}&value=${encodeURIComponent(fullReason)}&callback=${_rcb}`;_rs.onerror=()=>{delete window[_rcb];_rs.remove();};_rs.onload=()=>_rs.remove();document.head.appendChild(_rs);})();
+      }
+      // Write Raised By to the Raised By column
+      if(_rbI>=0){
+        (()=>{const _rbbcb=`__darb_${Date.now()}`;window[_rbbcb]=()=>delete window[_rbbcb];const _rbs=document.createElement('script');_rbs.src=`${API}?action=updateCell&sheet=${encodeURIComponent(_srcSheet)}&row=${sr}&col=${_rbI+1}&value=${encodeURIComponent(raisedBy)}&callback=${_rbbcb}`;_rbs.onerror=()=>{delete window[_rbbcb];_rbs.remove();};_rbs.onload=()=>_rbs.remove();document.head.appendChild(_rbs);})();
+      }
       // Also update local SD so current-session re-renders pick it up immediately
-      if(_sd[_hi+sr-1])_sd[_hi+sr-1][_asI]='De-allot Pending';
+      if(_sd[_hi+sr-1]){
+        _sd[_hi+sr-1][_asI]='De-allot Pending';
+        if(_drI>=0)_sd[_hi+sr-1][_drI]=fullReason;
+        if(_rbI>=0)_sd[_hi+sr-1][_rbI]=raisedBy;
+      }
       const dbtn=document.getElementById(`dbtn-${sr}`);
       if(dbtn&&dbtn.parentElement){
         dbtn.parentElement.innerHTML=renderDeallotCell(sr,cust,sc,branch,model,variant,colour,_srcSheet);
