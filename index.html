@@ -3340,8 +3340,10 @@ function editCellDD(val,sheet,sheetRow,colIdx,options){
   if(colIdx<0||sheetRow<1)return`<span style="font-size:11px;color:var(--text-muted,#94a3b8);">${String(val||'')}</span>`;
   const safe=v=>String(v||'').replace(/"/g,'&quot;');
   const cur=String(val||'');
+  const curL=cur.toLowerCase();
   const optStyle='background:#0f172a;color:#e2e8f0;';
-  const opts=options.map(o=>`<option value="${safe(o)}"${o===cur?' selected':''} style="${optStyle}">${o}</option>`).join('');
+  // Case-insensitive selected check so existing mixed-case sheet values still show correctly
+  const opts=options.map(o=>`<option value="${safe(o)}"${o.toLowerCase()===curL?' selected':''} style="${optStyle}">${o}</option>`).join('');
   // Blank option first so empty value is selectable
   return `<select data-orig="${safe(cur)}"
     style="font-size:11px;padding:3px 5px;border-radius:4px;border:1px solid rgba(59,130,246,0.4);
@@ -3349,12 +3351,14 @@ function editCellDD(val,sheet,sheetRow,colIdx,options){
     onchange="saveROICell(this,'${sheet}',${sheetRow},${colIdx+1},this.value,this.dataset.orig)">
     <option value="" ${!cur?'selected':''} style="${optStyle}">—</option>${opts}</select>`;
 }
-// ── Live RPO: Yes/No inline dropdown for Corporate / Loyalty / Exchange ──
+// ── Live RPO: YES/NO/YTC inline dropdown for Corporate / Loyalty / Exchange ──
+// Sheet data validation requires uppercase: YES, NO, YTC
 function editRPOYN(val,sheetRow,colIdx){
   if(colIdx<0||sheetRow<1)return`<span style="font-size:11px;color:var(--text-muted,#94a3b8);">${String(val||'')}</span>`;
   const cur=String(val||'').trim();
+  const curU=cur.toUpperCase(); // normalise for case-insensitive match with existing sheet data
   const optStyle='background:#0f172a;color:#e2e8f0;';
-  const opts=['Yes','No'].map(o=>`<option value="${o}"${o===cur?' selected':''} style="${optStyle}">${o}</option>`).join('');
+  const opts=['YES','NO','YTC'].map(o=>`<option value="${o}"${o===curU?' selected':''} style="${optStyle}">${o}</option>`).join('');
   return`<select data-orig="${cur}"
     style="font-size:11px;padding:3px 5px;border-radius:4px;border:1px solid rgba(59,130,246,0.4);
            background:rgba(30,64,175,0.25);color:#e2e8f0;cursor:pointer;min-width:66px;"
@@ -3898,9 +3902,9 @@ function renderAllotment(){
       <td class="ecol" data-bank-td="1">${editCellBankDD(mode,bank,'Allotment',sheetRow,bnI,-1)}</td>
       <td class="ecol">${editCell(finRem,'Allotment',sheetRow,frI)}</td>
       <td class="ecol">${editCell(smRem,'Allotment',sheetRow,smrI>=0?smrI:frI+1)}</td>
-      <td class="ecol">${editCellDD(corpVal,'Allotment',sheetRow,corpI,['Yes','No'])}</td>
-      <td class="ecol">${editCellDD(loyalVal,'Allotment',sheetRow,loyalI,['Yes','No'])}</td>
-      <td class="ecol">${editCellDD(exchVal,'Allotment',sheetRow,exchI,['Yes','No'])}</td>
+      <td class="ecol">${editCellDD(corpVal,'Allotment',sheetRow,corpI,['YES','NO','YTC'])}</td>
+      <td class="ecol">${editCellDD(loyalVal,'Allotment',sheetRow,loyalI,['YES','NO','YTC'])}</td>
+      <td class="ecol">${editCellDD(exchVal,'Allotment',sheetRow,exchI,['YES','NO','YTC'])}</td>
       <td class="ecol">${editCellDD(corpTypeVal,'Allotment',sheetRow,corpTypeI,CORP_TYPE_OPTS)}</td>
       <td class="ecol">${editCell(corpNameVal,'Allotment',sheetRow,corpNameI>=0?corpNameI:frI+2)}</td>
       <td class="ecol" data-excbr-col="${exchBrI}" title="ExchBrand col:${exchBrI+1}">${editCell(exchBrVal,'Allotment',sheetRow,exchBrI)}</td>
