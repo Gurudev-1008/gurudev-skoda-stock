@@ -672,7 +672,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
         </div>
         <!-- Send result panel -->
         <div id="sendRptResult" style="display:none;margin-top:14px;padding:14px 18px;background:var(--bg-deep);border-radius:8px;border:1px solid var(--border);font-size:13px;line-height:1.8;"></div>
-        <p style="font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.6;">Note: Add a row with <strong>Daily Report Emails</strong> in column A of the App_Settings sheet so this setting persists across sessions for all users.</p>
+        <p style="font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.6;">Settings are saved to the App_Settings sheet and are accessible from all devices automatically.</p>
       </div>
 
       <div class="as" id="pwSection">
@@ -1892,52 +1892,46 @@ window.updateDailyEmailStatus=function(idx,status){
 window.saveDailyEmails=async function(){
   const msg=document.getElementById('dailyRptSaveMsg');
   if(msg){msg.style.color='var(--accent)';msg.textContent='Saving…';}
-  // Pick up the current time-picker value
+
+  // Collect current time value
   const timeInp=document.getElementById('dailyRptTimeInput');
   _dailyScheduleTime=(timeInp&&timeInp.value)||_dailyScheduleTime||'08:00';
   _syncTimeBadge();
+
   const json=JSON.stringify({emails:_dailyEmails,scheduledTime:_dailyScheduleTime});
-  localStorage.setItem('grd_daily_report_emails',json);
-  // Re-fetch App_Settings to get correct row number
-  try{const j=await jFetch('App_Settings');if(j&&j.length>=1)SD[17]=j;}catch(e){}
-  const rows=SD[17]||[];
-  let targetRow=-1;
-  for(let i=0;i<rows.length;i++){
-    if(!Array.isArray(rows[i]))continue;
-    const key=String(rows[i][0]||'').trim().toLowerCase();
-    if(key.includes('daily report')){targetRow=i+1;break;}
-  }
-  if(targetRow>0){
-    const cb=`__dre_${Date.now()}`;
-    const result=await new Promise(res=>{
-      const t=setTimeout(()=>{delete window[cb];res({success:false,error:'Timeout'});},12000);
-      window[cb]=d=>{clearTimeout(t);delete window[cb];res(d);};
-      const s=document.createElement('script');
-      s.src=`${API}?action=updateCell&sheet=App_Settings&row=${targetRow}&col=2&value=${encodeURIComponent(json)}&callback=${encodeURIComponent(cb)}`;
-      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();res({success:false,error:'Network error'});};
-      s.onload=()=>s.remove();
-      document.head.appendChild(s);
-    });
-    if(result&&result.success){
-      if(SD[17][targetRow-1])SD[17][targetRow-1][1]=json;
-      if(msg){msg.style.color='#4ade80';msg.textContent='✓ Saved to sheet';}
-    }else{
-      if(msg){msg.style.color='#fb923c';msg.textContent='⚠ Saved locally only (check network)';}
+
+  // saveDailyConfig now writes to BOTH ScriptProperties AND the App_Settings sheet
+  // (creating the "Daily Report Emails" row if it doesn't exist yet).
+  // This means the config is accessible from any device on next page load.
+  const cb=`__drc_${Date.now()}`;
+  const result=await new Promise(res=>{
+    const t=setTimeout(()=>{delete window[cb];res({success:false,error:'Timeout'});},15000);
+    window[cb]=d=>{clearTimeout(t);delete window[cb];res(d);};
+    const s=document.createElement('script');
+    s.src=`${API}?action=saveDailyConfig&config=${encodeURIComponent(json)}&callback=${encodeURIComponent(cb)}`;
+    s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();res({success:false,error:'Network error'});};
+    s.onload=()=>s.remove();
+    document.head.appendChild(s);
+  });
+
+  if(result&&result.success){
+    // Keep SD[17] in sync so the current session doesn't need a full page reload
+    const rows=SD[17]||[];
+    let patched=false;
+    for(let i=0;i<rows.length;i++){
+      if(!Array.isArray(rows[i]))continue;
+      if(String(rows[i][0]||'').trim().toLowerCase().includes('daily report')){
+        rows[i][1]=json;patched=true;break;
+      }
     }
+    if(!patched)rows.push(['Daily Report Emails',json]);  // mirror the append
+    if(msg){msg.style.color='#4ade80';msg.textContent='✓ Saved — accessible from all devices';}
   }else{
-    if(msg){msg.style.color='#fb923c';msg.textContent='⚠ Saved locally — add "Daily Report Emails" row in App_Settings column A';}
+    // Server save failed — save to localStorage as a last resort so this session isn't lost
+    localStorage.setItem('grd_daily_report_emails',json);
+    if(msg){msg.style.color='#fb923c';msg.textContent='⚠ Network error — saved locally only ('+(result.error||'unknown')+')';}
   }
-  // Also save to ScriptProperties so server-side code can always read CC config
-  try{
-    const cb2=`__drc_${Date.now()}`;
-    window[cb2]=d=>{delete window[cb2];};
-    const s2=document.createElement('script');
-    s2.src=`${API}?action=saveDailyConfig&config=${encodeURIComponent(json)}&callback=${encodeURIComponent(cb2)}`;
-    s2.onerror=()=>{delete window[cb2];s2.remove();};
-    s2.onload=()=>s2.remove();
-    document.head.appendChild(s2);
-  }catch(e){}
-  if(msg)setTimeout(()=>{msg.textContent='';msg.style.color='';},4000);
+  if(msg)setTimeout(()=>{msg.textContent='';msg.style.color='';},5000);
 };
 
 // ── Location & Report picker helpers ─────────────────────────────────────────
