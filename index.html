@@ -128,7 +128,7 @@ tr.row-invoiced td:first-child{border-left:3px solid var(--accent);}
 tr.row-fpr td{background:rgba(251,191,36,0.1) !important;border-bottom-color:rgba(251,191,36,0.22) !important;}
 tr.row-fpr td:first-child{border-left:3px solid #fbbf24;}
 
-/* FROZEN COLUMNS (sticky horizontal scroll) */
+/* FROZEN COLUMNS (sticky horizontal scroll) — Desktop/Laptop only */
 /* z-index ladder: normal th=10, frozen td=2, frozen th=30 (beats all).
    Body cells MUST use fully-opaque colours — semi-transparent rgba lets
    scrolled columns bleed through. Computed as: base #112a15 + row overlay. */
@@ -137,6 +137,11 @@ th.col-frz{position:sticky;top:0;z-index:30;background:rgba(22,59,28,0.95)!impor
 tr.row-invoiced td.col-frz{background:#193b21!important;}/* opaque blend of #112a15 + rgba(76,175,110,.13) */
 tr.row-fpr td.col-frz{background:#283816!important;}/* opaque blend of #112a15 + rgba(251,191,36,.1) */
 td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
+/* Mobile: disable column freeze so all columns scroll freely */
+@media(max-width:768px){
+  td.col-frz,th.col-frz{position:static!important;left:auto!important;z-index:auto!important;}
+  td.col-frz-last,th.col-frz-last{box-shadow:none!important;}
+}
 
 /* DEALLOT / REALLOT BUTTONS */
 .deallot-btn{background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.4);border-radius:5px;color:#f87171;cursor:pointer;font-size:11px;font-family:var(--font-d);font-weight:700;letter-spacing:.04em;padding:3px 10px;white-space:nowrap;transition:all .15s;}
@@ -1006,6 +1011,9 @@ function fce(h,k){const nm=s=>String(s||'').replace(/^\uFEFF/,'').trim().toLower
    Called after table HTML is written to DOM. Reads offsetWidth of first 3 th cells
    and applies correct left values to all frozen th/td so they never overlap. */
 function fixFrozenCols(){
+  // On mobile (≤768px) columns are not frozen — skip to avoid inline left styles
+  // that would override the @media CSS reset and re-enable sticky accidentally.
+  if(window.innerWidth<=768)return;
   const tH=document.getElementById('tH');
   const tB=document.getElementById('tB');
   if(!tH)return;
@@ -1938,13 +1946,19 @@ window.saveDailyEmails=async function(){
 
 // Available daily report types — matches exact rCard titles in renderReports()
 const DAILY_REPORT_OPTS=[
-  'Stock Summary',
   'Live RPO Status',
   'New Car Allotment Status',
   'Ageing & Demo Allotment Status',
   'ETBR (Overall)',
-  'ETBR — Source Wise',
-  'Target vs Actuals'
+  'ETBR — Source Wise — Walk In',
+  'ETBR — Source Wise — Tele In',
+  'Target vs Actuals — Booking',
+  'Target vs Actuals — Retail',
+  'Target vs Actuals — Coverage',
+  'Corporate Report — Retail',
+  'Corporate Report — Coverage',
+  'Exchange Report — Retail',
+  'Exchange Report — Coverage',
 ];
 
 // Track which picker key is currently open for each floating panel
@@ -7446,7 +7460,16 @@ function renderReports(){
       }
 
       // Determine group column strategy
-      const gI_direct=isL3?cI(h,scCN):cI(h,brCN);
+      let gI_direct=isL3?cI(h,scCN):cI(h,brCN);
+      // Validate: make sure the detected column header actually looks like an SC/Branch name col.
+      // The 'SE' fallback in scCN can match via substring (e.g. 'base' contains 'se'), picking
+      // up price/amount columns. Reject gI_direct if the column header doesn't contain any
+      // expected keyword for a name/owner/branch column.
+      if(gI_direct>=0){
+        const colHdr=String(h[gI_direct]||'').toLowerCase().replace(/[\s_\-]/g,'');
+        const validHdrKws=['name','owner','sc','salesperson','executive','assigned','branch','location','group'];
+        if(!validHdrKws.some(kw=>colHdr.includes(kw)))gI_direct=-1; // reject bad column
+      }
       // Fallback owner column (for non-L3 when Branch col absent from Leads/TD)
       const owI=(useOwnerMap&&!isL3&&gI_direct<0)?cI(h,scCN):-1;
 
@@ -7468,6 +7491,8 @@ function renderReports(){
         }
         return true; // can't determine → include
       };
+      // Reject group keys that look like numeric/currency values (e.g. ₹ 17,857.00 from wrong col)
+      const isValidGrp=k=>k&&!/^[\d\s,\.₹$€£%+\-]+$/.test(k.trim());
       let anyDate=false;
       data.slice(hi+1).forEach(r=>{
         if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
@@ -7492,7 +7517,7 @@ function renderReports(){
           const ow=String(r[owI]||'').trim().toLowerCase();
           grp=ownerToBr[ow]||'';
         }
-        if(grp)out[grp]=(out[grp]||0)+1;
+        if(isValidGrp(grp))out[grp]=(out[grp]||0)+1;
       });
       // If date col present but no dates parsed, fall back to all-time
       if(dI>=0&&dateMode==='curmon'&&!anyDate){
@@ -7505,7 +7530,7 @@ function renderReports(){
           let grp='';
           if(gI_direct>=0)grp=toIntSW(String(r[gI_direct]||'').trim());
           else if(owI>=0){const ow=String(r[owI]||'').trim().toLowerCase();grp=ownerToBr[ow]||'';}
-          if(grp)out[grp]=(out[grp]||0)+1;
+          if(isValidGrp(grp))out[grp]=(out[grp]||0)+1;
         });
       }
       return out;
@@ -7515,8 +7540,6 @@ function renderReports(){
     const srcDefs=[
       {id:'wi',label:'Walk In',      match:s=>s.includes('walk')||s.includes('walkin')||s.includes('walk-in')||s.includes('showroom')},
       {id:'ti',label:'Tele In',      match:s=>s.includes('tele')||s.includes('telein')||s.includes('tele-in')||s.includes('phone')||s.includes('call in')},
-      {id:'cw',label:'Central Webin',match:s=>s.includes('central')||s.includes('webin')||s.includes('web-in')||s.includes('web in')},
-      {id:'hl',label:'Hyperlocal',   match:s=>s.includes('hyperlocal')||s.includes('hyper local')},
     ];
 
     // ── Shared styling (identical to ETBR Overall) ───
@@ -8288,6 +8311,18 @@ function buildTargetVsActual(){
     // Build allowlist from ETBR's already-branch-filtered scList (saved when ETBR ran)
     const _etbrSCRaw=window.__etbrSCList||[];
     const _etbrSCSet=_etbrSCRaw.length?new Set(_etbrSCRaw.map(s=>norm(s))):null;
+    // Branch-suffix fallback: check if SC name ends with branch name token (e.g. "_Tey" for Teynampet)
+    const _brSfxCheck=isL3&&curUser&&curUser.branch?(()=>{
+      const brLo=curUser.branch.trim().toLowerCase();
+      const brParts=brLo.split(/\s+/);
+      return sc=>{
+        const parts=sc.toLowerCase().split(/[_\s]+/);
+        if(parts.length<2)return false;
+        const sfx=parts[parts.length-1];
+        if(parts.length>=brParts.length+1&&parts.slice(-brParts.length).join(' ')===brLo)return true;
+        return sfx.length>=2&&brParts.some(bp=>bp.startsWith(sfx));
+      };
+    })():null;
     targetData.slice(tHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
       const key=keyIdx>=0?String(r[keyIdx]||'').trim():'';
@@ -8298,10 +8333,16 @@ function buildTargetVsActual(){
           // Primary: match against ETBR's branch-filtered SC list (most reliable)
           if(!_etbrSCSet.has(norm(key)))return;
         } else if(brI_t>=0&&curUser&&curUser.branch){
-          // Fallback: use Branch column in Target Sheet (if available)
+          // Fallback 1: use Branch column in Target Sheet (if available)
           const rowBr=normBrT(String(r[brI_t]||'').trim());
           const userBr=normBrT(curUser.branch);
           if(rowBr&&rowBr!==userBr)return;
+        } else if(_brSfxCheck){
+          // Fallback 2: filter by SC name suffix matching branch name (e.g. "ARAVIND_TEY" for Teynampet)
+          if(!_brSfxCheck(key))return;
+        } else {
+          // No filter available — skip all SC rows to avoid showing all-branch data
+          return;
         }
       }
       const bkTgt=parseFloat(String(r[bkI_t>=0?bkI_t:0]||'').replace(/,/g,''))||0;
@@ -8323,25 +8364,44 @@ function buildTargetVsActual(){
     return{bkTgt:0,rtTgt:0};
   };
 
-  // ── Build unified rows (one per ETBR key + any Target Sheet SCs not already included) ──
+  // ── Determine SC-mode vs Branch-mode (triple-check) ─────────────────────
+  // buildETBR_L3  → __etbrActualsBranch = actual branch name (e.g. "TEYNAMPET")
+  // buildETBR_Branch → __etbrActualsBranch = '__BRANCH__'
+  // Triple-check: sentinel tag, SC list, and current user level — any one is enough.
+  const _etbrBranchTag=window.__etbrActualsBranch||'';
+  const _isScMode=(
+    (_etbrBranchTag&&_etbrBranchTag!=='__BRANCH__') || // ETBR ran in SC/L3 mode
+    ((window.__etbrSCList||[]).length>0)              || // SC list is populated
+    isL3                                                  // current user is L3
+  );
+
+  // ── Build unified rows ──────────────────────────────────────────────────────
   const seenKeys=new Set();
+  const etbrKeySet=new Set(etbrKeys); // for final SC-mode hard-guard
   const makeRow=(key)=>{
     const {bkTgt,rtTgt}=findTgt(key);
     const {booking:bkAct=0,retail:rtAct=0,coverage:cvAct=0}=etbrCache[key]||{};
     return{key,bkTgt,rtTgt,bkAct,rtAct,cvAct};
   };
-  const targets=[
-    // ETBR SC keys (from activity data)
-    ...etbrKeys.filter(k=>k!=='__BRANCH__'&&k).map(k=>{seenKeys.add(norm(k));return makeRow(k);}),
-    // Target Sheet SCs not already in etbrCache (e.g. Kaviyarasan with target but no activity yet)
-    ...[...tgtMap.keys()].filter(nk=>!seenKeys.has(nk)).map(nk=>{
+  const _etbrPart=etbrKeys.filter(k=>k!=='__BRANCH__'&&k).map(k=>{seenKeys.add(norm(k));return makeRow(k);});
+  // SC-mode: tgtMap is used ONLY for target-value lookup via findTgt(), NOT as a source of SC names.
+  // Admin/branch-mode: also append Target Sheet rows not already in ETBR (newly added branches etc.).
+  const _tgtPart=_isScMode?[]:
+    [...tgtMap.keys()].filter(nk=>!seenKeys.has(nk)).map(nk=>{
       const tgt=tgtMap.get(nk)||{bkTgt:0,rtTgt:0};
-      const displayKey=tgt.origKey||nk; // use original case from Target Sheet
+      const displayKey=tgt.origKey||nk;
       const {booking:bkAct=0,retail:rtAct=0,coverage:cvAct=0}=etbrCache[nk]||{};
       return{key:displayKey,bkTgt:tgt.bkTgt,rtTgt:tgt.rtTgt,bkAct,rtAct,cvAct};
+    });
+  const targets=[..._etbrPart,..._tgtPart]
+    .filter(t=>{
+      if(!t.bkTgt&&!t.rtTgt&&!t.bkAct&&!t.rtAct&&!t.cvAct)return false; // drop all-zero rows
+      // SC-mode hard guard: reject any row not present in ETBR actuals.
+      // This is the definitive branch filter — etbrKeySet comes from __etbrActuals
+      // which buildETBR_L3() already built from branch-filtered allotment/RPO data.
+      if(_isScMode&&etbrKeySet.size&&!etbrKeySet.has(t.key))return false;
+      return true;
     })
-  ]
-    .filter(t=>t.bkTgt||t.rtTgt||t.bkAct||t.rtAct||t.cvAct) // drop all-zero rows
     .sort((a,b)=>{const aC=a.key.toUpperCase().includes('CORPORATE'),bC=b.key.toUpperCase().includes('CORPORATE');if(aC&&!bC)return 1;if(!aC&&bC)return-1;return a.key.localeCompare(b.key);});
 
   if(!targets.length)return`<div style="padding:18px;text-align:center;color:var(--text-dim);">No data available.</div>`;
