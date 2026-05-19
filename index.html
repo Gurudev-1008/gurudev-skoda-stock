@@ -991,6 +991,7 @@ let SD=Array.from({length:18},()=>[]); // sheetData SD[0-17]
 let specRows=[],vyMap={},freeMap={},freeBillingMap={},staffList=[];
 let curTab=0,isFree=false,sCol=-1,sAsc=true;
 let curUser=null,lClicks=0,lTimer=null,arTimer=null;
+let _leaseOptions=null; // null=not yet fetched; []=fetched (empty); [...]=fetched with values
 // Record-count display: L3/L4 see only count; others see "X of Y records"
 function setRInfo(filtered,total){
   const lvl=curUser?curUser.level:4;
@@ -1073,6 +1074,12 @@ async function loadAll(){
     else if(curTab===12&&(_p2Loaded.has(7)||_p2Loaded.has(14)||_p2Loaded.has(16))){try{renderTable();}catch(e){console.error(e);}}
     else if(curTab===13&&_p2Loaded.has(14)){try{renderAnalytics();}catch(e){console.error(e);}}
   };
+  // Fetch Lease sheet column A in background for Bank Name dropdown
+  jFetch('Lease').then(rows=>{
+    if(rows&&rows.length>=2){
+      _leaseOptions=[...new Set(rows.slice(1).map(r=>String(r[0]||'').trim()).filter(Boolean))];
+    }else{_leaseOptions=[];}
+  }).catch(()=>{_leaseOptions=[];});
   Promise.all(SHEETS.slice(7).map(async(sh,i)=>{
     const sdIdx=7+i;
     try{const j=await jFetch(sh);SD[sdIdx]=j.length>=1?j:[];}
@@ -1721,7 +1728,7 @@ function _parseDailyData(raw){
   try{
     const p=JSON.parse(raw);
     if(Array.isArray(p))return{emails:p,scheduledTime:'08:00'};   // legacy
-    if(p&&Array.isArray(p.emails))return{emails:p.emails,scheduledTime:p.scheduledTime||'08:00'};
+    if(p&&Array.isArray(p.emails))return{emails:p.emails,scheduledTime:p.scheduledTime||'08:00',branchReports:p.branchReports||{}};
   }catch(e){}
   return null;
 }
@@ -1772,7 +1779,11 @@ function _syncTimeBadge(){
   disp.textContent=_fmt12h(inp.value||_dailyScheduleTime);
 }
 
-function loadDailyReportEmails(){
+async function loadDailyReportEmails(){
+  // Always fetch App_Settings fresh — SD[17] may not be loaded yet if the
+  // user opens Manage tab before background Phase 2 finishes.
+  try{const j=await jFetch('App_Settings');if(j&&j.length>=1)SD[17]=j;}catch(e){}
+
   const rows=SD[17]||[];
   let parsed=null;
   for(const r of rows){
@@ -1786,9 +1797,9 @@ function loadDailyReportEmails(){
     const fb=_parseDailyData(localStorage.getItem('grd_daily_report_emails'));
     if(fb)parsed=fb;
   }
-  _dailyEmails        = parsed?parsed.emails||[]      : [];
-  _dailyScheduleTime  = parsed?parsed.scheduledTime||'08:00':'08:00';
-  _branchReports      = (parsed&&parsed.branchReports)||{};
+  _dailyEmails       = parsed?parsed.emails||[]              : [];
+  _dailyScheduleTime = parsed?parsed.scheduledTime||'08:00'  : '08:00';
+  _branchReports     = (parsed&&parsed.branchReports)        || {};
   const inp=document.getElementById('dailyRptTimeInput');
   if(inp)inp.value=_dailyScheduleTime;
   _syncTimeBadge();
@@ -1809,17 +1820,19 @@ function renderBranchReportSettings(){
   const btnS='background:var(--bg-deep);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;'+
     'padding:5px 10px;font-size:11px;cursor:pointer;min-width:140px;text-align:left;'+
     'display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap;';
-  // Sync _rptState from _branchReports
+  // Always sync _rptState from _branchReports so saved selections are restored on load
   branches.forEach(br=>{
     const key='br:'+br.toUpperCase();
-    if(!_rptState[key])_rptState[key]=(_branchReports[br.toUpperCase()]||['All']);
+    _rptState[key]=_branchReports[br.toUpperCase()]||['All'];
   });
   grid.innerHTML=branches.map(br=>{
     const key='br:'+br.toUpperCase();
     const lbl=_rptLabel(_rptState[key]||['All']);
+    // Use single-quoted key literal so it is safe inside a double-quoted onclick attribute
+    const safeKey=key.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
     return`<div style="display:flex;flex-direction:column;gap:4px;min-width:180px;">
       <span style="font-size:11px;font-weight:700;color:var(--text-primary);">${br}</span>
-      <button id="rptBtn_${key}" onclick="toggleRptPicker(${JSON.stringify(key)},event)" style="${btnS}">
+      <button id="rptBtn_${key}" onclick="toggleRptPicker('${safeKey}',event)" style="${btnS}">
         <span id="rptLbl_${key}">${lbl}</span>
         <span style="font-size:10px;color:var(--text-dim);">▾</span>
       </button>
@@ -2076,7 +2089,13 @@ window.closePickerFloat=function(type,e){
     const k=_openRptKey;
     if(k!==null){
       _updateRptBtn(k);
-      if(k!=='new'&&_dailyEmails[k])_dailyEmails[k].reports=[..._rptState[k]||['All']];
+      if(typeof k==='string'&&k.startsWith('br:')){
+        // Branch-level report selection → write to _branchReports
+        const brKey=k.slice(3); // e.g. 'TEYNAMPET'
+        _branchReports[brKey]=[..._rptState[k]||['All']];
+      }else if(k!=='new'&&_dailyEmails[k]){
+        _dailyEmails[k].reports=[..._rptState[k]||['All']];
+      }
     }
     document.getElementById('rptPickerFloat').style.display='none';
     _openRptKey=null;
@@ -2088,8 +2107,11 @@ function _buildPickerHTML(items, cur, allLabel, allIcon, changeFn, key, pickerTy
   const itemS='display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;font-size:12px;color:var(--text-primary);';
   const cbS='width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;';
   const hov="onmouseover=\"this.style.background='rgba(255,255,255,.06)'\" onmouseout=\"this.style.background=''\"";
+  // Serialize key safely inside a double-quoted HTML attribute:
+  // numbers stay as-is; strings use single quotes (escaping any internal single quotes).
+  const keyLit=typeof key==='number'?key:`'${String(key).replace(/\\/g,'\\\\').replace(/'/g,"\\'")}'`;
   let html=`<label style="${itemS}" ${hov}>
-    <input type="checkbox" data-val="All" style="${cbS}" ${isAll?'checked':''} onchange="${changeFn}(${JSON.stringify(key)},'All',this.checked)">
+    <input type="checkbox" data-val="All" style="${cbS}" ${isAll?'checked':''} onchange="${changeFn}(${keyLit},'All',this.checked)">
     <span>${allIcon} ${allLabel}</span>
   </label>`;
   if(items.length){
@@ -2097,7 +2119,7 @@ function _buildPickerHTML(items, cur, allLabel, allIcon, changeFn, key, pickerTy
     html+=items.map(item=>{
       const chk=!isAll&&cur.includes(item)?'checked':'';
       return`<label style="${itemS}" ${hov}>
-        <input type="checkbox" data-val='${item.replace(/'/g,"&apos;")}' style="${cbS}" ${chk} onchange="${changeFn}(${JSON.stringify(key)},this.getAttribute('data-val'),this.checked)">
+        <input type="checkbox" data-val='${item.replace(/'/g,"&apos;")}' style="${cbS}" ${chk} onchange="${changeFn}(${keyLit},this.getAttribute('data-val'),this.checked)">
         <span>${item}</span>
       </label>`;
     }).join('');
@@ -2177,8 +2199,12 @@ window.onRptPickerChange=function(key,rpt,checked){
     else _rptState[key]=_rptState[key].filter(r=>r!==rpt);
     if(!_rptState[key].length)_rptState[key]=['All'];
   }
-  // Persist immediately into email entry
-  if(key!=='new'&&_dailyEmails[key])_dailyEmails[key].reports=[..._rptState[key]];
+  // Persist immediately
+  if(typeof key==='string'&&key.startsWith('br:')){
+    _branchReports[key.slice(3)]=[..._rptState[key]]; // branch-level
+  }else if(key!=='new'&&_dailyEmails[key]){
+    _dailyEmails[key].reports=[..._rptState[key]];    // per-email (legacy)
+  }
   // Update table button label
   _updateRptBtn(key);
   // Sync checkbox states in-place (no full re-render)
@@ -3432,6 +3458,8 @@ function getFinancierList(){
   const finI=(()=>{for(const k of['Financier','Bank','Bank Name','Lender','Lender Name']){const i=fc(h,k);if(i>=0)return i;}return 0;})();
   return[...new Set(rows.slice(hi+1).map(r=>String(r[finI]||'').trim()).filter(Boolean))].sort();
 }
+// Returns cached list of options from the Lease sheet Column A
+function getLeaseList(){return _leaseOptions||[];}
 // Build bankName(lowercase) → {payoutType, payoutPct} map from ROI Master (SD[16])
 function getROIBankMap(){
   const rows=SD[16]||[];
@@ -3531,6 +3559,14 @@ function editCellBankDD(mode,bank,sheet,sheetRow,bnI,ppI=-1){
     if(modeL==='inhouse'&&ppI>=0)return editCellInhouseBankDD(bank,sheet,sheetRow,bnI,ppI,fins.length?fins:['—']);
     return editCellDD(bank,sheet,sheetRow,bnI,fins.length?fins:['—']);
   }
+  if(modeL==='lease'){
+    const lo=getLeaseList();
+    return editCellDD(bank,sheet,sheetRow,bnI,lo.length?lo:['—']);
+  }
+  if(modeL==='own fund'){
+    // Own Fund = no bank involved; show read-only placeholder
+    return `<span title="Not applicable for Own Fund" style="color:var(--text-dim);font-size:11px;padding:2px 6px;">N/A</span>`;
+  }
   return editCell(bank,sheet,sheetRow,bnI);
 }
 // Called when Mode dropdown changes — swaps Bank Name cell AND refreshes Payout % cell
@@ -3550,6 +3586,11 @@ function updateBankCell(modeEl,sheet,sheetRow,bnI,ppI=-1){
     }else{
       bankTd.innerHTML=editCellDD(curBank,sheet,sheetRow,bnI,fins.length?fins:['—']);
     }
+  }else if(modeL==='lease'){
+    const lo=getLeaseList();
+    bankTd.innerHTML=editCellDD(curBank,sheet,sheetRow,bnI,lo.length?lo:['—']);
+  }else if(modeL==='own fund'){
+    bankTd.innerHTML=`<span title="Not applicable for Own Fund" style="color:var(--text-dim);font-size:11px;padding:2px 6px;">N/A</span>`;
   }else{
     bankTd.innerHTML=editCell(curBank,sheet,sheetRow,bnI);
   }
@@ -6224,8 +6265,8 @@ function renderDeallotCell(sheetRow,cust,sc,branch,model,variant,colour,sourceSh
   const src=sourceSheet||'Allotment';
   const raised=deallotRaisedRows.has(sheetRow);
   const deallotCls=raised?'deallot-btn deallot-raised':'deallot-btn';
-  // Approve button only visible to Admin, Level 1, Level 1A
-  const canApprove=curUser&&(curUser.isAdmin||curUser.level===1||curUser.level==='1A');
+  // Approve button only visible to Admin, Level 1 (number or string), Level 1A
+  const canApprove=curUser&&(curUser.isAdmin||curUser.level===1||curUser.level==='1'||curUser.level==='1A');
   const approveBtn=(raised&&canApprove)?`<button class="approve-btn" onclick="openApprove(${sheetRow})">Approve</button>`:'';
   return `<div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;" id="dcell-${sheetRow}">
     <button class="${deallotCls}" id="dbtn-${sheetRow}" onclick="openDeallot('${esc(cust)}','${esc(sc)}','${esc(branch)}','${esc(model)}','${esc(variant)}','${esc(colour)}',${sheetRow},'${esc(src)}')">${raised?'Deallot ⚠':'Deallot'}</button>
@@ -6248,11 +6289,11 @@ function resetDeallotRow(sheetRow){
     const _sd=SD[_sdIdx]||[];
     if(_sd[sr-1])_sd[sr-1][info.asColNum-1]=_restoreVal;
   }
-  // Update DOM cell back to plain Deallot button
+  // Update DOM cell back to plain Deallot button — replace the outer wrapper element itself
   const cell=document.getElementById(`dcell-${sr}`);
   if(cell&&info){
     const esc=s=>String(s||'').replace(/'/g,"&#39;");
-    cell.innerHTML=`<button class="deallot-btn" id="dbtn-${sr}" onclick="openDeallot('${esc(info.cust)}','${esc(info.sc)}','${esc(info.branch)}','${esc(info.model)}','${esc(info.variant)}','${esc(info.colour)}',${sr},'${esc(info.sourceSheet||'Allotment')}')">Deallot</button>`;
+    cell.outerHTML=`<div style="display:flex;align-items:center;gap:4px;flex-wrap:nowrap;" id="dcell-${sr}"><button class="deallot-btn" id="dbtn-${sr}" onclick="openDeallot('${esc(info.cust)}','${esc(info.sc)}','${esc(info.branch)}','${esc(info.model)}','${esc(info.variant)}','${esc(info.colour)}',${sr},'${esc(info.sourceSheet||'Allotment')}')">Deallot</button></div>`;
   }
 }
 
@@ -8752,10 +8793,10 @@ async function raiseDeallotRequest(){
         if(_drI>=0)_sd[_hi+sr-1][_drI]=fullReason;
         if(_rbI>=0)_sd[_hi+sr-1][_rbI]=raisedBy;
       }
-      const dbtn=document.getElementById(`dbtn-${sr}`);
-      if(dbtn&&dbtn.parentElement){
-        dbtn.parentElement.innerHTML=renderDeallotCell(sr,cust,sc,branch,model,variant,colour,_srcSheet);
-      }
+      // Replace the entire dcell wrapper using outerHTML — avoids double-nesting when innerHTML was used before
+      const _dcellEl=document.getElementById(`dcell-${sr}`);
+      if(_dcellEl){_dcellEl.outerHTML=renderDeallotCell(sr,cust,sc,branch,model,variant,colour,_srcSheet);}
+      else{const _dbtn2=document.getElementById(`dbtn-${sr}`);if(_dbtn2&&_dbtn2.parentElement){_dbtn2.parentElement.outerHTML=renderDeallotCell(sr,cust,sc,branch,model,variant,colour,_srcSheet);}}
       alert('De-allotment request raised successfully!');
     } else {
       alert('Request logged. Sheet update: '+(d&&d.error?d.error:'Check connectivity.'));
