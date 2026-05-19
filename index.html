@@ -642,14 +642,13 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
               <span id="locLblNew">🌐 All Locations</span><span style="font-size:10px;color:var(--text-dim);">▾</span>
             </button>
           </div>
-          <div>
-            <span class="afl" style="display:block;margin-bottom:5px;">Reports</span>
-            <button id="rptBtnNew" onclick="toggleRptPicker('new',event)"
-              style="background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:6px 12px;font-size:12px;cursor:pointer;min-width:130px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:8px;">
-              <span id="rptLblNew">📋 All Reports</span><span style="font-size:10px;color:var(--text-dim);">▾</span>
-            </button>
-          </div>
           <button class="abtn" onclick="addDailyEmail()" style="white-space:nowrap;">+ Add Email</button>
+        </div>
+        <!-- Branch Report Settings -->
+        <div style="margin-bottom:14px;padding:14px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📊 Reports per Branch</div>
+          <p style="font-size:11px;color:var(--text-dim);margin:0 0 12px;">Choose which reports to include in the email for each branch. All recipients of that branch receive the same content.</p>
+          <div id="branchRptGrid" style="display:flex;flex-wrap:wrap;gap:10px 24px;"></div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <button class="abtn" onclick="saveDailyEmails()">💾 Save All</button>
@@ -1711,9 +1710,10 @@ async function clearStockCutoff(){
 /* ── Daily Report Emails (App_Settings row "Daily Report Emails" | col B = JSON) ── */
 let _dailyEmails=[];
 let _dailyScheduleTime='08:00';
-let _locState={};  // location picker state: key (row idx or 'new') → string[]
-let _rptState={};  // report picker state:   key (row idx or 'new') → string[]
-let _sendBranchSel=[];  // branches selected for Send Report Now ([] = all)
+let _locState={};        // location picker state: key (row idx or 'new') → string[]
+let _rptState={};        // report picker state: key = 'br:BRANCHNAME' → string[]
+let _branchReports={};   // branch → report selection e.g. {'TEYNAMPET':['All']}
+let _sendBranchSel=[];   // branches selected for Send Report Now ([] = all)
 
 // Parse saved data — supports both legacy array format and new {emails,scheduledTime} format
 function _parseDailyData(raw){
@@ -1773,13 +1773,58 @@ function _syncTimeBadge(){
 }
 
 function loadDailyReportEmails(){
-  _dailyEmails=getDailyReportEmails();
-  _dailyScheduleTime=getDailyReportScheduleTime();
+  const rows=SD[17]||[];
+  let parsed=null;
+  for(const r of rows){
+    if(!Array.isArray(r))continue;
+    if(String(r[0]||'').trim().toLowerCase().includes('daily report')){
+      parsed=_parseDailyData(String(r[1]||'').trim());
+      break;
+    }
+  }
+  if(!parsed){
+    const fb=_parseDailyData(localStorage.getItem('grd_daily_report_emails'));
+    if(fb)parsed=fb;
+  }
+  _dailyEmails        = parsed?parsed.emails||[]      : [];
+  _dailyScheduleTime  = parsed?parsed.scheduledTime||'08:00':'08:00';
+  _branchReports      = (parsed&&parsed.branchReports)||{};
   const inp=document.getElementById('dailyRptTimeInput');
   if(inp)inp.value=_dailyScheduleTime;
   _syncTimeBadge();
   renderDailyEmailTable();
+  renderBranchReportSettings();
   renderSendBranchGrid();
+}
+
+// Render per-branch report pickers inside #branchRptGrid
+function renderBranchReportSettings(){
+  const grid=document.getElementById('branchRptGrid');
+  if(!grid)return;
+  const branches=_getAppBranches();
+  if(!branches.length){
+    grid.innerHTML=`<span style="font-size:12px;color:var(--text-dim);">No branches found — load data first.</span>`;
+    return;
+  }
+  const btnS='background:var(--bg-deep);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;'+
+    'padding:5px 10px;font-size:11px;cursor:pointer;min-width:140px;text-align:left;'+
+    'display:flex;align-items:center;justify-content:space-between;gap:6px;white-space:nowrap;';
+  // Sync _rptState from _branchReports
+  branches.forEach(br=>{
+    const key='br:'+br.toUpperCase();
+    if(!_rptState[key])_rptState[key]=(_branchReports[br.toUpperCase()]||['All']);
+  });
+  grid.innerHTML=branches.map(br=>{
+    const key='br:'+br.toUpperCase();
+    const lbl=_rptLabel(_rptState[key]||['All']);
+    return`<div style="display:flex;flex-direction:column;gap:4px;min-width:180px;">
+      <span style="font-size:11px;font-weight:700;color:var(--text-primary);">${br}</span>
+      <button id="rptBtn_${key}" onclick="toggleRptPicker(${JSON.stringify(key)},event)" style="${btnS}">
+        <span id="rptLbl_${key}">${lbl}</span>
+        <span style="font-size:10px;color:var(--text-dim);">▾</span>
+      </button>
+    </div>`;
+  }).join('');
 }
 
 function renderDailyEmailTable(){
@@ -1792,10 +1837,9 @@ function renderDailyEmailTable(){
   const thS='padding:6px 10px;font-size:10px;font-family:var(--font-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:var(--bg-surface);border-bottom:2px solid var(--border);text-align:left;color:var(--text-muted);white-space:nowrap;';
   const tdS='padding:5px 8px;font-size:12px;border-bottom:1px solid var(--border);vertical-align:middle;';
   const btnS='background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);border-radius:5px;padding:4px 8px;font-size:11px;cursor:pointer;min-width:110px;text-align:left;display:flex;align-items:center;justify-content:space-between;gap:5px;white-space:nowrap;';
-  // Sync picker states from current email data
+  // Sync location picker states from current email data
   _dailyEmails.forEach((entry,idx)=>{
     _locState[idx]=entry.locations&&entry.locations.length?[...entry.locations]:['All'];
-    _rptState[idx]=entry.reports&&entry.reports.length?[...entry.reports]:['All'];
   });
   const rows=_dailyEmails.map((entry,idx)=>{
     const isSend=entry.status==='Send daily';
@@ -1809,12 +1853,6 @@ function renderDailyEmailTable(){
       <td style="${tdS}">
         <button id="locBtn_${idx}" onclick="toggleLocPicker(${idx},event)" style="${btnS}">
           <span id="locLbl_${idx}">${_locLabel(_locState[idx])}</span>
-          <span style="font-size:10px;color:var(--text-dim);">▾</span>
-        </button>
-      </td>
-      <td style="${tdS}">
-        <button id="rptBtn_${idx}" onclick="toggleRptPicker(${idx},event)" style="${btnS}">
-          <span id="rptLbl_${idx}">${_rptLabel(_rptState[idx])}</span>
           <span style="font-size:10px;color:var(--text-dim);">▾</span>
         </button>
       </td>
@@ -1839,7 +1877,6 @@ function renderDailyEmailTable(){
     <thead><tr>
       <th style="${thS}">Email Address</th>
       <th style="${thS}">Location</th>
-      <th style="${thS}">Reports</th>
       <th style="${thS}">Change Status</th>
       <th style="${thS}">Current Status</th>
       <th style="${thS}text-align:center;">Action</th>
@@ -1856,14 +1893,10 @@ window.addDailyEmail=function(){
   if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){alert('Please enter a valid email address.');return;}
   if(_dailyEmails.some(e=>e.email.toLowerCase()===email.toLowerCase())){alert('This email address is already in the list.');return;}
   const status=statusEl?statusEl.value:'Send daily';
-  // Capture selected locations from the "new" picker state
   const locs=(_locState['new']&&_locState['new'].length)?_locState['new']:['All'];
-  const rpts=(_rptState['new']&&_rptState['new'].length)?_rptState['new']:['All'];
-  _dailyEmails.push({email,status,locations:locs,reports:rpts});
+  _dailyEmails.push({email,status,locations:locs});
   if(emailEl)emailEl.value='';
-  // Reset new-entry pickers back to All
   _locState['new']=['All'];_updateLocBtn('new');
-  _rptState['new']=['All'];_updateRptBtn('new');
   renderDailyEmailTable();
 };
 
@@ -1874,13 +1907,13 @@ window.removeDailyEmail=function(idx){
 
 window.updateDailyEmailStatus=function(idx,status){
   if(_dailyEmails[idx])_dailyEmails[idx].status=status;
-  // Re-render just the badge cell — col order: 0=Email,1=Loc,2=Reports,3=ChangeStatus,4=Badge,5=Action
+  // Re-render just the badge cell — col order: 0=Email,1=Loc,2=ChangeStatus,3=Badge,4=Action
   const wrap=document.getElementById('dailyRptTableWrap');
   if(!wrap){renderDailyEmailTable();return;}
   const trs=wrap.querySelectorAll('tbody tr');
   if(trs[idx]){
     const isSend=status==='Send daily';
-    const badgeTd=trs[idx].querySelectorAll('td')[4];
+    const badgeTd=trs[idx].querySelectorAll('td')[3];
     if(badgeTd)badgeTd.innerHTML=`<span style="display:inline-block;padding:3px 12px;border-radius:12px;font-size:11px;font-weight:700;
       background:${isSend?'rgba(74,222,128,.12)':'rgba(248,113,113,.12)'};
       color:${isSend?'#4ade80':'#f87171'};
@@ -1898,7 +1931,12 @@ window.saveDailyEmails=async function(){
   _dailyScheduleTime=(timeInp&&timeInp.value)||_dailyScheduleTime||'08:00';
   _syncTimeBadge();
 
-  const json=JSON.stringify({emails:_dailyEmails,scheduledTime:_dailyScheduleTime});
+  // Collect branch report selections from _rptState into _branchReports
+  _getAppBranches().forEach(br=>{
+    const key='br:'+br.toUpperCase();
+    if(_rptState[key])_branchReports[br.toUpperCase()]=_rptState[key];
+  });
+  const json=JSON.stringify({emails:_dailyEmails,scheduledTime:_dailyScheduleTime,branchReports:_branchReports});
 
   // saveDailyConfig now writes to BOTH ScriptProperties AND the App_Settings sheet
   // (creating the "Daily Report Emails" row if it doesn't exist yet).
