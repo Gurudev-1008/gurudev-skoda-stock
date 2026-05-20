@@ -1828,16 +1828,25 @@ function renderBranchReportSettings(){
   grid.innerHTML=branches.map(br=>{
     const key='br:'+br.toUpperCase();
     const lbl=_rptLabel(_rptState[key]||['All']);
-    // Use single-quoted key literal so it is safe inside a double-quoted onclick attribute
-    const safeKey=key.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    // Use data-rptkey attribute — NO inline onclick (avoids escaping bugs & CSP issues on server)
     return`<div style="display:flex;flex-direction:column;gap:4px;min-width:180px;">
       <span style="font-size:11px;font-weight:700;color:var(--text-primary);">${br}</span>
-      <button id="rptBtn_${key}" onclick="toggleRptPicker('${safeKey}',event)" style="${btnS}">
+      <button id="rptBtn_${key}" data-rptkey="${key}" style="${btnS}">
         <span id="rptLbl_${key}">${lbl}</span>
         <span style="font-size:10px;color:var(--text-dim);">▾</span>
       </button>
     </div>`;
   }).join('');
+  // Attach delegated click handler (replace any previous one by cloning the node)
+  const fresh=grid.cloneNode(true);
+  grid.parentNode.replaceChild(fresh,grid);
+  fresh.addEventListener('click',function(ev){
+    const btn=ev.target.closest('[data-rptkey]');
+    if(!btn)return;
+    ev.stopPropagation();
+    ev.preventDefault();
+    toggleRptPicker(btn.dataset.rptkey,ev);
+  });
 }
 
 function renderDailyEmailTable(){
@@ -2214,10 +2223,12 @@ window.onRptPickerChange=function(key,rpt,checked){
 // Close floating pickers on outside click or scroll
 document.addEventListener('click',function(e){
   if(!e.target.closest('#locPickerFloat')&&!e.target.closest('[id^="locBtn"]')){
-    document.getElementById('locPickerFloat').style.display='none';_openLocKey=null;
+    const lf=document.getElementById('locPickerFloat');if(lf)lf.style.display='none';_openLocKey=null;
   }
-  if(!e.target.closest('#rptPickerFloat')&&!e.target.closest('[id^="rptBtn"]')){
-    document.getElementById('rptPickerFloat').style.display='none';_openRptKey=null;
+  // Guard: ignore clicks on any element with data-rptkey OR id starting "rptBtn"
+  const onRptTrigger=e.target.closest('[data-rptkey]')||e.target.closest('[id^="rptBtn"]');
+  if(!e.target.closest('#rptPickerFloat')&&!onRptTrigger){
+    const rf=document.getElementById('rptPickerFloat');if(rf)rf.style.display='none';_openRptKey=null;
   }
 });
 document.addEventListener('scroll',function(){
