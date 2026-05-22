@@ -1720,7 +1720,7 @@ let _dailyScheduleTime='08:00';
 let _locState={};        // location picker state: key (row idx or 'new') → string[]
 let _rptState={};        // report picker state: key = 'br:BRANCHNAME' → string[]
 let _branchReports={};   // branch → report selection e.g. {'TEYNAMPET':['All']}
-let _sendBranchSel=[];   // branches selected for Send Report Now ([] = all)
+let _sendBranchSel=null; // null=uninitialized(all); []=none; [...]=specific selection
 
 // Parse saved data — supports both legacy array format and new {emails,scheduledTime} format
 function _parseDailyData(raw){
@@ -2253,8 +2253,8 @@ function renderSendBranchGrid(){
   if(!grid)return;
   const branches=_getAppBranches();
   if(!branches.length){grid.innerHTML='<span style="font-size:12px;color:var(--text-dim);">No branches found</span>';return;}
-  // If _sendBranchSel is empty, treat as all selected
-  if(!_sendBranchSel.length)_sendBranchSel=[...branches];
+  // null = first render → default to all selected
+  if(_sendBranchSel===null)_sendBranchSel=[...branches];
   const allSelected=_sendBranchSel.length===branches.length;
   if(allBtn)allBtn.textContent=allSelected?'None':'All';
   grid.innerHTML=branches.map(br=>{
@@ -2277,8 +2277,8 @@ window.onSendBranchChange=function(br,checked){
 };
 window.toggleAllSendBranches=function(){
   const branches=_getAppBranches();
-  const allSelected=_sendBranchSel.length===branches.length;
-  _sendBranchSel=allSelected?[]:[...branches];
+  const allSelected=_sendBranchSel!==null&&_sendBranchSel.length===branches.length;
+  _sendBranchSel=allSelected?[]:[...branches]; // None→[] (intentionally empty), All→[...branches]
   renderSendBranchGrid();
 };
 
@@ -2290,9 +2290,10 @@ window.sendDailyReportNow=async function(){
 
   // Determine which branches to send
   const allBranches=_getAppBranches();
-  const selBranches=_sendBranchSel.length?_sendBranchSel:[...allBranches];
+  // null = uninitialized = all; [] = user explicitly chose None
+  const selBranches=(_sendBranchSel===null||_sendBranchSel.length===allBranches.length)?[...allBranches]:_sendBranchSel;
   if(!selBranches.length){
-    if(msg){msg.style.color='#fb923c';msg.textContent='⚠ No branches selected.';}
+    if(msg){msg.style.color='#fb923c';msg.textContent='⚠ No branches selected. Please select at least one branch.';}
     setTimeout(()=>{if(msg){msg.textContent='';msg.style.color='';}},4000);
     return;
   }
@@ -7653,35 +7654,121 @@ function renderReports(){
       Object.keys(qlEnqM).forEach(k=>{enqM[k]=(enqM[k]||0)+qlEnqM[k];});
       // TD — TD sheet, "Lead Source (Lead)" primary; "Lead Source (Qualified)" fallback if blank
       const tdM =cnt(TDD,['Lead Source (Lead)','Lead Source','LeadSource','Source'],matchFn,null,null,null,true,['Lead Source (Qualified)']);
-      // BKG — Live RPO, Source col, CURRENT MONTH (consistent with ETBR Overall BKG which uses LiveRPO)
+      // BKG — Live RPO, Source col (Column V), CURRENT MONTH
       const bkgM=cnt(RD,['Source','Lead Source','Enquiry Source'],matchFn,'curmon',bkgDateCols,null,false);
-      // RET — Allotment, Source col, invoiced/retail status, ALL-TIME (consistent with ETBR Overall RET)
-      const retM=cnt(AD,['Source','Lead Source','Enquiry Source'],matchFn,null,null,(r,h)=>{
-        const stI=cI(h,['Allotment Status','AllotmentStatus','Status','Retail Status','Booking Status']);
-        if(stI<0)return true; // no status col → include all
-        return String(r[stI]||'').trim().toLowerCase().match(/retail|invoic/)?true:false;
-      },false);
 
-      // NC Cov — Allotment, Source col, current month, exclude CF + ageing/demo
-      const ncM=cnt(AD,['Source','Lead Source','Enquiry Source'],matchFn,'curmon',bkgDateCols,(r,h)=>{
-        const snI=cI(h,['S No','SNo','Sl No','SL No','Serial No','S.No']);
-        if(snI>=0&&String(r[snI]||'').trim().toUpperCase().startsWith('CF'))return false;
-        const btI=cI(h,['Booking Type','BookingType','Type']);
-        if(btI>=0){const bt=String(r[btI]||'').trim().toLowerCase();if(bt.includes('ageing')||bt.includes('aging')||bt.includes('demo'))return false;}
-        return true;
-      },false);
-      // Ag Cov — AGDM, Source col, current month, ageing type
-      const agM=cnt(GD,['Source','Lead Source'],matchFn,'curmon',bkgDateCols,(r,h)=>{
-        const btI=cI(h,['Booking Type','BookingType','Type']);
-        if(btI<0)return true;
-        return String(r[btI]||'').trim().toLowerCase().match(/ageing|aging/)?true:false;
-      },false);
-      // Dm Cov — AGDM, Source col, current month, demo type
-      const dmM=cnt(GD,['Source','Lead Source'],matchFn,'curmon',bkgDateCols,(r,h)=>{
-        const btI=cI(h,['Booking Type','BookingType','Type']);
-        if(btI<0)return false;
-        return String(r[btI]||'').trim().toLowerCase().includes('demo');
-      },false);
+      // ── Build source-customer set from Live RPO ──────────────────────────────
+      // Allotment/AGDM sheets don't have a Source column — source is only in Live RPO Column V.
+      // We collect customer names from Live RPO rows matching the source (Walk-In / Tele-In),
+      // then use that set to filter Allotment/AGDM records for Retail and Coverage.
+      const srcCustSet=new Set();
+      {
+        const{h:rH,hi:rHi}=gHI(RD);
+        // Source col: search by name first; Column V (index 21) as fallback
+        let rSrcI=cI(rH,['Source','Lead Source','Enquiry Source']);
+        if(rSrcI<0)rSrcI=21; // Column V (0-indexed)
+        const rCustI=cI(rH,['Customer Name','Customer','CUSTOMER NAME','CUSTOMER']);
+        const rBrI=brF?cI(rH,brCN):-1;
+        RD.slice(rHi+1).forEach(r=>{
+          if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+          if(rBrI>=0&&brF){const b=String(r[rBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          const sv=String(r[rSrcI]||'').trim().toLowerCase();
+          if(!matchFn(sv))return;
+          const cust=rCustI>=0?String(r[rCustI]||'').trim().toUpperCase():'';
+          if(cust)srcCustSet.add(cust);
+        });
+      }
+      // Helper: check if Allotment/AGDM row's customer is in the source set
+      const inSrcCust=(r,h)=>{
+        const custI=cI(h,['Customer Name','Customer','CUSTOMER NAME','CUSTOMER']);
+        if(custI<0)return true; // no customer col → can't filter → include
+        const cust=String(r[custI]||'').trim().toUpperCase();
+        return srcCustSet.has(cust);
+      };
+
+      // RET — Allotment rows where customer is in source set AND status = retail/invoiced
+      const retM=(()=>{
+        const out={};
+        if(!AD||AD.length<2)return out;
+        const{h:aH,hi:aHi}=gHI(AD);
+        const aGI=isL3?cI(aH,scCN):cI(aH,brCN);
+        const aStI=cI(aH,['Allotment Status','AllotmentStatus','Status','Retail Status','Booking Status']);
+        const aBrI=brF?cI(aH,brCN):-1;
+        AD.slice(aHi+1).forEach(r=>{
+          if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          if(!inSrcCust(r,aH))return;
+          if(aStI>=0){const st=String(r[aStI]||'').trim().toLowerCase();if(!st.match(/retail|invoic/))return;}
+          const grp=aGI>=0?toIntSW(String(r[aGI]||'').trim()):'';
+          if(grp)out[grp]=(out[grp]||0)+1;
+        });
+        return out;
+      })();
+
+      // NC Cov — Allotment, customer in source set, current month, exclude CF + ageing/demo
+      const ncM=(()=>{
+        const out={};
+        if(!AD||AD.length<2)return out;
+        const{h:aH,hi:aHi}=gHI(AD);
+        const aGI=isL3?cI(aH,scCN):cI(aH,brCN);
+        const aBrI=brF?cI(aH,brCN):-1;
+        const aSnI=cI(aH,['S No','SNo','Sl No','SL No','Serial No','S.No']);
+        const aBtI=cI(aH,['Booking Type','BookingType','Type']);
+        const aDtI=cI(aH,bkgDateCols);
+        AD.slice(aHi+1).forEach(r=>{
+          if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          if(!inSrcCust(r,aH))return;
+          if(aSnI>=0&&String(r[aSnI]||'').trim().toUpperCase().startsWith('CF'))return;
+          if(aBtI>=0){const bt=String(r[aBtI]||'').trim().toLowerCase();if(bt.includes('ageing')||bt.includes('aging')||bt.includes('demo'))return;}
+          if(aDtI>=0){if(!isCurMon(r[aDtI]))return;}
+          const grp=aGI>=0?toIntSW(String(r[aGI]||'').trim()):'';
+          if(grp)out[grp]=(out[grp]||0)+1;
+        });
+        return out;
+      })();
+
+      // Ag Cov — AGDM, customer in source set, current month, ageing booking type
+      const agM=(()=>{
+        const out={};
+        if(!GD||GD.length<2)return out;
+        const{h:gH,hi:gHi}=gHI(GD);
+        const gGI=isL3?cI(gH,scCN):cI(gH,brCN);
+        const gBrI=brF?cI(gH,brCN):-1;
+        const gBtI=cI(gH,['Booking Type','BookingType','Type']);
+        const gDtI=cI(gH,bkgDateCols);
+        GD.slice(gHi+1).forEach(r=>{
+          if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          if(!inSrcCust(r,gH))return;
+          if(gBtI>=0){const bt=String(r[gBtI]||'').trim().toLowerCase();if(!bt.match(/ageing|aging/))return;}
+          if(gDtI>=0){if(!isCurMon(r[gDtI]))return;}
+          const grp=gGI>=0?toIntSW(String(r[gGI]||'').trim()):'';
+          if(grp)out[grp]=(out[grp]||0)+1;
+        });
+        return out;
+      })();
+
+      // Dm Cov — AGDM, customer in source set, current month, demo booking type
+      const dmM=(()=>{
+        const out={};
+        if(!GD||GD.length<2)return out;
+        const{h:gH,hi:gHi}=gHI(GD);
+        const gGI=isL3?cI(gH,scCN):cI(gH,brCN);
+        const gBrI=brF?cI(gH,brCN):-1;
+        const gBtI=cI(gH,['Booking Type','BookingType','Type']);
+        const gDtI=cI(gH,bkgDateCols);
+        GD.slice(gHi+1).forEach(r=>{
+          if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          if(!inSrcCust(r,gH))return;
+          if(gBtI>=0){const bt=String(r[gBtI]||'').trim().toLowerCase();if(!bt.includes('demo'))return;}
+          if(gDtI>=0){if(!isCurMon(r[gDtI]))return;}
+          const grp=gGI>=0?toIntSW(String(r[gGI]||'').trim()):'';
+          if(grp)out[grp]=(out[grp]||0)+1;
+        });
+        return out;
+      })();
 
       // Collect all group keys
       const allK=new Set([...Object.keys(enqM),...Object.keys(tdM),...Object.keys(bkgM),...Object.keys(retM),...Object.keys(ncM),...Object.keys(agM),...Object.keys(dmM)]);
