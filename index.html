@@ -2608,12 +2608,20 @@ window.sendMgmtReportNow=async function(){
   if(!confirm('Send Management Report now to the configured recipients?'))return;
   if(btn){btn.disabled=true;btn.textContent='⏳ Sending…';}
   if(result)result.style.display='none';
-  if(msg){msg.style.color='var(--accent)';msg.textContent='Sending…';}
+  if(msg){msg.style.color='var(--accent)';msg.textContent='Sending… (building all branch reports, please wait)';}
+
+  // Animate the status message so the user knows it's still working
+  let _dotCount=0;
+  const _dotTimer=setInterval(()=>{
+    _dotCount=(_dotCount+1)%4;
+    const dots='.'.repeat(_dotCount);
+    if(msg&&btn&&btn.disabled)msg.textContent='Sending'+dots+' (building all branch reports, please wait)';
+  },800);
 
   const cb=`__mgr_${Date.now()}`;
   try{
     const res=await new Promise(resolve=>{
-      const t=setTimeout(()=>{delete window[cb];resolve({success:false,error:'Timeout — report may still be sending. Check inbox in a minute.'});},120000);
+      const t=setTimeout(()=>{delete window[cb];resolve({success:false,error:'Timeout — report may still be sending. Check inbox in a minute.'});},300000);
       window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
       const s=document.createElement('script');
       s.src=`${API}?action=sendMgmtReport&callback=${encodeURIComponent(cb)}`;
@@ -2641,6 +2649,7 @@ window.sendMgmtReportNow=async function(){
   }catch(e){
     if(result){result.style.display='block';result.innerHTML=`<strong style="color:#f87171;">⚠ Error:</strong> ${e.message}`;}
   }finally{
+    clearInterval(_dotTimer);
     if(btn){btn.disabled=false;btn.textContent='📧 Send Report Now';}
     setTimeout(()=>{if(msg){msg.textContent='';msg.style.color='';}},6000);
   }
