@@ -674,6 +674,91 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
         <p style="font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.6;">Settings are saved to the App_Settings sheet and are accessible from all devices automatically.</p>
       </div>
 
+      <!-- ── Management Report — admin only ── -->
+      <div class="as" id="mgmtRptSection" style="display:none">
+        <h3>📊 Management Report</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.6;">Configure a consolidated performance report sent directly to management. Choose recipients, select report sections, and set up manual or scheduled delivery on specific weekdays.</p>
+
+        <!-- To emails -->
+        <div style="margin-bottom:14px;">
+          <span class="afl" style="display:block;margin-bottom:6px;">📨 To — Management Email IDs</span>
+          <textarea class="afi" id="mgmtToEmails" rows="2"
+            placeholder="gm@example.com, ceo@example.com"
+            style="resize:vertical;width:100%;font-family:var(--font-b);font-size:13px;padding:8px 12px;"></textarea>
+          <span style="font-size:11px;color:var(--text-dim);">Comma-separated. These receive the consolidated report as To recipients.</span>
+        </div>
+
+        <!-- CC emails -->
+        <div style="margin-bottom:16px;">
+          <span class="afl" style="display:block;margin-bottom:6px;">📋 CC — Email IDs</span>
+          <textarea class="afi" id="mgmtCcEmails" rows="2"
+            placeholder="manager@example.com, coordinator@example.com"
+            style="resize:vertical;width:100%;font-family:var(--font-b);font-size:13px;padding:8px 12px;"></textarea>
+          <span style="font-size:11px;color:var(--text-dim);">Comma-separated. These are marked as CC in every management report email.</span>
+        </div>
+
+        <!-- Reports selection -->
+        <div style="margin-bottom:16px;padding:14px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">📋 Reports to Include</div>
+          <p style="font-size:11px;color:var(--text-dim);margin:0 0 12px;">Select which sections appear in the management email. Consolidated data for <strong>all branches</strong> is included.</p>
+          <div id="mgmtRptChecks" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:6px 24px;"></div>
+          <div style="margin-top:10px;display:flex;gap:10px;">
+            <button onclick="mgmtCheckAll(true)" style="font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-muted);cursor:pointer;">Select All</button>
+            <button onclick="mgmtCheckAll(false)" style="font-size:11px;padding:3px 10px;border-radius:5px;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-muted);cursor:pointer;">None</button>
+          </div>
+        </div>
+
+        <!-- Delivery Mode -->
+        <div style="margin-bottom:16px;padding:14px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">⚙ Delivery Mode</div>
+          <div style="display:flex;gap:28px;flex-wrap:wrap;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-primary);">
+              <input type="radio" name="mgmtMode" value="Manual" id="mgmtModeManual" onchange="onMgmtModeChange()" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"> Manual
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-primary);">
+              <input type="radio" name="mgmtMode" value="Auto" id="mgmtModeAuto" onchange="onMgmtModeChange()" style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;"> Auto (Scheduled)
+            </label>
+          </div>
+          <p style="font-size:11px;color:var(--text-dim);margin:8px 0 0;"><strong>Manual:</strong> Use the "Send Now" button below to trigger immediately. &nbsp;|&nbsp; <strong>Auto:</strong> Report runs automatically at the scheduled time on selected weekdays.</p>
+        </div>
+
+        <!-- Auto Schedule Config (visible only when Auto selected) -->
+        <div id="mgmtAutoConfig" style="display:none;margin-bottom:16px;padding:14px 16px;background:var(--bg-deep);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px;">🕐 Auto-Schedule Settings</div>
+          <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:14px;">
+            <div style="display:flex;flex-direction:column;gap:5px;">
+              <span class="afl">Send Time</span>
+              <input type="time" class="afi" id="mgmtScheduleTime" value="09:00"
+                oninput="_syncMgmtTimeBadge()"
+                style="min-width:140px;font-size:15px;font-weight:700;letter-spacing:.04em;cursor:pointer;">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span id="mgmtTimeBadge" style="display:inline-flex;align-items:center;gap:6px;padding:6px 16px;border-radius:20px;font-size:13px;font-weight:700;font-family:var(--font-d);background:rgba(57,255,110,.1);color:#39ff6e;border:1px solid rgba(57,255,110,.3);">
+                🕐 <span id="mgmtTimeDisplay">09:00 AM</span>
+              </span>
+              <span style="font-size:11px;color:var(--text-dim);">Management report triggers at this time on selected days</span>
+            </div>
+          </div>
+          <div>
+            <span class="afl" style="display:block;margin-bottom:8px;">Send on Weekdays</span>
+            <div id="mgmtWeekdayChecks" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+          </div>
+          <p style="font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.6;">⚠ Auto mode requires a GAS hourly trigger. Run <code style="background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;">setupMgmtTrigger()</code> once from the Apps Script editor to install it.</p>
+        </div>
+
+        <!-- Save + Send Now buttons -->
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <button class="abtn" onclick="saveMgmtReportConfig()">💾 Save Configuration</button>
+          <button class="abtn" id="mgmtSendNowBtn" onclick="sendMgmtReportNow()"
+            style="display:none;background:rgba(57,255,110,.12);border-color:rgba(57,255,110,.4);color:#39ff6e;">📧 Send Report Now</button>
+          <span id="mgmtSaveMsg" style="font-size:13px;color:var(--accent);"></span>
+        </div>
+
+        <!-- Result panel -->
+        <div id="mgmtSendResult" style="display:none;margin-top:14px;padding:14px 18px;background:var(--bg-deep);border-radius:8px;border:1px solid var(--border);font-size:13px;line-height:1.8;"></div>
+        <p style="font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.6;">Configuration is saved to the App_Settings sheet and accessible from all devices automatically.</p>
+      </div>
+
       <div class="as" id="pwSection">
         <h3>Change Password</h3>
         <div class="af">
@@ -1442,6 +1527,7 @@ function setupManage(){
   document.getElementById('cutoffSection').style.display=isAdmin?'block':'none';
   document.getElementById('coverageSection').style.display=isAdmin?'block':'none';
   document.getElementById('dailyRptSection').style.display=isAdmin?'block':'none';
+  document.getElementById('mgmtRptSection').style.display=isAdmin?'block':'none';
   document.getElementById('pwSection').style.display='block';
   document.getElementById('manTitle').textContent=isAdmin?'Manage':'Settings';
   if(isAdmin){
@@ -1453,6 +1539,7 @@ function setupManage(){
     refreshCutoffDisplay();
     loadCoverageSettings();
     loadDailyReportEmails();
+    loadMgmtReportConfig();
   }
 }
 function loadCoverageSettings(){
@@ -2353,6 +2440,211 @@ window.sendDailyReportNow=async function(){
   }
 };
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ── MANAGEMENT REPORT ────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════════
+
+let _mgmtConfig = {
+  toEmails: [], ccEmails: [], reports: ['All'],
+  mode: 'Manual', scheduledTime: '09:00',
+  weekdays: ['Mon','Tue','Wed','Thu','Fri']
+};
+const MGMT_WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+function _syncMgmtTimeBadge(){
+  const inp=document.getElementById('mgmtScheduleTime');
+  const disp=document.getElementById('mgmtTimeDisplay');
+  if(!inp||!disp)return;
+  disp.textContent=_fmt12h(inp.value||'09:00');
+}
+
+// Show/hide Auto config block and Send Now button based on mode radio
+window.onMgmtModeChange=function(){
+  const isAuto=document.getElementById('mgmtModeAuto')?.checked;
+  const autoDiv=document.getElementById('mgmtAutoConfig');
+  const sendBtn=document.getElementById('mgmtSendNowBtn');
+  if(autoDiv)autoDiv.style.display=isAuto?'block':'none';
+  if(sendBtn)sendBtn.style.display=isAuto?'none':'inline-flex';
+};
+
+// Select All / None for report checkboxes
+window.mgmtCheckAll=function(checked){
+  document.querySelectorAll('#mgmtRptChecks input[type="checkbox"]').forEach(cb=>cb.checked=checked);
+};
+
+// Render the report-type checkbox grid
+function renderMgmtRptChecks(){
+  const grid=document.getElementById('mgmtRptChecks');
+  if(!grid)return;
+  const sel=_mgmtConfig.reports||['All'];
+  const allSel=sel.includes('All');
+  grid.innerHTML=DAILY_REPORT_OPTS.map(opt=>{
+    const ck=allSel||sel.includes(opt);
+    return`<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;
+      font-weight:500;color:var(--text-primary);padding:3px 0;">
+      <input type="checkbox" data-rpt="${opt}" ${ck?'checked':''}
+        style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;"> ${opt}
+    </label>`;
+  }).join('');
+}
+
+// Render the weekday pill checkboxes
+function renderMgmtWeekdays(){
+  const wrap=document.getElementById('mgmtWeekdayChecks');
+  if(!wrap)return;
+  const sel=_mgmtConfig.weekdays||['Mon','Tue','Wed','Thu','Fri'];
+  wrap.innerHTML=MGMT_WEEKDAYS.map(d=>{
+    const ck=sel.includes(d);
+    return`<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;
+      font-weight:600;
+      color:${ck?'#39ff6e':'var(--text-muted)'};
+      background:${ck?'rgba(57,255,110,.1)':'var(--bg-surface)'};
+      border:1px solid ${ck?'rgba(57,255,110,.3)':'var(--border)'};
+      padding:4px 14px;border-radius:16px;">
+      <input type="checkbox" data-day="${d}" ${ck?'checked':''}
+        style="width:13px;height:13px;accent-color:var(--accent);cursor:pointer;"
+        onchange="renderMgmtWeekdays()"> ${d}
+    </label>`;
+  }).join('');
+}
+
+// Load config from App_Settings (SD[17]) or localStorage fallback, then populate UI
+async function loadMgmtReportConfig(){
+  try{const j=await jFetch('App_Settings');if(j&&j.length>=1)SD[17]=j;}catch(e){}
+  const rows=SD[17]||[];
+  let parsed=null;
+  for(const r of rows){
+    if(!Array.isArray(r))continue;
+    if(String(r[0]||'').trim().toLowerCase().includes('mgmt report')){
+      try{parsed=JSON.parse(String(r[1]||'').trim());}catch(e){}
+      break;
+    }
+  }
+  if(!parsed){try{parsed=JSON.parse(localStorage.getItem('grd_mgmt_report_config')||'null');}catch(e){}}
+  if(parsed)_mgmtConfig=parsed;
+
+  // Populate To / CC textareas
+  const toEl=document.getElementById('mgmtToEmails');
+  const ccEl=document.getElementById('mgmtCcEmails');
+  if(toEl)toEl.value=(_mgmtConfig.toEmails||[]).join(', ');
+  if(ccEl)ccEl.value=(_mgmtConfig.ccEmails||[]).join(', ');
+
+  // Mode radio
+  const isAuto=_mgmtConfig.mode==='Auto';
+  const manR=document.getElementById('mgmtModeManual');
+  const autoR=document.getElementById('mgmtModeAuto');
+  if(manR)manR.checked=!isAuto;
+  if(autoR)autoR.checked=isAuto;
+
+  // Time
+  const tInp=document.getElementById('mgmtScheduleTime');
+  if(tInp)tInp.value=_mgmtConfig.scheduledTime||'09:00';
+  _syncMgmtTimeBadge();
+
+  renderMgmtRptChecks();
+  renderMgmtWeekdays();
+  onMgmtModeChange();
+}
+
+// Save config to GAS (App_Settings) + localStorage
+window.saveMgmtReportConfig=async function(){
+  const msg=document.getElementById('mgmtSaveMsg');
+  if(msg){msg.style.color='var(--accent)';msg.textContent='Saving…';}
+
+  const toRaw=(document.getElementById('mgmtToEmails')?.value||'').trim();
+  const ccRaw=(document.getElementById('mgmtCcEmails')?.value||'').trim();
+  const toEmails=toRaw?toRaw.split(',').map(e=>e.trim()).filter(Boolean):[];
+  const ccEmails=ccRaw?ccRaw.split(',').map(e=>e.trim()).filter(Boolean):[];
+
+  const rptCbs=document.querySelectorAll('#mgmtRptChecks input[type="checkbox"]');
+  const reports=Array.from(rptCbs).filter(cb=>cb.checked).map(cb=>cb.dataset.rpt);
+
+  const isAuto=document.getElementById('mgmtModeAuto')?.checked;
+  const mode=isAuto?'Auto':'Manual';
+  const scheduledTime=document.getElementById('mgmtScheduleTime')?.value||'09:00';
+
+  const dayCbs=document.querySelectorAll('#mgmtWeekdayChecks input[type="checkbox"]');
+  const weekdays=Array.from(dayCbs).filter(cb=>cb.checked).map(cb=>cb.dataset.day);
+
+  _mgmtConfig={
+    toEmails, ccEmails,
+    reports:reports.length?reports:['All'],
+    mode, scheduledTime,
+    weekdays:weekdays.length?weekdays:['Mon','Tue','Wed','Thu','Fri']
+  };
+  const json=JSON.stringify(_mgmtConfig);
+  localStorage.setItem('grd_mgmt_report_config',json);
+
+  const cb=`__mrc_${Date.now()}`;
+  try{
+    const res=await new Promise(resolve=>{
+      const t=setTimeout(()=>{delete window[cb];resolve({success:false,error:'Timeout'});},12000);
+      window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
+      const s=document.createElement('script');
+      s.src=`${API}?action=saveMgmtConfig&config=${encodeURIComponent(json)}&callback=${encodeURIComponent(cb)}`;
+      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();resolve({success:false,error:'Network error'});};
+      s.onload=()=>s.remove();
+      document.head.appendChild(s);
+    });
+    if(msg){
+      msg.textContent=res.success?'✓ Saved':('⚠ '+(res.error||'Save failed'));
+      msg.style.color=res.success?'#4ade80':'#f87171';
+      setTimeout(()=>{if(msg){msg.textContent='';msg.style.color='';}},3000);
+    }
+    if(res.success)onMgmtModeChange();
+  }catch(e){
+    if(msg){msg.textContent='⚠ Error: '+e.message;msg.style.color='#f87171';
+      setTimeout(()=>{if(msg){msg.textContent='';msg.style.color='';}},3000);}
+  }
+};
+
+// Manual send — calls GAS sendMgmtReport action
+window.sendMgmtReportNow=async function(){
+  const btn=document.getElementById('mgmtSendNowBtn');
+  const result=document.getElementById('mgmtSendResult');
+  const msg=document.getElementById('mgmtSaveMsg');
+  if(!confirm('Send Management Report now to the configured recipients?'))return;
+  if(btn){btn.disabled=true;btn.textContent='⏳ Sending…';}
+  if(result)result.style.display='none';
+  if(msg){msg.style.color='var(--accent)';msg.textContent='Sending…';}
+
+  const cb=`__mgr_${Date.now()}`;
+  try{
+    const res=await new Promise(resolve=>{
+      const t=setTimeout(()=>{delete window[cb];resolve({success:false,error:'Timeout — report may still be sending. Check inbox in a minute.'});},120000);
+      window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
+      const s=document.createElement('script');
+      s.src=`${API}?action=sendMgmtReport&callback=${encodeURIComponent(cb)}`;
+      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();resolve({success:false,error:'Network error'});};
+      s.onload=()=>s.remove();
+      document.head.appendChild(s);
+    });
+
+    if(result){
+      result.style.display='block';
+      if(res.success){
+        const branches=(res.branches||[]).join(', ')||'—';
+        const sent=(res.sent||[]).map(e=>`<span style="color:#4ade80;">✓ ${e}</span>`).join(', ');
+        const failed=(res.failed||[]).length?`<br><span style="color:#f87171;font-size:11px;">Failed: ${res.failed.join(', ')}</span>`:'';
+        result.innerHTML=`<strong style="color:#4ade80;">📧 Management Report Sent</strong><br>
+          <span style="color:var(--text-muted);font-size:12px;">Branches covered: ${branches}</span><br><br>
+          ${sent}${failed}`;
+        if(msg){msg.style.color='#4ade80';msg.textContent='✓ Report sent';}
+      }else{
+        result.innerHTML=`<strong style="color:#f87171;">⚠ Send Failed</strong><br>
+          <span style="color:var(--text-dim);font-size:12px;">${res.error||'Unknown error'}</span>`;
+        if(msg){msg.style.color='#fb923c';msg.textContent='⚠ Send failed';}
+      }
+    }
+  }catch(e){
+    if(result){result.style.display='block';result.innerHTML=`<strong style="color:#f87171;">⚠ Error:</strong> ${e.message}`;}
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='📧 Send Report Now';}
+    setTimeout(()=>{if(msg){msg.textContent='';msg.style.color='';}},6000);
+  }
+};
+// ── End Management Report JS ──────────────────────────────────────────────────
 
 function loadNotifEmails(){
   // Fetch saved emails from server into textarea + local cache
