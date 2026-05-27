@@ -1261,7 +1261,13 @@ function isFreeYard(mc,col,vy,yard){
     if(!cutoffEnd)return true;
     const dates=freeBillingMap[k];
     if(!dates||!dates.length)return true; // no billing date data → include
-    return dates.some(raw=>{const d=parseRawDate(raw);return !d||d.getTime()<=cutoffEnd.getTime();});
+    // !d means date column exists but value is blank/unparseable — treat as "no date" → include
+    return dates.some(raw=>{
+      if(raw===''||raw===null||raw===undefined)return true; // blank → include
+      const d=parseRawDate(raw);
+      if(!d)return false; // non-blank but unparseable → exclude (don't bypass cutoff)
+      return d.getTime()<=cutoffEnd.getTime();
+    });
   };
   const k=[mc,col,vy,yard.toLowerCase()].join('|');
   if((freeMap[k]||0)>0&&passesDateCheck(k))return true;
@@ -3620,9 +3626,17 @@ function parseRawDate(v){
   if(!v&&v!==0)return null;
   if(v instanceof Date)return isNaN(v)?null:v;
   const s=String(v).trim();if(!s)return null;
+  // ISO with time: "2026-05-27T18:30:00.000Z"
   if(/^\d{4}-\d{2}-\d{2}T/.test(s)){const d=new Date(s);return isNaN(d)?null:d;}
+  // ISO date only: "2026-05-27"
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){const d=new Date(s+'T00:00:00');return isNaN(d)?null:d;}
+  // Google Sheets serial number (e.g. 46239)
   const n=Number(s);
   if(!isNaN(n)&&n>40000&&n<60000)return new Date(Math.round((n-25569)*86400*1000));
+  // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY (Indian date format)
+  const dmy=/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})$/.exec(s);
+  if(dmy)return new Date(Number(dmy[3]),Number(dmy[2])-1,Number(dmy[1]));
+  // MM/DD/YYYY or other browser-parseable formats
   const d=new Date(s);return isNaN(d)?null:d;
 }
 
