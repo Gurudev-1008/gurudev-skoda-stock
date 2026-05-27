@@ -583,7 +583,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
           <button class="abtn" style="margin-top:18px;background:none;border:1px solid var(--border);color:var(--text-muted);font-size:12px;" onclick="clearStockCutoff()">Clear</button>
           <span id="cutoffSaveMsg" style="font-size:12px;margin-top:18px;"></span>
         </div>
-        <p style="font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.6;">Note: Add a row with <strong>Stock Cutoff Date</strong> in column A of the App_Settings sheet so this setting persists for all users.</p>
+        <p style="font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.6;">Saved to the App_Settings sheet — applies to all users automatically.</p>
       </div>
       <!-- Coverage Report Settings — admin only -->
       <div class="as" id="coverageSection" style="display:none">
@@ -1766,35 +1766,27 @@ async function saveStockCutoff(){
   const dateStr=(inp?inp.value:'').trim();
   if(btn)btn.textContent='Saving…';
   if(msg)msg.textContent='';
-  // Always save to localStorage immediately
+  // Save to localStorage for immediate local effect
   if(dateStr)localStorage.setItem('grd_stock_cutoff',dateStr);
   else localStorage.removeItem('grd_stock_cutoff');
-  // Re-fetch App_Settings to find the correct row, then write if row exists
-  try{const j=await jFetch('App_Settings');if(j&&j.length>=1)SD[17]=j;}catch(e){}
-  const cellInfo=_getCutoffCellInfo();
-  if(cellInfo){
-    // Row exists in sheet — write to it
-    const cb=`__co_${Date.now()}`;
-    const result=await new Promise(res=>{
-      const t=setTimeout(()=>{delete window[cb];res({success:false,error:'Timeout'});},12000);
-      window[cb]=d=>{clearTimeout(t);delete window[cb];res(d);};
-      const s=document.createElement('script');
-      s.src=`${API}?action=updateCell&sheet=App_Settings&row=${cellInfo.sheetRow}&col=${cellInfo.colIdx}&value=${encodeURIComponent(dateStr)}&callback=${encodeURIComponent(cb)}`;
-      s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();res({success:false,error:'Network error'});};
-      s.onload=()=>s.remove();
-      document.head.appendChild(s);
-    });
-    if(result&&result.success){
-      // Update SD[17] cache
-      const rows=SD[17]||[];
-      if(rows[cellInfo.sheetRow-1])rows[cellInfo.sheetRow-1][cellInfo.colIdx-1]=dateStr;
-      if(msg){msg.style.color='#4ade80';msg.textContent='✓ Saved to sheet';}
-    } else {
-      if(msg){msg.style.color='#fb923c';msg.textContent='⚠ Saved locally only (sheet row not found)';}
-    }
+  // Save to App_Settings sheet via backend — creates row automatically if missing.
+  // This ensures the cutoff applies to ALL users, not just this browser.
+  const cb=`__co_${Date.now()}`;
+  const result=await new Promise(res=>{
+    const t=setTimeout(()=>{delete window[cb];res({success:false,error:'Timeout'});},12000);
+    window[cb]=d=>{clearTimeout(t);delete window[cb];res(d);};
+    const s=document.createElement('script');
+    s.src=`${API}?action=saveCutoff&value=${encodeURIComponent(dateStr)}&callback=${encodeURIComponent(cb)}`;
+    s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();res({success:false,error:'Network error'});};
+    s.onload=()=>s.remove();
+    document.head.appendChild(s);
+  });
+  if(result&&result.success){
+    // Refresh SD[17] cache so getStockCutoffDate() returns the new value
+    try{const j=await jFetch('App_Settings');if(j&&j.length>=1)SD[17]=j;}catch(e){}
+    if(msg){msg.style.color='#4ade80';msg.textContent=dateStr?'✓ Saved — applies to all users':'✓ Cleared';}
   } else {
-    // No row in sheet — saved to localStorage only
-    if(msg){msg.style.color='#fb923c';msg.textContent=dateStr?'⚠ Saved locally only — add "Stock Cutoff Date" row to App_Settings sheet for all users':'✓ Cleared';}
+    if(msg){msg.style.color='#fb923c';msg.textContent='⚠ Saved locally only ('+((result&&result.error)||'error')+')';}
   }
   if(btn)btn.textContent='Save';
   if(msg)setTimeout(()=>{msg.textContent='';msg.style.color='';},4000);
