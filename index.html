@@ -5683,31 +5683,75 @@ function renderRetailFinanceReport(){
   }
   // ── Report 3: Bank wise Payout (bank overview + drill-down) ──
   function buildR3(){
+    // ── Optional column selector (persists across drill-down / re-renders) ──
+    if(!window._rfR3Cols)window._rfR3Cols=new Set();
+    const selCols=window._rfR3Cols;
+    const showCases=selCols.has('cases');
+    const showDA   =selCols.has('da');
+    const showAvg  =selCols.has('avg');
+    const chkLbl=(key,label)=>{
+      const on=selCols.has(key);
+      const brd=on?'#4ade80':'var(--border)';
+      const bg=on?'rgba(74,222,128,0.12)':'none';
+      const col=on?'#4ade80':'var(--text-muted)';
+      return`<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid ${brd};background:${bg};color:${col};user-select:none;">
+        <input type="checkbox" ${on?'checked':''} style="accent-color:#4ade80;width:12px;height:12px;"
+          onchange="(window._rfR3Cols=window._rfR3Cols||new Set())[this.checked?'add':'delete']('${key}');renderRetailFinanceReport()"> ${label}
+      </label>`;
+    };
+    const colSelector=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:14px;">
+      <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;">Extra Columns</span>
+      ${chkLbl('cases','No of Cases')}
+      ${chkLbl('da','Total Disbursed Amount')}
+      ${chkLbl('avg','Avg Net Payout')}
+    </div>`;
+    // ── Column order (fixed + optional interleaved):
+    // Bank | No of Cases* | Total Disbursed* | Payout Amount | GST Amount | Net Payout | Avg Net Payout*
+    // (* = optional, shown only when selected)
+    const eTh=(label)=>`<th style="${thS}">${label}</th>`;
+    const eTd=(val,cls)=>`<td style="${cls||tdS}">${val}</td>`;
+    const buildHdr=(firstLabel)=>
+      `<thead><tr><th style="${thL}">${firstLabel}</th>`+
+      (showCases?eTh('No of Cases'):'')+
+      (showDA?eTh('Total Disbursed (&#8377;)'):'')+
+      eTh('Payout Amount (&#8377;)')+
+      eTh('GST Amount (&#8377;)')+
+      eTh('Net Payout (&#8377;)')+
+      (showAvg?eTh('Avg Net Payout (&#8377;)'):'')+
+      `</tr></thead>`;
+    const buildCells=(g,cls)=>
+      (showCases?eTd(g.cnt||'—',cls):'')+
+      (showDA?eTd(fmt(g.da),cls):'')+
+      eTd(fmt(g.pa),cls)+
+      eTd(fmt(g.ga),cls)+
+      eTd(fmt(g.np),cls)+
+      (showAvg?eTd(g.cnt>0?Math.round(g.np/g.cnt).toLocaleString('en-IN'):'—',cls):'');
+
     const drill=window._rfR3Drill||null;
     const backBtn=`<button onclick="window._rfR3Drill=null;renderRetailFinanceReport()" style="padding:4px 14px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);margin-right:10px;">&#8592; Back to Banks</button>`;
     if(drill){
       // Drill-down: branch/SC payout breakdown for selected bank
-      const bankRows=rows.filter(r=>r.bank===drill&&(r.pa||r.np||r.ga));
+      const bankRows=rows.filter(r=>r.bank===drill&&(r.pa||r.np||r.ga||r.mode==='Inhouse'));
       const map=new Map();
-      bankRows.forEach(r=>{const k=grpKey(r);if(!map.has(k))map.set(k,{grp:k,pa:0,np:0,ga:0});const g=map.get(k);g.pa+=r.pa;g.np+=r.np;g.ga+=r.ga;});
+      bankRows.forEach(r=>{const k=grpKey(r);if(!map.has(k))map.set(k,{grp:k,pa:0,np:0,ga:0,cnt:0,da:0});const g=map.get(k);g.pa+=r.pa;g.np+=r.np;g.ga+=r.ga;if(r.mode==='Inhouse'){g.cnt++;g.da+=r.da;}});
       const keys=[...map.keys()].sort();
-      let tot={pa:0,np:0,ga:0};
-      keys.forEach(k=>{const g=map.get(k);tot.pa+=g.pa;tot.np+=g.np;tot.ga+=g.ga;});
-      const row=(g,cls)=>`<tr><td style="${cls||tdL}">${g.grp}</td><td style="${cls||tdS}">${fmt(g.pa)}</td><td style="${cls||tdS}">${fmt(g.np)}</td><td style="${cls||tdS}">${fmt(g.ga)}</td></tr>`;
-      const hdr=`<thead><tr><th style="${thL}">${grpLabel}</th><th style="${thS}">Payout Amount (&#8377;)</th><th style="${thS}">Net Payout (&#8377;)</th><th style="${thS}">GST Amount (&#8377;)</th></tr></thead>`;
-      const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${fmt(tot.pa)}</td><td style="${totS}">${fmt(tot.np)}</td><td style="${totS}">${fmt(tot.ga)}</td></tr></tbody>`;
-      return`<div id="rfRpt3"><div style="display:flex;align-items:center;margin-bottom:8px;">${backBtn}<h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0;">3. Bank: <span style="color:var(--accent);">${drill}</span> &mdash; ${grpLabel} wise Payout</h3></div>${expBtns('rfRpt3Table','Bank '+drill+' Payout Branch Wise')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+      let tot={pa:0,np:0,ga:0,cnt:0,da:0};
+      keys.forEach(k=>{const g=map.get(k);tot.pa+=g.pa;tot.np+=g.np;tot.ga+=g.ga;tot.cnt+=g.cnt;tot.da+=g.da;});
+      const row=(g,cls)=>`<tr><td style="${cls||tdL}">${g.grp}</td>${buildCells(g,cls)}</tr>`;
+      const hdr=buildHdr(grpLabel);
+      const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td>${buildCells(tot,totS)}</tr></tbody>`;
+      return`<div id="rfRpt3">${colSelector}<div style="display:flex;align-items:center;margin-bottom:8px;">${backBtn}<h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0;">3. Bank: <span style="color:var(--accent);">${drill}</span> &mdash; ${grpLabel} wise Payout</h3></div>${expBtns('rfRpt3Table','Bank '+drill+' Payout Branch Wise')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
     }
-    // Bank overview
+    // Bank overview — include inhouse rows even if payout is zero (needed for cnt/da)
     const map=new Map();
-    rows.forEach(r=>{if(!r.pa&&!r.np&&!r.ga)return;if(!map.has(r.bank))map.set(r.bank,{bank:r.bank,pa:0,np:0,ga:0});const g=map.get(r.bank);g.pa+=r.pa;g.np+=r.np;g.ga+=r.ga;});
+    rows.forEach(r=>{if(!r.pa&&!r.np&&!r.ga&&r.mode!=='Inhouse')return;if(!map.has(r.bank))map.set(r.bank,{bank:r.bank,pa:0,np:0,ga:0,cnt:0,da:0});const g=map.get(r.bank);g.pa+=r.pa;g.np+=r.np;g.ga+=r.ga;if(r.mode==='Inhouse'){g.cnt++;g.da+=r.da;}});
     const keys=[...map.keys()].sort();
-    let tot={pa:0,np:0,ga:0};
-    keys.forEach(k=>{const g=map.get(k);tot.pa+=g.pa;tot.np+=g.np;tot.ga+=g.ga;});
-    const row=(g,cls)=>{const safe=g.bank.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<tr style="cursor:pointer;" onclick="window._rfR3Drill='${safe}';renderRetailFinanceReport()"><td style="${cls||tdL};color:var(--accent);text-decoration:underline;cursor:pointer;">${g.bank}</td><td style="${cls||tdS}">${fmt(g.pa)}</td><td style="${cls||tdS}">${fmt(g.np)}</td><td style="${cls||tdS}">${fmt(g.ga)}</td></tr>`;};
-    const hdr=`<thead><tr><th style="${thL}">Bank <span style="font-size:9px;font-weight:400;color:var(--text-dim);">(click to drill down)</span></th><th style="${thS}">Payout Amount (&#8377;)</th><th style="${thS}">Net Payout (&#8377;)</th><th style="${thS}">GST Amount (&#8377;)</th></tr></thead>`;
-    const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${fmt(tot.pa)}</td><td style="${totS}">${fmt(tot.np)}</td><td style="${totS}">${fmt(tot.ga)}</td></tr></tbody>`;
-    return`<div id="rfRpt3"><h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">3. Bank wise &mdash; Payout Report</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Click a bank name to see ${grpLabel.toLowerCase()}-wise payout breakdown.</p>${expBtns('rfRpt3Table','Bank Wise Payout Report')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+    let tot={pa:0,np:0,ga:0,cnt:0,da:0};
+    keys.forEach(k=>{const g=map.get(k);tot.pa+=g.pa;tot.np+=g.np;tot.ga+=g.ga;tot.cnt+=g.cnt;tot.da+=g.da;});
+    const row=(g,cls)=>{const safe=g.bank.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<tr style="cursor:pointer;" onclick="window._rfR3Drill='${safe}';renderRetailFinanceReport()"><td style="${cls||tdL};color:var(--accent);text-decoration:underline;cursor:pointer;">${g.bank}</td>${buildCells(g,cls)}</tr>`;};
+    const hdr=buildHdr('Bank <span style="font-size:9px;font-weight:400;color:var(--text-dim);">(click to drill down)</span>');
+    const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td>${buildCells(tot,totS)}</tr></tbody>`;
+    return`<div id="rfRpt3">${colSelector}<h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">3. Bank wise &mdash; Payout Report</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Click a bank name to see ${grpLabel.toLowerCase()}-wise payout breakdown.</p>${expBtns('rfRpt3Table','Bank Wise Payout Report')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
   }
   // ── Report 4: Branch/SC Summary ──
   function buildR4(){
@@ -5848,7 +5892,7 @@ window.rfRepExportPDF=function(tableId,title){
     tbody td{padding:5px 10px;border:1px solid #d1e0d3;}
     tbody tr:nth-child(even) td{background:#f6fbf6;}
     tbody tr:last-child td{font-weight:700;background:#e8f4ea;border-top:2px solid #6aaf6e;}
-    @media print{@page{margin:1cm;size:landscape;}body{padding:0;}h2{font-size:13px;}table{font-size:10px;}thead th,tbody td{padding:4px 7px;}}
+    @media print{@page{margin:1cm;size:portrait;}body{padding:0;}h2{font-size:13px;}table{width:100%;font-size:9px;}thead th,tbody td{padding:3px 6px;}}
   </style></head><body><h2>${title}</h2>${tblHTML}<script>setTimeout(function(){window.print();},300);<\/script></body></html>`);
   w.document.close();
 };
