@@ -446,6 +446,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
     <button class="tab"    onclick="goTab(9)"        id="t9">📊 Reports</button>
     <button class="tab"    onclick="goTab(11)"       id="t11">🔍 VNA Summary</button>
     <button class="tab"    onclick="goTab(13)"       id="t13">📈 Analytics</button>
+    <button class="tab"    onclick="goTab(14)"       id="t14">📦 Stock Planning</button>
     <button class="tab"    onclick="goTab(4)"        id="t4">⚙ Manage</button>
   </div>
   <!-- Free Stock sub-tabs (shown when Free Stock parent is active) -->
@@ -817,6 +818,11 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
   <div id="anaContent"><div class="sb"><div class="sp"></div><strong>Loading analytics…</strong></div></div>
 </div>
 
+<!-- STOCK PLANNING AREA -->
+<div id="spArea" style="display:none;overflow:auto;max-height:calc(100vh - 115px);padding:0 0 20px;">
+  <div id="spContent"><div class="sb"><div class="sp"></div><strong>Loading stock planning…</strong></div></div>
+</div>
+
 <!-- LEVEL-3 LOGIN WARNING MODAL -->
 <div class="l3w-overlay" id="l3wOverlay">
   <div class="l3w-box">
@@ -981,13 +987,13 @@ const CY=String(new Date().getFullYear());
 // Level-based tab access — tab indices each level can see
 // Tabs: 0=Stock,1=Allocation,2=LiveRPO,3=FreeStock,4=Manage,5=Ageing,6=Demo,7=Allotment,8=AG/DM Allotment,9=Reports,10=De-allotted
 const LEVEL_TABS={
-  1:  [0,1,2,3,4,5,6,7,8,9,10,11,12,13], // All tabs including Manage (tab 4)
-  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,13],  // Stock + Allocation + all except Manage
-  2:  [2,3,5,6,7,8,9,10,11],             // No Stock/Allocation/Manage — no Retail Finance
-  '2F':[2,3,5,6,7,8,9,10,11,12],         // Same as L2 + Retail Finance (Retail + ROI sub-tabs only, no Allotment)
-  3:  [2,3,5,6,7,8,9,10,11],             // Same as L2 — branch pre-filled, no Retail Finance
-  '3F':[2,3,5,6,7,8,9,10,11,12],         // Same as L3 + Retail Finance (Retail + ROI sub-tabs only), branch pre-filled
-  4:  [2,3,5,6,11]                        // Live RPO + Free Stock + VNA (SC-filtered)
+  1:  [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], // All tabs including Manage (tab 4)
+  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,13,14],  // Stock + Allocation + all except Manage
+  2:  [2,3,5,6,7,8,9,10,11],                 // No Stock/Allocation/Manage — no Retail Finance
+  '2F':[2,3,5,6,7,8,9,10,11,12],             // Same as L2 + Retail Finance (Retail + ROI sub-tabs only, no Allotment)
+  3:  [2,3,5,6,7,8,9,10,11,14],              // Same as L2 — branch pre-filled, no Retail Finance; +Stock Planning
+  '3F':[2,3,5,6,7,8,9,10,11,12],             // Same as L3 + Retail Finance (Retail + ROI sub-tabs only), branch pre-filled
+  4:  [2,3,5,6,11]                            // Live RPO + Free Stock + VNA (SC-filtered)
 };
 
 const FREE_TABS=[3,5,6]; // sub-tabs under "Free Stock" parent
@@ -1149,7 +1155,7 @@ async function loadAll(){
 
   // Phase 2: Load remaining sheets (7+) in background
   // Each sheet re-renders the current tab as soon as its data arrives (no waiting for all sheets)
-  const _p2Deps={7:[7,8],10:[9],12:[7,8,14,16],13:[14]}; // tab → sdIdx(s) it needs
+  const _p2Deps={7:[7,8],10:[9],12:[7,8,14,16],13:[14],14:[14]}; // tab → sdIdx(s) it needs
   const _p2Loaded=new Set();
   const _p2TryRender=()=>{
     if(curTab===7&&_p2Loaded.has(7)&&_p2Loaded.has(8)){try{renderTable();}catch(e){console.error(e);}}
@@ -1158,6 +1164,7 @@ async function loadAll(){
     else if(curTab===10&&_p2Loaded.has(9)){try{renderTable();}catch(e){console.error(e);}}
     else if(curTab===12&&(_p2Loaded.has(7)||_p2Loaded.has(14)||_p2Loaded.has(16))){try{renderTable();}catch(e){console.error(e);}}
     else if(curTab===13&&_p2Loaded.has(14)){try{renderAnalytics();}catch(e){console.error(e);}}
+    else if(curTab===14&&_p2Loaded.has(14)){try{renderStockPlanning();}catch(e){console.error(e);}}
   };
   // Fetch Lease sheet column A in background for Bank Name dropdown
   jFetch('Lease').then(rows=>{
@@ -1175,6 +1182,7 @@ async function loadAll(){
     // Final pass: re-render once all data is in
     if(curTab===7||curTab===8||curTab===10||curTab===12){try{renderTable();}catch(e){console.error(e);}}
     if(curTab===13){try{renderAnalytics();}catch(e){console.error(e);}}
+    if(curTab===14){try{renderStockPlanning();}catch(e){console.error(e);}}
     checkLevel3Warning(); // Allotment data now ready — show alert for Level 3 users on first load
   });
 }
@@ -1398,7 +1406,7 @@ function updateParentTabs(){
 // Returns the set of allowed tab indices for the current user
 function getAllowedTabs(u){
   u=u||curUser;
-  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13];
+  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
   let tabs=[...(LEVEL_TABS[u.level]||[3,5,6])];
   // Level 4: Live RPO (tab 2) only if Role is explicitly "SC" in staff sheet
   if(u.level===4&&String(u.role||'').trim().toUpperCase()!=='SC'){
@@ -1418,7 +1426,7 @@ function goTab(i){
   if(!allowed.includes(i))return;
   curTab=i;isFree=(i===3);sCol=-1;sAsc=true;
   // Regular (non-sub-tab) main bar buttons
-  [0,1,2,4,9,10,11,12,13].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===i);});
+  [0,1,2,4,9,10,11,12,13,14].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===i);});
   updateParentTabs();
   clearF(false);
   document.getElementById('tH').innerHTML='';
@@ -1432,18 +1440,21 @@ function setupTab(){
   const isRep=(curTab===9);
   const isVNA=(curTab===11);
   const isAna=(curTab===13);
-  document.getElementById('toolBar').style.display=(isM||isRep||isVNA||isAna)?'none':'flex';
-  document.getElementById('tblArea').style.display=(isM||isRep||isVNA||isAna)?'none':'block';
+  const isSP=(curTab===14);
+  document.getElementById('toolBar').style.display=(isM||isRep||isVNA||isAna||isSP)?'none':'flex';
+  document.getElementById('tblArea').style.display=(isM||isRep||isVNA||isAna||isSP)?'none':'block';
   document.getElementById('repArea').style.display=isRep?'block':'none';
   document.getElementById('manArea').style.display=isM?'block':'none';
   document.getElementById('vnaArea').style.display=isVNA?'block':'none';
   document.getElementById('anaArea').style.display=isAna?'block':'none';
+  document.getElementById('spArea').style.display=isSP?'block':'none';
   // ── Tab Access permission check (non-admin only) ──────────────────────────
   if(isTabUnderMaintenance(curTab)){showMaintenanceMsgForTab();return;}
   // ─────────────────────────────────────────────────────────────────────────
   if(isRep){renderReports();return;}
   if(isVNA){renderVNASummary();return;}
   if(isAna){renderAnalytics();return;}
+  if(isSP){renderStockPlanning();return;}
   document.getElementById('searchWrap').style.display=(isFree||isCustom)?'none':'';
   // For custom tabs show only Model filter; hide Variant, Colour, VIN Year
   ['fVar','fCol','fYr'].forEach(id=>{
@@ -3373,6 +3384,7 @@ function renderTable(){
     else if(curTab===10)renderDeallotted();
     else if(curTab===12)renderRetailFinance();
     else if(curTab===13)renderAnalytics();
+    else if(curTab===14)renderStockPlanning();
     else renderStd();
   }catch(e){_rtErr(e);}
 }
@@ -4786,25 +4798,47 @@ async function moveToRetailMaster(){
     // The dynamic loop above already copies these if headers match exactly.
     // This block covers any header alias mismatches between source and Retail_Master.
     const _addField=(srcAliases,rmAliases)=>{
-      // Find value in source
+      // Find value in source — exact match first, then partial-contains fallback
       let srcIdx=-1;
-      for(const a of srcAliases){for(let k=0;k<sh.length;k++){if(sh[k].toLowerCase().trim()===a.toLowerCase().trim()){srcIdx=k;break;}}if(srcIdx>=0)break;}
+      const nm=s=>String(s||'').replace(/^﻿/,'').trim().toLowerCase();
+      for(const a of srcAliases){
+        const an=nm(a);
+        for(let k=0;k<sh.length;k++){if(nm(sh[k])===an){srcIdx=k;break;}}
+        if(srcIdx>=0)break;
+      }
+      // Partial-contains fallback (e.g. "Exch Brancd" contains "exch brand")
+      if(srcIdx<0){
+        for(const a of srcAliases){
+          const an=nm(a);
+          for(let k=0;k<sh.length;k++){const hk=nm(sh[k]);if(hk&&(hk.includes(an)||an.includes(hk))){srcIdx=k;break;}}
+          if(srcIdx>=0)break;
+        }
+      }
       if(srcIdx<0)return;
       const v=String(srcData[srcIdx]||'').trim();
       if(!v)return;
-      // Find target col in Retail_Master (only if not already added by the loop above)
+      // Find target col in Retail_Master — exact first, then partial-contains fallback
       let rmIdx=-1;
       for(const a of rmAliases){const i=fce(rmH,a);if(i>=0){rmIdx=i;break;}}
+      if(rmIdx<0){
+        for(const a of rmAliases){
+          const an=nm(a);
+          const i=rmHNorm.findIndex(h=>h&&(h.includes(an)||an.includes(h)));
+          if(i>=0){rmIdx=i;break;}
+        }
+      }
       if(rmIdx<0)return;
       const rmCol1=rmIdx+1;
       if(!cells.some(c=>c.col===rmCol1))cells.push({col:rmCol1,val:v});
     };
-    _addField(['Corp','Corporate','CORP'],['Corp','Corporate','CORP']);
-    _addField(['Loyalty','LOYALTY'],['Loyalty','LOYALTY']);
-    _addField(['Exchange','Exchange Value','EXCHANGE','EXCHANGE VALUE','Exch'],['Exchange','Exchange Value','EXCHANGE','EXCHANGE VALUE','Exch']);
-    _addField(['Corp Type','Corporate Type','CORP TYPE','CorpType'],['Corp Type','Corporate Type','CORP TYPE','CorpType']);
-    _addField(['Corp Name','Corporate Name','CORP NAME','CorpName'],['Corp Name','Corporate Name','CORP NAME','CorpName']);
-    _addField(['Exchange Brand','EXCHANGE BRAND','ExchangeBrand','Exch Brand'],['Exchange Brand','EXCHANGE BRAND','ExchangeBrand','Exch Brand']);
+    _addField(['Corp','Corporate','CORP','Corp.'],['Corp','Corporate','CORP','Corp.']);
+    _addField(['Loyalty','LOYALTY','Loyalty Scheme'],['Loyalty','LOYALTY','Loyalty Scheme']);
+    _addField(['Exchange','Exchange Value','EXCHANGE','EXCHANGE VALUE','Exch','EXCH'],['Exchange','Exchange Value','EXCHANGE','EXCHANGE VALUE','Exch','EXCH']);
+    _addField(['Corp Type','Corporate Type','CORP TYPE','CorpType','Corp. Type'],['Corp Type','Corporate Type','CORP TYPE','CorpType','Corp. Type']);
+    _addField(['Corp Name','Corporate Name','CORP NAME','CorpName','Corp. Name'],['Corp Name','Corporate Name','CORP NAME','CorpName','Corp. Name']);
+    // "Exch Brancd" handles the typo-column-name variant that may exist in the Allotment sheet
+    _addField(['Exchange Brand','EXCHANGE BRAND','ExchangeBrand','Exch Brand','Exch Brancd','EXCH BRAND','Exch. Brand','Exch Br'],
+              ['Exchange Brand','EXCHANGE BRAND','ExchangeBrand','Exch Brand','Exch Brancd','EXCH BRAND','Exch. Brand','Exch Br']);
     return {src,sheetRow,sh,targetRow,cells};
   }).filter(j=>j.cells.length>0);
 
@@ -6179,6 +6213,419 @@ function resetReallotRow(sheetRow){
     const esc=s=>String(s||'').replace(/'/g,"&#39;");
     cell.innerHTML=`<button class="reallot-btn" id="rbtn-${sr}" onclick="openReallot('${esc(info.cust)}','${esc(info.sc)}','${esc(info.branch)}','${esc(info.model)}','${esc(info.variant)}','${esc(info.colour)}',${sr})">Reallot</button>`;
   }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STOCK PLANNING TAB (tab 14)
+   ══════════════════════════════════════════════════════════════ */
+window._spMExp=window._spMExp||new Set(); // expanded model keys
+window._spVExp=window._spVExp||new Set(); // expanded variant keys (model|||variant)
+function renderStockPlanning(){
+  const el=document.getElementById('spContent');
+  if(!el)return;
+
+  // ── Persistent state ──
+  if(window._spPeriod===undefined)window._spPeriod=3;
+  if(window._spBranch===undefined)window._spBranch='';
+  if(window._spModel===undefined)window._spModel='';
+  if(window._spVariant===undefined)window._spVariant='';
+  // _spMExp / _spVExp declared above function
+
+  const isL3=curUser&&!curUser.isAdmin&&(String(curUser.level)==='3'||String(curUser.level)==='3F');
+  const uBranch=isL3&&curUser.branch?curUser.branch.toUpperCase():'';
+  const brFilter=uBranch||(window._spBranch||'').toUpperCase();
+
+  const stockData=SD[0]||[];
+  const rpoData  =SD[2]||[];
+  const rmData   =SD[14]||[];
+
+  if(stockData.length<2){
+    el.innerHTML='<div class="sb"><div class="sp"></div><strong>Loading stock data…</strong></div>';
+    return;
+  }
+
+  // ── Helpers ──
+  const nrm=s=>String(s||'').replace(/^﻿/,'').trim().toLowerCase().replace(/\s+/g,' ');
+  // Primary key: ModelCode + Colour (most reliable join across all sheets)
+  const mcClKey=(mc,cl)=>nrm(mc)+'|||'+nrm(cl);
+  const pd=v=>{if(!v&&v!==0)return null;const s=String(v).trim();const n=parseFloat(s);if(!isNaN(n)&&n>40000&&n<60000)return new Date(Math.round((n-25569)*86400*1000));const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(m2)return new Date(+m2[1],+m2[2]-1,+m2[3]);const d=new Date(s);return isNaN(d)?null:d;};
+  const emptyStock=()=>({free:0,allotted:0,demo:0,ageing:0,fpr:0,others:0});
+  const addStock=(a,b)=>{a.free+=b.free;a.allotted+=b.allotted;a.demo+=b.demo;a.ageing+=b.ageing;a.fpr+=b.fpr;a.others+=b.others;};
+  const totalOf=s=>s.free+s.allotted+s.demo+s.ageing+s.fpr+s.others;
+  const fmt=n=>n===null?'—':Number.isInteger(n)?n.toLocaleString('en-IN'):(+n.toFixed(1)).toLocaleString('en-IN');
+  const fmtC=n=>n===null?'—':n.toFixed(1);
+
+  // ── Parse Stock (SD[0]) ──
+  // Key insight: use Model Code + Colour as the join key across all sheets.
+  // The MODEL & VARIANT column names differ between Stock and Product Spec,
+  // but Model Code is a consistent identifier.
+  let stHi=0;
+  for(let i=0;i<Math.min(3,stockData.length);i++){
+    const r=stockData[i].map(x=>String(x||'').toLowerCase()).join(' ');
+    if(r.includes('model')&&(r.includes('status')||r.includes('vy'))){stHi=i;break;}
+  }
+  const stH=stockData[stHi].map(x=>String(x||'').replace(/^﻿/,'').trim());
+  const stMCI=fc(stH,SC.modelCode);  // 'Model Code' column — primary join key
+  const stVaI=(()=>{let i=fc(stH,'MODEL & VARIANT');if(i>=0)return i;i=fc(stH,'Model & Variant');if(i>=0)return i;return fc(stH,'Variant');})();
+  const stClI=(()=>{for(const k of['Color','Colour','COLOR','COLOUR']){const i=fc(stH,k);if(i>=0)return i;}return -1;})();
+  const stStI=fc(stH,SC.status);  // 'Status' column (col AM) — same call as buildLookups
+  const stBrI=(()=>{let i=fc(stH,'Branch Name');if(i>=0)return i;return fc(stH,'Branch');})();
+
+  // vaToMC: nrm(variant string in stock sheet) → model code
+  // Used to resolve VNA / Sales variant names (which use stock-sheet naming) to model codes
+  const vaToMC={};
+
+  // stockMap: mcClKey(modelCode, colour) → {free,allotted,demo,ageing,fpr,others}
+  const stockMap={};
+  const allBranches=new Set();
+  stockData.slice(stHi+1).forEach(r=>{
+    if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+    const br=stBrI>=0?String(r[stBrI]||'').trim().toUpperCase():'';
+    if(br)allBranches.add(br);
+    if(brFilter&&br&&br!==brFilter)return;
+    const mc=stMCI>=0?String(r[stMCI]||'').trim():'';
+    const va=stVaI>=0?String(r[stVaI]||'').trim():'';
+    const cl=stClI>=0?String(r[stClI]||'').trim():'';
+    const st=stStI>=0?String(r[stStI]||'').trim().toLowerCase():'';
+    if(!mc)return; // model code required for reliable matching
+    // Build variant → modelCode bridge for VNA/Sales resolution
+    if(va)vaToMC[nrm(va)]=mc;
+    const key=mcClKey(mc,cl);
+    if(!stockMap[key])stockMap[key]=emptyStock();
+    // Status classification — 'free' matches buildLookups exactly (SC.status='STATUS')
+    if(st==='free')stockMap[key].free++;
+    else if(st.includes('allot'))stockMap[key].allotted++;
+    else if(st.includes('demo'))stockMap[key].demo++;
+    else if(st.includes('age')||st.includes('aging'))stockMap[key].ageing++;
+    else if(st==='fpr')stockMap[key].fpr++;
+    else stockMap[key].others++;
+  });
+
+  // Also build vaToMC from specRows as a fallback
+  // (covers variants that appear in Product Spec but not yet in stock sheet)
+  specRows.forEach(s=>{if(s.variant&&s.modelCode)vaToMC[nrm(s.variant)]=vaToMC[nrm(s.variant)]||s.modelCode;});
+
+  // ── VNA from Live RPO (SD[2]) ──
+  // RPO doesn't have Model Code — resolve variant name → model code via vaToMC
+  const vnaMap={}; // mcClKey(modelCode, colour) → count
+  if(rpoData.length>=2){
+    let rHi=0;
+    for(let i=0;i<Math.min(3,rpoData.length);i++){
+      const r=rpoData[i].map(x=>String(x||'').toLowerCase()).join(' ');
+      if(r.includes('status')||r.includes('branch')){rHi=i;break;}
+    }
+    const rH=rpoData[rHi].map(x=>String(x||'').replace(/^﻿/,'').trim());
+    const rStI=fc(rH,'Status');
+    const rVaI=(()=>{let i=fc(rH,'Model & Variant');if(i>=0)return i;return fc(rH,'Variant');})();
+    const rClI=(()=>{for(const k of['Colour','Color','Exterior Colour']){const i=fc(rH,k);if(i>=0)return i;}return -1;})();
+    const rBrI=(()=>{let i=fc(rH,'Branch Name');if(i>=0)return i;return fc(rH,'Branch');})();
+    rpoData.slice(rHi+1).forEach(r=>{
+      if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+      if(rStI<0||String(r[rStI]||'').trim().toUpperCase()!=='VNA')return;
+      const br=rBrI>=0?String(r[rBrI]||'').trim().toUpperCase():'';
+      if(brFilter&&br&&br!==brFilter)return;
+      const va=rVaI>=0?String(r[rVaI]||'').trim():'';
+      const cl=rClI>=0?String(r[rClI]||'').trim():'';
+      const mc=vaToMC[nrm(va)]||'';
+      if(!mc)return; // skip if can't resolve to model code
+      const key=mcClKey(mc,cl);
+      vnaMap[key]=(vnaMap[key]||0)+1;
+    });
+  }
+
+  // ── Sales from Retail_Master (SD[14]) ──
+  // Period = previous N complete months (current month excluded)
+  const period=window._spPeriod||3;
+  const now=new Date();
+  const periodEnd  =new Date(now.getFullYear(),now.getMonth(),1);   // exclusive — first day of current month
+  const periodStart=new Date(now.getFullYear(),now.getMonth()-period,1); // first day of N months ago
+  const salesMap={}; // mcClKey(modelCode, colour) → count
+  if(rmData.length>=2){
+    let rmHi=0;
+    for(let i=0;i<Math.min(5,rmData.length);i++){
+      const r=rmData[i].map(x=>String(x||'').toLowerCase()).join(' ');
+      if(r.includes('customer')||r.includes('invoice')){rmHi=i;break;}
+    }
+    const rmH=rmData[rmHi].map(x=>String(x||'').replace(/^﻿/,'').trim());
+    const rmBrI=(()=>{let i=fc(rmH,'Branch Name');if(i>=0)return i;return fc(rmH,'Branch');})();
+    const rmMCI=(()=>{let i=fc(rmH,'Model Code');if(i>=0)return i;i=fc(rmH,'MODEL CODE');if(i>=0)return i;return -1;})(); // use model code if available
+    const rmMvI=(()=>{let i=fc(rmH,'MODEL & VARIANT');if(i>=0)return i;i=fc(rmH,'Model & Variant');if(i>=0)return i;return fc(rmH,'Model');})();
+    const rmVnI=fc(rmH,'Variant');
+    const rmClI=(()=>{for(const k of['Colour','Color','Exterior Colour']){const i=fc(rmH,k);if(i>=0)return i;}return -1;})();
+    const rmCnI=(()=>{let i=fc(rmH,'Customer Name');if(i>=0)return i;return fc(rmH,'Customer');})();
+    const rmIvI=(()=>{for(const k of['Invoice Done Date','Invoice Date','Invoiced Date']){const i=fc(rmH,k);if(i>=0)return i;}return 15;})();
+    rmData.slice(rmHi+1).forEach(r=>{
+      if(!Array.isArray(r))return;
+      if(String(r[1]||'').trim().toUpperCase().startsWith('CF'))return;
+      if(rmCnI>=0&&!String(r[rmCnI]||'').trim())return;
+      const ivdV=String(r[rmIvI]||'').trim();
+      if(!ivdV||ivdV.toLowerCase()==='focus invoiced')return;
+      const ivd=pd(ivdV);
+      if(!ivd||ivd<periodStart||ivd>=periodEnd)return;
+      const br=rmBrI>=0?String(r[rmBrI]||'').trim().toUpperCase():'';
+      if(brFilter&&br&&br!==brFilter)return;
+      const cl=rmClI>=0?String(r[rmClI]||'').trim():'';
+      // Resolve model code: direct column first, then via variant name
+      let mc=rmMCI>=0?String(r[rmMCI]||'').trim():'';
+      if(!mc){
+        const mvRaw=rmMvI>=0?String(r[rmMvI]||'').trim():'';
+        const vnRaw=rmVnI>=0?String(r[rmVnI]||'').trim():'';
+        const va=mvRaw||vnRaw;
+        mc=vaToMC[nrm(va)]||'';
+      }
+      if(!mc)return; // skip if can't resolve to model code
+      const key=mcClKey(mc,cl);
+      salesMap[key]=(salesMap[key]||0)+1;
+    });
+  }
+
+  // ── Build planning hierarchy from specRows ──
+  const fltModel  =window._spModel||'';
+  const fltVariant=window._spVariant||'';
+
+  const allModels=[...new Set(specRows.map(s=>s.model).filter(Boolean))].sort();
+  const allVariants=[...new Set(specRows.filter(s=>!fltModel||s.model===fltModel).map(s=>s.variant).filter(Boolean))].sort();
+
+  // hierarchy: model → variant → {colours[], modelCode}
+  const hierarchy={};
+  // varMC: `${model}|||${variant}` → modelCode (for aggFor lookups)
+  const varMC={};
+  specRows.forEach(s=>{
+    if(!s.model||!s.variant)return;
+    if(fltModel&&s.model!==fltModel)return;
+    if(fltVariant&&s.variant!==fltVariant)return;
+    if(!hierarchy[s.model])hierarchy[s.model]={};
+    if(!hierarchy[s.model][s.variant])hierarchy[s.model][s.variant]=[];
+    if(s.colour&&!hierarchy[s.model][s.variant].includes(s.colour))
+      hierarchy[s.model][s.variant].push(s.colour);
+    // Store model code for this model+variant combination
+    if(s.modelCode)varMC[s.model+'|||'+s.variant]=s.modelCode;
+  });
+
+  // Helper: aggregate stock/vna/sales for a set of {mc, cl} pairs
+  // mc = model code (primary join key)
+  const aggFor=(pairs)=>{
+    const agg={...emptyStock(),vna:0,sales:0};
+    pairs.forEach(({mc,cl})=>{
+      if(!mc)return;
+      const k=mcClKey(mc,cl);
+      addStock(agg,stockMap[k]||emptyStock());
+      agg.vna+=(vnaMap[k]||0);
+      agg.sales+=(salesMap[k]||0);
+    });
+    return agg;
+  };
+
+  const planMetrics=(agg)=>{
+    const total=totalOf(agg);
+    const avgSales=agg.sales/period;
+    // VNA orders are committed demand — stock must arrive from Skoda to fulfil them.
+    // Effective available stock = Total − VNA (VNA reduces what's left for future retail).
+    // Coverage = (Total − VNA) / Avg Monthly Sales
+    // Plan Qty  = units to order so that (Total + PlanQty) covers VNA + 2 months of future sales
+    //           = max(0, ⌈VNA + 2×Avg − Total⌉)
+    const effectiveFree=total-agg.vna;
+    const coverage=avgSales>0?effectiveFree/avgSales:null;
+    const planQty=avgSales>0?Math.max(0,Math.ceil(agg.vna+2*avgSales-total)):
+                             agg.vna>total?agg.vna-total:0; // even with no sales data, flag VNA deficit
+    return{total,avgSales,coverage,planQty,effectiveFree};
+  };
+
+  const cvgBadge=(coverage)=>{
+    if(coverage===null)return{cls:'',badge:'<span style="color:var(--text-dim);font-size:10px">No data</span>'};
+    if(coverage<1)return{cls:'color:#ef4444;font-weight:700',badge:'<span style="background:#ef444418;color:#ef4444;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700">🔴 Urgent</span>'};
+    if(coverage<2)return{cls:'color:#f59e0b;font-weight:700',badge:'<span style="background:#f59e0b18;color:#f59e0b;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700">🟡 Plan</span>'};
+    if(coverage<3)return{cls:'color:#22c55e',badge:'<span style="background:#22c55e18;color:#22c55e;border-radius:10px;padding:2px 8px;font-size:10px">🟢 Monitor</span>'};
+    return{cls:'color:var(--text-muted)',badge:'<span style="color:var(--text-muted);font-size:10px">✓ Sufficient</span>'};
+  };
+
+  // Column cell builders
+  const TD =(v,sx='')=>`<td style="padding:5px 8px;text-align:center;border:1px solid var(--border);font-size:11px;${sx}">${v}</td>`;
+  const TDL=(v,sx='')=>`<td style="padding:5px 8px;border:1px solid var(--border);font-size:11px;${sx}">${v}</td>`;
+  const stockCells=(sc,agg)=>{
+    const{total,avgSales,coverage,planQty}=planMetrics(agg);
+    const{cls,badge}=cvgBadge(coverage);
+    return TD(agg.free||0,agg.free?'color:#22c55e;font-weight:600':'')+
+      TD(agg.allotted||0,agg.allotted?'color:#f59e0b;font-weight:600':'')+
+      TD(agg.demo||0,agg.demo?'color:#a78bfa;font-weight:600':'')+
+      TD(agg.ageing||0,agg.ageing?'color:#fb923c;font-weight:600':'')+
+      TD((agg.fpr+agg.others)||0,'color:#6b7280')+
+      TD('<strong>'+total+'</strong>')+
+      TD(agg.vna||0,agg.vna>0?'color:#ef4444;font-weight:700':'color:var(--text-muted)')+
+      TD(agg.sales,'color:var(--text-muted)')+
+      TD(fmt(avgSales))+
+      TD(coverage!==null?fmtC(coverage)+' mo':'—',cls)+
+      TD(planQty>0?'<strong style="color:#3b82f6">'+planQty+'</strong>':'—')+
+      TD(badge);
+  };
+
+  // ── Build table rows ──
+  let tHTML='';
+  const NCOLS=14; // total columns
+
+  Object.keys(hierarchy).sort().forEach(model=>{
+    const variants=hierarchy[model];
+    const mExp=window._spMExp.has(model);
+
+    // Model-level aggregate
+    const mPairs=[];
+    Object.keys(variants).forEach(va=>{
+      const mc=varMC[`${model}|||${va}`]||'';
+      const cls=variants[va];
+      (cls.length?cls:['']).forEach(cl=>mPairs.push({mc,cl}));
+    });
+    const mAgg=aggFor(mPairs);
+    const{total:mTot,coverage:mCov,planQty:mPQ,avgSales:mAvg}=planMetrics(mAgg);
+    const{cls:mCls,badge:mBdg}=cvgBadge(mCov);
+    const mEsc=model.replace(/'/g,"\\'");
+
+    tHTML+=`<tr style="background:var(--bg-alt);cursor:pointer" onclick="window._spMExp.has('${mEsc}')?window._spMExp.delete('${mEsc}'):window._spMExp.add('${mEsc}');renderStockPlanning()">
+      <td colspan="2" style="padding:7px 10px;font-weight:700;color:var(--accent);border:1px solid var(--border);font-size:12px">
+        <span style="font-size:10px;margin-right:6px;opacity:.7">${mExp?'▼':'▶'}</span>${model}
+        <span style="font-weight:400;color:var(--text-muted);font-size:10px;margin-left:8px">Total: ${mTot} · Free: ${mAgg.free} · VNA: ${mAgg.vna}</span>
+      </td>
+      ${stockCells(NCOLS-2,mAgg)}
+    </tr>`;
+
+    if(!mExp)return;
+
+    // Variant rows
+    Object.keys(variants).sort().forEach(va=>{
+      const cols=variants[va];
+      const vKey=`${model}|||${va}`;
+      const vExp=window._spVExp.has(vKey);
+      const vEsc=vKey.replace(/'/g,"\\'");
+
+      // Variant-level aggregate
+      const vMC=varMC[`${model}|||${va}`]||'';
+      const vPairs=(cols.length?cols:['']).map(cl=>({mc:vMC,cl}));
+      const vAgg=aggFor(vPairs);
+      const{total:vTot,coverage:vCov,planQty:vPQ,avgSales:vAvg}=planMetrics(vAgg);
+      const{cls:vCls,badge:vBdg}=cvgBadge(vCov);
+
+      tHTML+=`<tr style="background:var(--bg-surface);cursor:${cols.length>0?'pointer':'default'}" onclick="${cols.length>0?"window._spVExp.has('"+vEsc+"')?window._spVExp.delete('"+vEsc+"'):window._spVExp.add('"+vEsc+"');renderStockPlanning()":''}">
+        ${TDL('<span style="margin-left:18px;font-size:10px;margin-right:5px;opacity:.6">'+(cols.length>0?(vExp?'▼':'▶'):'·')+'</span>'+va,'font-weight:600;color:var(--text)')}
+        ${TDL('<span style="color:var(--text-dim);font-size:10px">'+(cols.length>0?cols.length+' colours':'—')+'</span>','color:var(--text-muted)')}
+        ${stockCells(NCOLS-2,vAgg)}
+      </tr>`;
+
+      if(!vExp||cols.length===0)return;
+
+      // Colour rows
+      [...cols].sort().forEach(cl=>{
+        const cAgg=aggFor([{mc:vMC,cl}]);
+        tHTML+=`<tr style="background:var(--bg-deep,var(--bg-surface))">
+          ${TDL('<span style="margin-left:36px;width:8px;height:8px;border-radius:50%;display:inline-block;background:'+hue(cl)+';margin-right:6px;vertical-align:middle"></span><span style="font-size:11px;color:var(--text-muted)">'+(cl||'No colour')+'</span>','padding-left:44px')}
+          ${TDL('&nbsp;')}
+          ${stockCells(NCOLS-2,cAgg)}
+        </tr>`;
+      });
+    });
+  });
+
+  if(!Object.keys(hierarchy).length){
+    tHTML=`<tr><td colspan="${NCOLS}" style="text-align:center;padding:28px;color:var(--text-dim);border:1px solid var(--border)">No data${fltModel?' for '+fltModel:''}. Check Product Spec sheet.</td></tr>`;
+  }
+
+  // ── Summary stats ──
+  const totalStock=Object.values(stockMap).reduce((a,s)=>a+totalOf(s),0);
+  const totalFree =Object.values(stockMap).reduce((a,s)=>a+s.free,0);
+  const totalVNA  =Object.values(vnaMap).reduce((a,n)=>a+n,0);
+  const totalSales=Object.values(salesMap).reduce((a,n)=>a+n,0);
+  const avgMo=totalSales/period;
+
+  // ── Controls ──
+  const selSt='padding:5px 8px;font-size:11px;border:1px solid var(--border);border-radius:6px;background:var(--bg-surface);color:var(--text);';
+  const pBtns=[1,2,3,6].map(p=>{const sel=window._spPeriod===p;return `<button onclick="window._spPeriod=${p};renderStockPlanning()" style="padding:4px 12px;font-size:11px;border-radius:14px;border:1px solid ${sel?'var(--accent)':'var(--border)'};cursor:pointer;background:${sel?'var(--accent)':'var(--bg-surface)'};color:${sel?'#fff':'var(--text)'};font-weight:${sel?700:400}">${p}M</button>`;}).join('');
+
+  let branchSel='';
+  if(!isL3){
+    const brs=[...allBranches].sort();
+    const opts='<option value="">All Branches</option>'+brs.map(b=>`<option value="${b}"${window._spBranch===b?' selected':''}>${b}</option>`).join('');
+    branchSel=`<select onchange="window._spBranch=this.value;renderStockPlanning()" style="${selSt}">${opts}</select>`;
+  }
+
+  const mdOpts='<option value="">All Models</option>'+allModels.map(m=>`<option value="${m}"${fltModel===m?' selected':''}>${m}</option>`).join('');
+  const mdSel=`<select onchange="window._spModel=this.value;window._spVariant='';renderStockPlanning()" style="${selSt}">${mdOpts}</select>`;
+
+  const vaOpts='<option value="">All Variants</option>'+allVariants.map(v=>`<option value="${v}"${fltVariant===v?' selected':''}>${v}</option>`).join('');
+  const vaSel=`<select onchange="window._spVariant=this.value;renderStockPlanning()" style="${selSt};max-width:260px">${vaOpts}</select>`;
+
+  // ── Sticky-header table style ──
+  const TH_S=`padding:8px 10px;font-size:10px;font-weight:700;text-align:center;background:var(--bg-alt);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;outline:1px solid var(--border);position:sticky;top:0;z-index:3;`;
+  const THL_S=TH_S+'text-align:left;';
+
+  el.innerHTML=`
+  <div class="ap" style="padding-bottom:30px">
+    <!-- Title + controls -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+      <h2 style="margin:0">📦 Stock Planning</h2>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        ${branchSel}
+        ${mdSel}
+        ${vaSel}
+        <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Avg Period:</span>
+        <div style="display:flex;gap:3px">${pBtns}</div>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px;text-align:center;flex:1">
+        <div style="font-size:24px;font-weight:800;color:var(--text)">${totalStock.toLocaleString('en-IN')}</div>
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Total Stock</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px;text-align:center;flex:1">
+        <div style="font-size:24px;font-weight:800;color:#22c55e">${totalFree.toLocaleString('en-IN')}</div>
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Free Stock</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px;text-align:center;flex:1">
+        <div style="font-size:24px;font-weight:800;color:#ef4444">${totalVNA.toLocaleString('en-IN')}</div>
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Total VNA</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:130px;text-align:center;flex:1">
+        <div style="font-size:24px;font-weight:800;color:#3b82f6">${fmt(avgMo)}</div>
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Avg Retail/Mo (${period}M)</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;min-width:100px;text-align:center;flex:1">
+        <div style="font-size:24px;font-weight:800;color:#f59e0b">${totalSales.toLocaleString('en-IN')}</div>
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px">Sales in ${period}M</div>
+      </div>
+    </div>
+
+    <!-- Sticky-header scrollable table -->
+    <div style="overflow:auto;max-height:calc(100vh - 310px);border:1px solid var(--border);border-radius:8px">
+      <table style="border-collapse:collapse;width:100%;font-size:12px;min-width:900px">
+        <thead>
+          <tr>
+            <th style="${THL_S}">Variant</th>
+            <th style="${TH_S}">Colour</th>
+            <th style="${TH_S}" title="Free — ready for delivery">Free</th>
+            <th style="${TH_S}" title="Allotted to customers">Allot</th>
+            <th style="${TH_S}" title="Demo vehicles">Demo</th>
+            <th style="${TH_S}" title="Ageing stock">Age</th>
+            <th style="${TH_S}" title="FPR, Inyard, and any other status not classified as Free / Allotted / Demo / Ageing">FPR/Others</th>
+            <th style="${TH_S}" title="Total stock across all stages">Total</th>
+            <th style="${TH_S}" title="VNA — Booked but no stock">VNA</th>
+            <th style="${TH_S}" title="Retail count in selected period">Sales (${period}M)</th>
+            <th style="${TH_S}" title="Average monthly retail">Avg/Mo</th>
+            <th style="${TH_S}" title="(Total Stock − VNA) ÷ Avg Monthly Sales — VNA orders are committed demand that must be received from Skoda, reducing effective available stock">Coverage</th>
+            <th style="${TH_S}" title="Units to order from Skoda = VNA + (2-month retail target) − Total Stock">Plan Qty</th>
+            <th style="${TH_S}">Status</th>
+          </tr>
+        </thead>
+        <tbody>${tHTML}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text-dim)">
+      Click a <strong>Model</strong> row to expand variants &nbsp;·&nbsp; Click a <strong>Variant</strong> row to drill into colours &nbsp;·&nbsp;
+      <strong>Coverage</strong> = (Total Stock − VNA) ÷ Avg Monthly Sales &nbsp;·&nbsp;
+      <strong>Plan Qty</strong> = VNA + 2-month retail target − Total Stock (units to order from Skoda) &nbsp;·&nbsp;
+      <strong>Sales (nM)</strong> = previous n complete months, current month excluded &nbsp;·&nbsp;
+      <strong>FPR/Others</strong> = FPR, Inyard &amp; any unclassified status &nbsp;·&nbsp;
+      🔴&lt;1mo &nbsp;🟡 1–2mo &nbsp;🟢 2–3mo &nbsp;✓&gt;3mo
+    </div>
+  </div>`;
 }
 
 /* ── Stock Tab (tab 0) — fixed column order ── */
