@@ -7474,7 +7474,9 @@ function renderReports(){
     const id=`rpt${++_rid}`;
     const hasTabs=!!bHtml;
     const btnStyle=`padding:4px 14px;font-size:11px;font-family:var(--font-d);font-weight:700;border-radius:14px;cursor:pointer;letter-spacing:.04em;transition:all .15s;`;
-    const expBtn=`<button onclick="exportRptTable('${id}','${title.replace(/'/g,"\\'")}')" title="Export to Excel" style="${btnStyle}background:none;color:#4caf6e;border:1px solid #4caf6e;display:flex;align-items:center;gap:4px;padding:4px 10px;">
+    // Strip HTML tags for use in onclick/attribute contexts; keep full HTML for display
+    const plainTitle=title.replace(/<[^>]*>/g,'').trim();
+    const expBtn=`<button onclick="exportRptTable('${id}','${plainTitle.replace(/'/g,"\\'")}')" title="Export to Excel" style="${btnStyle}background:none;color:#4caf6e;border:1px solid #4caf6e;display:flex;align-items:center;gap:4px;padding:4px 10px;">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Excel</button>`;
     return`<div class="as" style="margin-bottom:16px;">
@@ -7571,8 +7573,29 @@ function renderReports(){
   };
   const allotFilterL3=(r,h)=>allotFilter(r,h)&&(!l3F||l3F(r,h));
 
+  // ══ Month picker — persists across re-renders ═════
+  const _now0=new Date();
+  if(window._repY===undefined||window._repY===null)window._repY=_now0.getFullYear();
+  if(window._repM===undefined||window._repM===null)window._repM=_now0.getMonth();
+  const _RY=window._repY, _RM=window._repM; // selected year & month (0-indexed)
+  const _MFULL=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  // Navigation helpers (called from onclick, re-render reports)
+  window._repPrevMon=()=>{let m=window._repM-1,y=window._repY;if(m<0){m=11;y--;}window._repM=m;window._repY=y;renderReports();};
+  window._repNextMon=()=>{let m=window._repM+1,y=window._repY;if(m>11){m=0;y++;}window._repM=m;window._repY=y;renderReports();};
+  window._repCurMon =()=>{const n=new Date();window._repM=n.getMonth();window._repY=n.getFullYear();renderReports();};
+  const _isCurrentMon=_RY===_now0.getFullYear()&&_RM===_now0.getMonth();
+  const _mpBtnS=(active)=>`padding:5px 14px;font-size:12px;font-family:var(--font-d);font-weight:700;border-radius:16px;border:1px solid ${active?'var(--accent)':'var(--border)'};cursor:pointer;background:${active?'var(--accent)':'var(--bg-surface)'};color:${active?'#fff':'var(--text)'};`;
+  const monthPickerBar=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;">
+    <span style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;">Report Month</span>
+    <button onclick="window._repPrevMon()" title="Previous month" style="${_mpBtnS(false)}padding:5px 11px;">◀</button>
+    <span style="font-size:14px;font-weight:700;color:var(--text-primary);min-width:130px;text-align:center;">${_MFULL[_RM]} ${_RY}</span>
+    <button onclick="window._repNextMon()" title="Next month" style="${_mpBtnS(false)}padding:5px 11px;">▶</button>
+    ${_isCurrentMon?'':` <button onclick="window._repCurMon()" style="${_mpBtnS(false)}color:var(--accent);border-color:var(--accent);">↩ Current Month</button>`}
+    <span style="font-size:11px;color:var(--text-dim);margin-left:4px;">All month-based reports (BKG, RET, WS, Corporate, Exchange) filter to this month.</span>
+  </div>`;
+
   // ══ Build reports HTML ════════════════════════════
-  let html='';
+  let html=monthPickerBar;
 
   // ── REPORT 1: Stock Summary — Admin / L1 only ──
   if(isAdmin||isL1){
@@ -7583,7 +7606,7 @@ function renderReports(){
     const wsI=(()=>{for(const k of['WS Date','WS DATE','W/S Date','Wholesale Date','WS Dt','WSDt','WS_Date','Billed Date']){const i=fc(sH,k);if(i>=0)return i;}return-1;})();
     const stI_s=(()=>{for(const k of['STATUS','Status','Stock Status']){const i=fc(sH,k);if(i>=0)return i;}return-1;})();
     const brI_s=fc(sH,'Branch Name')>=0?fc(sH,'Branch Name'):fc(sH,'Branch');
-    const now_s=new Date(),curY_s=now_s.getFullYear(),curM_s=now_s.getMonth();
+    const curY_s=_RY,curM_s=_RM; // use selected report month
     const parseWS=v=>{
       if(!v)return null;
       const s=String(v).trim();
@@ -7933,7 +7956,7 @@ function renderReports(){
     // ── Direct Zoho-name count (exact match — no fuzzy) ──
     // Per user flow: for each SC, get their Zoho Name from Users sheet, count exact matches
     // in Leads (Lead Owner) and QL Sheet (Qualified Leads Owner).
-    const _now=new Date(),_curY=_now.getFullYear(),_curM=_now.getMonth();
+    const _curY=_RY,_curM=_RM; // use selected report month
     // Robust date parser: GSheets serial | DD/MM/YYYY (Indian) | ISO | US
     const _MN=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
     const _parseSD=v=>{
@@ -8087,7 +8110,7 @@ function renderReports(){
     // Direct count maps are already built above (leadsCount, qlAllCount, tdCount, rpoBookingBySC)
     // No fuzzy assignment needed — counts come straight from Zoho name exact match
 
-    // Retail from Allotment (Invoiced / Retail status)
+    // Retail from Allotment (Invoiced / Retail status) — both NC Allotment (SD[7]) and AG/DM (SD[8])
     const retailMap={};
     allotData.slice(aHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
@@ -8098,6 +8121,8 @@ function renderReports(){
         if(sc)retailMap[sc]=(retailMap[sc]||0)+1;
       }
     });
+    // Note: AG/DM invoiced rows are added to retailMap inside the ageingMap/demoMap loop below
+    // (after gHi is defined — cannot reference it here without a forward-reference error)
 
     // New Car Coverage = allotment rows for that SC, excluding CF S-No prefix and ageing/demo types
     const newCarMap={};
@@ -8111,8 +8136,14 @@ function renderReports(){
     });
 
     // Ageing & Demo Coverage from AG/DM Allotment, excluding CF S-No prefix
+    // Also adds AG/DM invoiced rows to retailMap (Retail Target vs Actual)
     const ageingMap={};const demoMap={};
     const gHi=hdr(agdmData).hi;
+    const stI_gAg=(()=>{for(const k of['Allotment Status','AllotmentStatus','Invoice Status','Status']){const i=fc(gH,k);if(i>=0)return i;}return 24;})();
+    // Invoice Done Date in AG/DM sheet — non-empty = definitively invoiced
+    const ivdI_gAg=(()=>{for(const k of['Invoice Done Date','Invoice Date','Invoiced Date','InvoiceDate']){const i=fc(gH,k);if(i>=0)return i;}return-1;})();
+    // Ret_Master flag — MRM writes "Yes" here after moving record; most reliable invoiced indicator
+    const retMI_gAg=(()=>{for(const k of['Ret_Master','Ret Master','RetMaster','Ret_master','ret master']){const i=fc(gH,k);if(i>=0)return i;}return-1;})();
     agdmData.slice(gHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
       const sno_g=String(r[1]||'').trim();if(sno_g.toUpperCase().startsWith('CF'))return;
@@ -8121,6 +8152,14 @@ function renderReports(){
       const bt=btI_g>=0?String(r[btI_g]||'').trim().toLowerCase():'';
       if(bt.includes('ageing')||bt.includes('aging'))ageingMap[sc]=(ageingMap[sc]||0)+1;
       else if(bt.includes('demo'))demoMap[sc]=(demoMap[sc]||0)+1;
+      // Count invoiced AG/DM rows in retail total:
+      // Primary: Ret_Master='Yes' (set by MRM — most reliable indicator)
+      // Fallback: status/invoice-date patterns
+      const retM=retMI_gAg>=0?String(r[retMI_gAg]||'').trim().toLowerCase():'';
+      const st=String(r[stI_gAg]||'').trim().toLowerCase();
+      const ivDone=ivdI_gAg>=0?String(r[ivdI_gAg]||'').trim():'';
+      if(retM==='yes'||st.includes('retail')||st.includes('invoic')||st.includes('mrm')||st.includes('deliver')||ivDone)
+        retailMap[sc]=(retailMap[sc]||0)+1;
     });
 
     const pct=(a,b)=>b?Math.round((a/b)*100):'';
@@ -8239,8 +8278,8 @@ function renderReports(){
     if(LD.length<2&&QLD.length<2&&TDD.length<2&&AD.length<2)
       return`<div style="padding:18px;text-align:center;color:var(--text-dim);font-size:13px;">Data not loaded yet. <button onclick="renderReports()" style="margin-left:8px;padding:4px 12px;background:var(--accent);color:var(--bg-deep);border:none;border-radius:6px;font-weight:700;cursor:pointer;font-size:12px;">Refresh</button></div>`;
 
-    // ── Current month / year ─────────────────────────
-    const _now=new Date(),_cY=_now.getFullYear(),_cM=_now.getMonth();
+    // ── Selected report month / year ─────────────────
+    const _cY=_RY,_cM=_RM; // use selected report month
 
     // ── Universal header detector ────────────────────
     const gHI=(data)=>{
@@ -8657,6 +8696,10 @@ function renderReports(){
     const pct=(n,d)=>d>0?(n/d*100).toFixed(1)+'%':'—';
     const noDataDiv=`<div style="padding:18px;text-align:center;color:var(--text-dim);font-size:13px;">No allotment data available.</div>`;
 
+    // Shared date parser for penetration reports
+    const _pPD=v=>{if(!v)return null;const s=String(v).trim();const n=parseFloat(s);if(!isNaN(n)&&n>40000&&n<60000)return new Date(Math.round((n-25569)*86400*1000));const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(m)return new Date(+m[3],+m[2]-1,+m[1]);const m2=s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,})[-\s](\d{4})$/);if(m2){const mn=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];const mi=mn.indexOf(m2[2].toLowerCase().slice(0,3));if(mi>=0)return new Date(+m2[3],mi,+m2[1]);}const d=new Date(s);return isNaN(d)?null:d;};
+    const _pInMon=(v)=>{const d=_pPD(v);return d&&d.getFullYear()===_RY&&d.getMonth()===_RM;};
+
     function buildPenetrationRpt(fieldAliases,fieldLabel){
       const sources=[{data:SD[7]||[]},{data:SD[8]||[]}];
       const brMap={}; // branch → {retail,retailYes,coverage,coverageYes}
@@ -8668,6 +8711,9 @@ function renderReports(){
         const cnI2=(()=>{for(const k of['Customer Name','Customer']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
         const stI2=(()=>{for(const k of['Allotment Status','Invoice Status','Status']){const i=fce(h,k);if(i>=0)return i;}return 24;})();
         const fldI=(()=>{for(const k of fieldAliases){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+        // Invoice Done Date column — for month-filtering the Retail (invoiced) count
+        const ivdI2=(()=>{for(const k of['Invoice Done Date','Invoice Date','Invoiced Date','InvoiceDate']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
+        let anyInvDate=false;
         body.forEach(r=>{
           if(!r.some(c=>String(c||'').trim()))return;
           if(String(r[1]||'').trim().toUpperCase().startsWith('CF'))return;
@@ -8680,10 +8726,32 @@ function renderReports(){
           const isYes=fieldVal==='yes';
           const st=String(r[stI2]||'').trim().toLowerCase();
           const isInvoiced=st.includes('invoic')||st.includes('retail');
+          // Coverage = all allotted records (no date filter)
           brMap[br].coverage++;
           if(isYes)brMap[br].coverageYes++;
-          if(isInvoiced){brMap[br].retail++;if(isYes)brMap[br].retailYes++;}
+          // Retail = invoiced records filtered to selected month (by Invoice Done Date)
+          if(isInvoiced){
+            const invDv=ivdI2>=0?r[ivdI2]:null;
+            if(invDv)anyInvDate=true;
+            const inMon=ivdI2>=0?_pInMon(invDv):false;
+            // If any rows have invoice dates, apply month filter; otherwise fall back to all invoiced rows
+            if(!invDv||inMon){brMap[br].retail++;if(isYes)brMap[br].retailYes++;}
+          }
         });
+        // If no invoice date was found in this source, re-count retail without date filter
+        if(!anyInvDate){
+          body.forEach(r=>{
+            if(!r.some(c=>String(c||'').trim()))return;
+            if(cnI2>=0&&!String(r[cnI2]||'').trim())return;
+            if(isL3&&uBranch&&brI2>=0&&String(r[brI2]||'').trim().toUpperCase()!==uBranch)return;
+            const br=brI2>=0?String(r[brI2]||'').trim():'Unknown';if(!br)return;
+            const st=String(r[stI2]||'').trim().toLowerCase();
+            const isInvoiced=st.includes('invoic')||st.includes('retail');
+            const fieldVal=fldI>=0?String(r[fldI]||'').trim().toLowerCase():'';
+            const isYes=fieldVal==='yes';
+            if(isInvoiced){brMap[br].retail++;if(isYes)brMap[br].retailYes++;}
+          });
+        }
       }
       const branches=Object.keys(brMap).filter(k=>k&&k!=='Unknown'||brMap[k].coverage>0).sort((a,b)=>a.localeCompare(b));
       if(!branches.length)return{retailHtml:noDataDiv,coverageHtml:noDataDiv};
@@ -8723,13 +8791,14 @@ function renderReports(){
       return{retailHtml:makeTable('retail'),coverageHtml:makeTable('coverage')};
     }
 
+    const _monLabel=_MFULL[_RM]+' '+_RY;
     const r7num=isL3?'R7':'R7';
     const corpRpt=buildPenetrationRpt(['Corp','Corporate','CORP','CORPORATE'],'Corporate');
-    html+=rCard(r7num,'Corporate Report',corpRpt.retailHtml,'Retail Wise',corpRpt.coverageHtml,'Coverage Wise');
+    html+=rCard(r7num,`Corporate Report <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:6px;">(Retail: ${_monLabel})</span>`,corpRpt.retailHtml,'Retail Wise',corpRpt.coverageHtml,'Coverage Wise');
 
     const r8num=isL3?'R8':'R8';
     const exchRpt=buildPenetrationRpt(['Exchange','EXCHANGE','Exch','EXCH','Exchange Value','EXCHANGE VALUE'],'Exchange');
-    html+=rCard(r8num,'Exchange Report',exchRpt.retailHtml,'Retail Wise',exchRpt.coverageHtml,'Coverage Wise');
+    html+=rCard(r8num,`Exchange Report <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:6px;">(Retail: ${_monLabel})</span>`,exchRpt.retailHtml,'Retail Wise',exchRpt.coverageHtml,'Coverage Wise');
   })();
 
   el.innerHTML=html;
@@ -8844,8 +8913,9 @@ function buildETBR_Branch(){
     const fb_t=countByBranch(SD12,['Branch Name','Branch','TD Branch']);
     branches.forEach(br=>{enqByBr[br]=(fb_e[br]||0);qlByBr[br]=fb_q[br]||0;tdByBr[br]=fb_t[br]||0;});
   }
-  // Current-month QL by branch (for TvA booking actual)
-  const _nowB=new Date(),_curYB=_nowB.getFullYear(),_curMB=_nowB.getMonth();
+  // Selected report month (for BKG / TvA booking actual)
+  const _curYB=(window._repY!==undefined&&window._repY!==null)?window._repY:new Date().getFullYear();
+  const _curMB=(window._repM!==undefined&&window._repM!==null)?window._repM:new Date().getMonth();
   // Robust date parser: handles GSheets serial, DD/MM/YYYY (Indian), ISO, US formats
   const _parseB=v=>{
     if(!v)return null;
@@ -8900,6 +8970,12 @@ function buildETBR_Branch(){
   // Dynamically find S-No column for agdm
   const snoI_g=(()=>{for(const k of['S No','SNo','Sl No','SL No','Serial No','S.No','SNO','SL NO']){const i=fcL(gH,k);if(i>=0)return i;}return 1;})();
   const agByBr={},dmByBr={};
+  // Status column — fallback to col 24 (physical position matches both allotment sheets)
+  const stI_gB=(()=>{for(const k of['Allotment Status','AllotmentStatus','Invoice Status','Status']){const i=fcL(gH,k);if(i>=0)return i;}return 24;})();
+  // Invoice Done Date — non-empty = definitively invoiced
+  const ivdI_gB=(()=>{for(const k of['Invoice Done Date','Invoice Date','Invoiced Date','InvoiceDate']){const i=fcL(gH,k);if(i>=0)return i;}return-1;})();
+  // Ret_Master flag — MRM writes "Yes" here after moving record; most reliable invoiced indicator
+  const retMI_gB=(()=>{for(const k of['Ret_Master','Ret Master','RetMaster','Ret_master','ret master']){const i=fcL(gH,k);if(i>=0)return i;}return-1;})();
   agdmData.slice(gHi+1).forEach(r=>{
     if(!r.some(c=>String(c||'').trim()))return;
     const sno_g=String(r[snoI_g]||'').trim();if(sno_g.toUpperCase().startsWith('CF'))return;
@@ -8907,6 +8983,14 @@ function buildETBR_Branch(){
     const bt=btI_g>=0?String(r[btI_g]||'').trim().toLowerCase():'';
     if(bt.includes('ageing')||bt.includes('aging'))agByBr[br]=(agByBr[br]||0)+1;
     else if(bt.includes('demo'))dmByBr[br]=(dmByBr[br]||0)+1;
+    // Count AG/DM invoiced rows in branch Retail:
+    // Primary: Ret_Master='Yes' (MRM sets this after moving to Retail_Master — most reliable)
+    // Fallback: status/invoice-date patterns
+    const retM=retMI_gB>=0?String(r[retMI_gB]||'').trim().toLowerCase():'';
+    const st=String(r[stI_gB]||'').trim().toLowerCase();
+    const ivDone=ivdI_gB>=0?String(r[ivdI_gB]||'').trim():'';
+    if(retM==='yes'||st.includes('retail')||st.includes('invoic')||st.includes('mrm')||st.includes('deliver')||ivDone)
+      retailByBr[br]=(retailByBr[br]||0)+1;
   });
   const pct=(a,b)=>b?Math.round((a/b)*100):'';
   const G=(m,k)=>m[k]||0;
