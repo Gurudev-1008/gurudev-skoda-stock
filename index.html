@@ -747,6 +747,18 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
           <p style="font-size:11px;color:var(--text-dim);margin-top:10px;line-height:1.6;">⚠ Auto mode requires a GAS hourly trigger. Run <code style="background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;">setupMgmtTrigger()</code> once from the Apps Script editor to install it.</p>
         </div>
 
+        <!-- Report Month Selector -->
+        <div id="mgmtMonthRow" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📅 Report Month</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button onclick="_mgmtMonStep(-1)" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-primary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">◀</button>
+            <span id="mgmtMonLabel" style="font-size:14px;font-weight:700;color:var(--accent);font-family:var(--font-d);min-width:130px;text-align:center;">—</span>
+            <button onclick="_mgmtMonStep(1)" id="mgmtMonNextBtn" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-primary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">▶</button>
+            <button onclick="_mgmtMonReset()" id="mgmtMonResetBtn" style="display:none;font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-muted);cursor:pointer;">↩ Current Month</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Report data will be filtered to the selected month. Default is last month (for month-closing reports).</div>
+        </div>
+
         <!-- Save + Send Now buttons -->
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <button class="abtn" onclick="saveMgmtReportConfig()">💾 Save Configuration</button>
@@ -2462,6 +2474,42 @@ let _mgmtConfig = {
 };
 const MGMT_WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
+// Management report month selection (default = last month for month-closing)
+let _mgmtRepM = null, _mgmtRepY = null; // null = not yet initialized
+
+const _MGMT_MNAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function _mgmtMonRefresh(){
+  // Default to last month on first call
+  if(_mgmtRepM===null||_mgmtRepY===null){
+    const d=new Date(); let m=d.getMonth()-1, y=d.getFullYear();
+    if(m<0){m=11;y--;}
+    _mgmtRepM=m; _mgmtRepY=y;
+  }
+  const lbl=document.getElementById('mgmtMonLabel');
+  if(lbl)lbl.textContent=_MGMT_MNAMES[_mgmtRepM]+' '+_mgmtRepY;
+  const now=new Date();
+  const isCurrent=_mgmtRepM===now.getMonth()&&_mgmtRepY===now.getFullYear();
+  // Block navigation to future months (current month is allowed as upper bound)
+  const isFuture=_mgmtRepY>now.getFullYear()||(_mgmtRepY===now.getFullYear()&&_mgmtRepM>=now.getMonth());
+  const nextBtn=document.getElementById('mgmtMonNextBtn');
+  const resetBtn=document.getElementById('mgmtMonResetBtn');
+  if(nextBtn)nextBtn.disabled=isFuture;
+  if(resetBtn)resetBtn.style.display=isCurrent?'none':'inline-block';
+}
+window._mgmtMonStep=function(delta){
+  _mgmtMonRefresh(); // ensure initialized
+  let m=_mgmtRepM+delta, y=_mgmtRepY;
+  if(m<0){m=11;y--;}else if(m>11){m=0;y++;}
+  const now=new Date();
+  // Don't go past current month
+  if(y>now.getFullYear()||(y===now.getFullYear()&&m>now.getMonth()))return;
+  _mgmtRepM=m; _mgmtRepY=y; _mgmtMonRefresh();
+};
+window._mgmtMonReset=function(){
+  const now=new Date(); _mgmtRepM=now.getMonth(); _mgmtRepY=now.getFullYear(); _mgmtMonRefresh();
+};
+
 function _syncMgmtTimeBadge(){
   const inp=document.getElementById('mgmtScheduleTime');
   const disp=document.getElementById('mgmtTimeDisplay');
@@ -2469,13 +2517,17 @@ function _syncMgmtTimeBadge(){
   disp.textContent=_fmt12h(inp.value||'09:00');
 }
 
-// Show/hide Auto config block and Send Now button based on mode radio
+// Show/hide Auto config block, Send Now button, and month picker based on mode radio
 window.onMgmtModeChange=function(){
   const isAuto=document.getElementById('mgmtModeAuto')?.checked;
   const autoDiv=document.getElementById('mgmtAutoConfig');
   const sendBtn=document.getElementById('mgmtSendNowBtn');
+  const monRow=document.getElementById('mgmtMonthRow');
   if(autoDiv)autoDiv.style.display=isAuto?'block':'none';
   if(sendBtn)sendBtn.style.display=isAuto?'none':'inline-flex';
+  // Month picker only relevant for manual sends
+  if(monRow)monRow.style.display=isAuto?'none':'block';
+  if(!isAuto)_mgmtMonRefresh();
 };
 
 // Select All / None for report checkboxes
@@ -2614,17 +2666,20 @@ window.sendMgmtReportNow=async function(){
   const btn=document.getElementById('mgmtSendNowBtn');
   const result=document.getElementById('mgmtSendResult');
   const msg=document.getElementById('mgmtSaveMsg');
-  if(!confirm('Send Management Report now to the configured recipients?'))return;
+  // Ensure month picker is initialized
+  _mgmtMonRefresh();
+  const monLabel=_MGMT_MNAMES[_mgmtRepM]+' '+_mgmtRepY;
+  if(!confirm(`Send Management Report for ${monLabel} to the configured recipients?`))return;
   if(btn){btn.disabled=true;btn.textContent='⏳ Sending…';}
   if(result)result.style.display='none';
-  if(msg){msg.style.color='var(--accent)';msg.textContent='Sending… (building all branch reports, please wait)';}
+  if(msg){msg.style.color='var(--accent)';msg.textContent=`Sending ${monLabel} report… (building all branch reports, please wait)`;}
 
   // Animate the status message so the user knows it's still working
   let _dotCount=0;
   const _dotTimer=setInterval(()=>{
     _dotCount=(_dotCount+1)%4;
     const dots='.'.repeat(_dotCount);
-    if(msg&&btn&&btn.disabled)msg.textContent='Sending'+dots+' (building all branch reports, please wait)';
+    if(msg&&btn&&btn.disabled)msg.textContent=`Sending${dots} (building ${monLabel} report, please wait)`;
   },800);
 
   const cb=`__mgr_${Date.now()}`;
@@ -2633,7 +2688,7 @@ window.sendMgmtReportNow=async function(){
       const t=setTimeout(()=>{delete window[cb];resolve({success:false,error:'Timeout — report may still be sending. Check inbox in a minute.'});},300000);
       window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
       const s=document.createElement('script');
-      s.src=`${API}?action=sendMgmtReport&callback=${encodeURIComponent(cb)}`;
+      s.src=`${API}?action=sendMgmtReport&month=${_mgmtRepM}&year=${_mgmtRepY}&callback=${encodeURIComponent(cb)}`;
       s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();resolve({success:false,error:'Network error'});};
       s.onload=()=>s.remove();
       document.head.appendChild(s);
@@ -2646,9 +2701,9 @@ window.sendMgmtReportNow=async function(){
         const sent=(res.sent||[]).map(e=>`<span style="color:#4ade80;">✓ ${e}</span>`).join(', ');
         const failed=(res.failed||[]).length?`<br><span style="color:#f87171;font-size:11px;">Failed: ${res.failed.join(', ')}</span>`:'';
         result.innerHTML=`<strong style="color:#4ade80;">📧 Management Report Sent</strong><br>
-          <span style="color:var(--text-muted);font-size:12px;">Branches covered: ${branches}</span><br><br>
+          <span style="color:var(--text-muted);font-size:12px;">${monLabel} — Branches covered: ${branches}</span><br><br>
           ${sent}${failed}`;
-        if(msg){msg.style.color='#4ade80';msg.textContent='✓ Report sent';}
+        if(msg){msg.style.color='#4ade80';msg.textContent=`✓ ${monLabel} report sent`;}
       }else{
         result.innerHTML=`<strong style="color:#f87171;">⚠ Send Failed</strong><br>
           <span style="color:var(--text-dim);font-size:12px;">${res.error||'Unknown error'}</span>`;
