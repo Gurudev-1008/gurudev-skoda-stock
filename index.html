@@ -6448,6 +6448,27 @@ function renderStockPlanning(){
     });
   }
 
+  // ── VNA diagnostic (console only) ──
+  (function(){
+    const vKeys=Object.keys(vnaMap);
+    if(!vKeys.length){console.warn('[SP VNA] vnaMap is EMPTY — no VNA rows resolved via vaToMC');return;}
+    console.log('[SP VNA] vnaMap has',vKeys.length,'key(s), total=',Object.values(vnaMap).reduce((a,n)=>a+n,0));
+    console.log('[SP VNA] vnaMap keys (first 8):',vKeys.slice(0,8));
+    // Sample aggFor query keys from specRows
+    const sampleQ=[];
+    Object.keys(varMC).slice(0,6).forEach(k=>{
+      const mc=varMC[k];
+      const [model,va]=k.split('|||');
+      const colours=hierarchy[model]&&hierarchy[model][va]?hierarchy[model][va]:[''];
+      colours.slice(0,2).forEach(cl=>sampleQ.push(mcClKey(mc,cl)));
+    });
+    console.log('[SP VNA] sample aggFor query keys (first 12):',sampleQ.slice(0,12));
+    // Intersection check
+    const vSet=new Set(vKeys);
+    const hits=sampleQ.filter(k=>vSet.has(k));
+    console.log('[SP VNA] matching keys:',hits.length,'of',sampleQ.length,'sample queries');
+  })();
+
   // ── Sales from Retail_Master (SD[14]) ──
   // Period = previous N complete months (current month excluded)
   const period=window._spPeriod||3;
