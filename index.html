@@ -664,6 +664,17 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
           </div>
           <div id="sendBranchGrid" style="display:flex;flex-wrap:wrap;gap:8px 18px;"></div>
         </div>
+        <!-- Branch report month picker -->
+        <div id="brMonthRow" style="margin-top:14px;padding:12px 16px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-size:12px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">📅 Report Month</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <button onclick="_brMonStep(-1)" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-primary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">◀</button>
+            <span id="brMonLabel" style="font-size:14px;font-weight:700;color:var(--accent);font-family:var(--font-d);min-width:130px;text-align:center;">—</span>
+            <button onclick="_brMonStep(1)" id="brMonNextBtn" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-primary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">▶</button>
+            <button onclick="_brMonReset()" id="brMonResetBtn" style="display:none;font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-muted);cursor:pointer;">↩ Last Month</button>
+          </div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Report data will be filtered to the selected month. Default is last month (for month-closing reports).</div>
+        </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:14px;">
           <button class="abtn" onclick="sendDailyReportNow()"
             style="background:rgba(57,255,110,.12);border-color:rgba(57,255,110,.4);color:#39ff6e;"
@@ -2355,6 +2366,44 @@ document.addEventListener('scroll',function(){
 },true);
 // ── End picker helpers ────────────────────────────────────────────────────────
 
+// ── Branch report month picker ────────────────────────────────────────────────
+let _brRepM = null, _brRepY = null;
+const _BR_MNAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function _brMonRefresh(){
+  if(_brRepM===null||_brRepY===null){
+    const d=new Date(); let m=d.getMonth()-1, y=d.getFullYear();
+    if(m<0){m=11;y--;}
+    _brRepM=m; _brRepY=y;
+  }
+  const lbl=document.getElementById('brMonLabel');
+  if(lbl)lbl.textContent=_BR_MNAMES[_brRepM]+' '+_brRepY;
+  const now=new Date();
+  let defM=now.getMonth()-1, defY=now.getFullYear();
+  if(defM<0){defM=11;defY--;}
+  const isDefault=_brRepM===defM&&_brRepY===defY;
+  const isFuture=_brRepY>now.getFullYear()||(_brRepY===now.getFullYear()&&_brRepM>=now.getMonth());
+  const nextBtn=document.getElementById('brMonNextBtn');
+  const resetBtn=document.getElementById('brMonResetBtn');
+  if(nextBtn)nextBtn.disabled=isFuture;
+  if(resetBtn)resetBtn.style.display=isDefault?'none':'inline-block';
+}
+window._brMonStep=function(delta){
+  _brMonRefresh();
+  let m=_brRepM+delta, y=_brRepY;
+  if(m<0){m=11;y--;}else if(m>11){m=0;y++;}
+  const now=new Date();
+  if(y>now.getFullYear()||(y===now.getFullYear()&&m>now.getMonth()))return;
+  _brRepM=m; _brRepY=y; _brMonRefresh();
+};
+window._brMonReset=function(){
+  const d=new Date(); let m=d.getMonth()-1, y=d.getFullYear();
+  if(m<0){m=11;y--;}
+  _brRepM=m; _brRepY=y; _brMonRefresh();
+};
+// Initialise picker on load
+(function(){ try{ _brMonRefresh(); }catch(e){} })();
+
 // ── Branch selector for Send Report Now ──────────────────────────────────────
 function renderSendBranchGrid(){
   const grid=document.getElementById('sendBranchGrid');
@@ -2397,6 +2446,10 @@ window.sendDailyReportNow=async function(){
   const result=document.getElementById('sendRptResult');
   const msg=document.getElementById('sendNowMsg');
 
+  // Ensure month picker is initialized
+  _brMonRefresh();
+  const monLabel=_BR_MNAMES[_brRepM]+' '+_brRepY;
+
   // Determine which branches to send
   const allBranches=_getAppBranches();
   // null = uninitialized = all; [] = user explicitly chose None
@@ -2408,11 +2461,11 @@ window.sendDailyReportNow=async function(){
   }
 
   const brLabel=selBranches.length===allBranches.length?'all branches':`${selBranches.length} branch${selBranches.length>1?'es':''}`;
-  if(!confirm(`Send daily report now for ${brLabel}?\n\n${selBranches.join(', ')}`))return;
+  if(!confirm(`Send ${monLabel} report for ${brLabel}?\n\n${selBranches.join(', ')}`))return;
 
   if(btn){btn.disabled=true;btn.textContent='⏳ Sending…';}
   if(result){result.style.display='none';}
-  if(msg){msg.style.color='var(--accent)';msg.textContent='Sending…';}
+  if(msg){msg.style.color='var(--accent)';msg.textContent=`Sending ${monLabel} report…`;}
 
   const cb=`__sbr_${Date.now()}`;
   try{
@@ -2420,7 +2473,7 @@ window.sendDailyReportNow=async function(){
       const t=setTimeout(()=>{delete window[cb];resolve({success:false,error:'Timeout — reports may still be sending. Check inboxes in a minute.'});},90000);
       window[cb]=d=>{clearTimeout(t);delete window[cb];resolve(d);};
       const s=document.createElement('script');
-      s.src=`${API}?action=sendBranchReports&branches=${encodeURIComponent(JSON.stringify(selBranches))}&callback=${encodeURIComponent(cb)}`;
+      s.src=`${API}?action=sendBranchReports&branches=${encodeURIComponent(JSON.stringify(selBranches))}&month=${_brRepM}&year=${_brRepY}&callback=${encodeURIComponent(cb)}`;
       s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();resolve({success:false,error:'Network error'});};
       s.onload=()=>s.remove();
       document.head.appendChild(s);
@@ -2431,7 +2484,7 @@ window.sendDailyReportNow=async function(){
       if(res.success){
         // res.results = [{branch, sent:[name<email>,...], failed:[...], cc:[...], skipped:bool}]
         const rows=(res.results||[]);
-        let html=`<strong style="color:#4ade80;">📧 Reports dispatched</strong><br><br>`;
+        let html=`<strong style="color:#4ade80;">📧 Reports dispatched</strong> <span style="color:var(--text-muted);font-size:12px;">(${monLabel})</span><br><br>`;
         if(rows.length){
           rows.forEach(r=>{
             const sentStr=(r.sent&&r.sent.length)?r.sent.map(n=>`<span style="color:#4ade80;">✓ ${n}</span>`).join(', '):(r.skipped?'':`<span style="color:var(--text-dim);">—</span>`);
@@ -2447,7 +2500,7 @@ window.sendDailyReportNow=async function(){
           html+=`<span style="color:var(--text-dim);">No branch data returned.</span>`;
         }
         result.innerHTML=html;
-        if(msg){msg.style.color='#4ade80';msg.textContent='✓ Reports sent';}
+        if(msg){msg.style.color='#4ade80';msg.textContent=`✓ ${monLabel} reports sent`;}
       }else{
         result.innerHTML=`<strong style="color:#f87171;">⚠ Send failed</strong><br>
           <span style="color:var(--text-dim);font-size:12px;">${res.error||'Unknown error'}</span>`;
