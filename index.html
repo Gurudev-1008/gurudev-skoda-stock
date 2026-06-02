@@ -754,7 +754,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
             <button onclick="_mgmtMonStep(-1)" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-primary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">◀</button>
             <span id="mgmtMonLabel" style="font-size:14px;font-weight:700;color:var(--accent);font-family:var(--font-d);min-width:130px;text-align:center;">—</span>
             <button onclick="_mgmtMonStep(1)" id="mgmtMonNextBtn" style="width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-primary);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">▶</button>
-            <button onclick="_mgmtMonReset()" id="mgmtMonResetBtn" style="display:none;font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-muted);cursor:pointer;">↩ Current Month</button>
+            <button onclick="_mgmtMonReset()" id="mgmtMonResetBtn" style="display:none;font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid var(--border);background:var(--bg-deep);color:var(--text-muted);cursor:pointer;">↩ Last Month</button>
           </div>
           <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">Report data will be filtered to the selected month. Default is last month (for month-closing reports).</div>
         </div>
@@ -2489,13 +2489,17 @@ function _mgmtMonRefresh(){
   const lbl=document.getElementById('mgmtMonLabel');
   if(lbl)lbl.textContent=_MGMT_MNAMES[_mgmtRepM]+' '+_mgmtRepY;
   const now=new Date();
-  const isCurrent=_mgmtRepM===now.getMonth()&&_mgmtRepY===now.getFullYear();
-  // Block navigation to future months (current month is allowed as upper bound)
+  // Compute "last month" — the default/baseline for month-closing reports
+  let defM=now.getMonth()-1, defY=now.getFullYear();
+  if(defM<0){defM=11;defY--;}
+  const isDefault=_mgmtRepM===defM&&_mgmtRepY===defY;
+  // Block Next when already at current month
   const isFuture=_mgmtRepY>now.getFullYear()||(_mgmtRepY===now.getFullYear()&&_mgmtRepM>=now.getMonth());
   const nextBtn=document.getElementById('mgmtMonNextBtn');
   const resetBtn=document.getElementById('mgmtMonResetBtn');
   if(nextBtn)nextBtn.disabled=isFuture;
-  if(resetBtn)resetBtn.style.display=isCurrent?'none':'inline-block';
+  // Hide Reset when already on default (last month); show when user has navigated away
+  if(resetBtn)resetBtn.style.display=isDefault?'none':'inline-block';
 }
 window._mgmtMonStep=function(delta){
   _mgmtMonRefresh(); // ensure initialized
@@ -2507,7 +2511,10 @@ window._mgmtMonStep=function(delta){
   _mgmtRepM=m; _mgmtRepY=y; _mgmtMonRefresh();
 };
 window._mgmtMonReset=function(){
-  const now=new Date(); _mgmtRepM=now.getMonth(); _mgmtRepY=now.getFullYear(); _mgmtMonRefresh();
+  // Reset to last month (the default for month-closing reports), not current month
+  const d=new Date(); let m=d.getMonth()-1, y=d.getFullYear();
+  if(m<0){m=11;y--;}
+  _mgmtRepM=m; _mgmtRepY=y; _mgmtMonRefresh();
 };
 
 function _syncMgmtTimeBadge(){
