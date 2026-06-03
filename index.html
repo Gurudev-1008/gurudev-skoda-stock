@@ -6422,7 +6422,7 @@ function renderStockPlanning(){
 
   // ── VNA from Live RPO (SD[2]) ──
   // RPO doesn't have Model Code — resolve variant name → model code via vaToMC
-  const vnaMap={}; // mcClKey(modelCode, colour) → count
+  const vnaMap={}; // mcClKey(modelCode, colour) → count; rows with no colour stored under mcClKey(mc,'')
   if(rpoData.length>=2){
     let rHi=0;
     for(let i=0;i<Math.min(3,rpoData.length);i++){
@@ -6432,7 +6432,14 @@ function renderStockPlanning(){
     const rH=rpoData[rHi].map(x=>String(x||'').replace(/^﻿/,'').trim());
     const rStI=fc(rH,'Status');
     const rVaI=(()=>{let i=fc(rH,'Model & Variant');if(i>=0)return i;return fc(rH,'Variant');})();
-    const rClI=(()=>{for(const k of['Colour','Color','Exterior Colour']){const i=fc(rH,k);if(i>=0)return i;}return -1;})();
+    // Use direct findIndex for colour — fc() misdetects this column in Live RPO
+    const rClI=(()=>{
+      for(const k of['Color','Colour','COLOUR','COLOR','Exterior Colour']){
+        const i=rH.findIndex(x=>x===k);
+        if(i>=0)return i;
+      }
+      return rH.findIndex(x=>{const v=x.toLowerCase().trim();return v==='color'||v==='colour'||v==='exterior colour';});
+    })();
     const rBrI=(()=>{let i=fc(rH,'Branch Name');if(i>=0)return i;return fc(rH,'Branch');})();
     rpoData.slice(rHi+1).forEach(r=>{
       if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
@@ -6443,31 +6450,10 @@ function renderStockPlanning(){
       const cl=rClI>=0?String(r[rClI]||'').trim():'';
       const mc=vaToMC[nrm(va)]||'';
       if(!mc)return; // skip if can't resolve to model code
-      const key=mcClKey(mc,cl);
+      const key=mcClKey(mc,cl); // cl may be '' if Live RPO row has no colour — stored as mc||| key
       vnaMap[key]=(vnaMap[key]||0)+1;
     });
   }
-
-  // ── VNA diagnostic (console only) ──
-  (function(){
-    const vKeys=Object.keys(vnaMap);
-    if(!vKeys.length){console.warn('[SP VNA] vnaMap is EMPTY — no VNA rows resolved via vaToMC');return;}
-    console.log('[SP VNA] vnaMap has',vKeys.length,'key(s), total=',Object.values(vnaMap).reduce((a,n)=>a+n,0));
-    console.log('[SP VNA] vnaMap keys (first 8):',vKeys.slice(0,8));
-    // Sample aggFor query keys from specRows
-    const sampleQ=[];
-    Object.keys(varMC).slice(0,6).forEach(k=>{
-      const mc=varMC[k];
-      const [model,va]=k.split('|||');
-      const colours=hierarchy[model]&&hierarchy[model][va]?hierarchy[model][va]:[''];
-      colours.slice(0,2).forEach(cl=>sampleQ.push(mcClKey(mc,cl)));
-    });
-    console.log('[SP VNA] sample aggFor query keys (first 12):',sampleQ.slice(0,12));
-    // Intersection check
-    const vSet=new Set(vKeys);
-    const hits=sampleQ.filter(k=>vSet.has(k));
-    console.log('[SP VNA] matching keys:',hits.length,'of',sampleQ.length,'sample queries');
-  })();
 
   // ── Sales from Retail_Master (SD[14]) ──
   // Period = previous N complete months (current month excluded)
@@ -6540,13 +6526,22 @@ function renderStockPlanning(){
 
   // Helper: aggregate stock/vna/sales for a set of {mc, cl} pairs
   // mc = model code (primary join key)
-  const aggFor=(pairs)=>{
+  // skipNoCl=true → colour-level call: only exact colour match, no no-colour fallback
+  // skipNoCl=false (default) → variant/model-level call: add no-colour VNA once per mc
+  const aggFor=(pairs, skipNoCl=false)=>{
     const agg={...emptyStock(),vna:0,sales:0};
+    const seenMCForNoCl=new Set(); // track mc already credited for no-colour VNA rows
     pairs.forEach(({mc,cl})=>{
       if(!mc)return;
       const k=mcClKey(mc,cl);
       addStock(agg,stockMap[k]||emptyStock());
+      // Exact colour match
       agg.vna+=(vnaMap[k]||0);
+      // No-colour VNA rows (keyed as mc|||'') — add once per mc at variant/model level only
+      if(!skipNoCl && !seenMCForNoCl.has(nrm(mc))){
+        agg.vna+=(vnaMap[mcClKey(mc,'')]||0);
+        seenMCForNoCl.add(nrm(mc));
+      }
       agg.sales+=(salesMap[k]||0);
     });
     return agg;
@@ -6649,7 +6644,7 @@ function renderStockPlanning(){
 
       // Colour rows
       [...cols].sort().forEach(cl=>{
-        const cAgg=aggFor([{mc:vMC,cl}]);
+        const cAgg=aggFor([{mc:vMC,cl}], true); // colour level: exact match only, no no-colour fallback
         tHTML+=`<tr style="background:var(--bg-deep,var(--bg-surface))">
           ${TDL('<span style="margin-left:36px;width:8px;height:8px;border-radius:50%;display:inline-block;background:'+hue(cl)+';margin-right:6px;vertical-align:middle"></span><span style="font-size:11px;color:var(--text-muted)">'+(cl||'No colour')+'</span>','padding-left:44px')}
           ${TDL('&nbsp;')}
@@ -8988,13 +8983,25 @@ function buildETBR_Branch(){
   const brI_a=fcL(aH,'Branch Name')>=0?fcL(aH,'Branch Name'):fcL(aH,'Branch');
   const stI_a=(()=>{for(const k of['Allotment Status','AllotmentStatus','Status']){const i=fcL(aH,k);if(i>=0)return i;}return 24;})();
 
-  // Collect branch list from Allotment
+  // Collect branch list from Allotment + Live RPO (so branches with only bookings also appear)
   const branchSet=new Set();
   allotData.slice(aHi+1).forEach(r=>{
     if(!r.some(c=>String(c||'').trim()))return;
     const br=brI_a>=0?String(r[brI_a]||'').trim().toUpperCase():'';
     if(br)branchSet.add(br);
   });
+  // Also add branches from Live RPO (captures branches with bookings but no allotment rows yet)
+  if(rpoData&&rpoData.length>=2){
+    const {h:rH_br,hi:rHi_br}=hdrL(rpoData);
+    const rBrI_scan=(()=>{for(const k of['Branch Name','Branch','BRANCH']){const i=fcL(rH_br,k);if(i>=0)return i;}return -1;})();
+    if(rBrI_scan>=0){
+      rpoData.slice(rHi_br+1).forEach(r=>{
+        if(!r.some(c=>String(c||'').trim()))return;
+        const br=String(r[rBrI_scan]||'').trim().toUpperCase();
+        if(br)branchSet.add(br);
+      });
+    }
+  }
   // Sort branches alphabetically; CORPORATE TEAM always last
   const _sortBr=arr=>[...arr].sort((a,b)=>{const aC=a.toUpperCase().includes('CORPORATE'),bC=b.toUpperCase().includes('CORPORATE');if(aC&&!bC)return 1;if(!aC&&bC)return-1;return a.localeCompare(b);});
   const branches=_sortBr(branchSet);
