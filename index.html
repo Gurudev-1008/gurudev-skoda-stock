@@ -1018,13 +1018,14 @@ const CY=String(new Date().getFullYear());
 // Level-based tab access — tab indices each level can see
 // Tabs: 0=Stock,1=Allocation,2=LiveRPO,3=FreeStock,4=Manage,5=Ageing,6=Demo,7=Allotment,8=AG/DM Allotment,9=Reports,10=De-allotted
 const LEVEL_TABS={
-  1:  [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14], // All tabs including Manage (tab 4)
-  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,13,14],  // Stock + Allocation + all except Manage
-  2:  [2,3,5,6,7,8,9,10,11],                 // No Stock/Allocation/Manage — no Retail Finance
-  '2F':[2,3,5,6,7,8,9,10,11,12],             // Same as L2 + Retail Finance (Retail + ROI sub-tabs only, no Allotment)
-  3:  [2,3,5,6,7,8,9,10,11,14],              // Same as L2 — branch pre-filled, no Retail Finance; +Stock Planning
-  '3F':[2,3,5,6,7,8,9,10,11,12],             // Same as L3 + Retail Finance (Retail + ROI sub-tabs only), branch pre-filled
-  4:  [2,3,5,6,11]                            // Live RPO + Free Stock + VNA (SC-filtered)
+  1:  [0,1,2,3,5,6,7,8,9,10,11,12],          // All tabs except Manage, Analytics, Stock Planning (Admin only)
+  '1A':[0,1,2,3,5,6,7,8,9,10,11,12],         // Same as L1 (no Manage, Analytics, Stock Planning)
+  2:  [2,3,5,6,7,8,9,10,11],                  // No Stock/Allocation/Manage — no Retail Finance
+  '2F':[2,3,5,6,7,8,9,10,11,12],              // Same as L2 + Retail Finance (Retail + ROI sub-tabs only, no Allotment)
+  3:  [2,3,5,6,7,8,9,10,11],                  // Same as L2 — branch pre-filled, no Retail Finance, no Stock Planning
+  '3F':[2,3,5,6,7,8,9,10,11,12],              // Same as L3 + Retail Finance (Retail + ROI sub-tabs only), branch pre-filled
+  4:  [2,3,5,6,11],                            // Live RPO + Free Stock + VNA (SC-filtered)
+  5:  [0,12]                                   // Stock + Retail Finance (Retail + Payout Master + Finance Report, no Allotment view)
 };
 
 const FREE_TABS=[3,5,6]; // sub-tabs under "Free Stock" parent
@@ -1515,7 +1516,7 @@ function setupTab(){
     const rfAAB=document.getElementById('rfAllotActionBar');
     if(rfAAB&&curTab!==12){rfAAB.style.display='none';window._srmActive=false;window._srmSelected=new Set();}
     // Level 2F / 3F: hide Allotment button; show Retail, Payout Master, Finance Report
-    const _isPartialRF=curUser&&(curUser.level==='2F'||curUser.level==='3F');
+    const _isPartialRF=curUser&&(curUser.level==='2F'||curUser.level==='3F'||curUser.level===5||curUser.level==='5');
     const btnA=document.getElementById('rfBtnAllotment');
     if(btnA)btnA.style.display=_isPartialRF?'none':'';
     if(_isPartialRF){
@@ -3303,7 +3304,7 @@ function onRFViewChange(v){
   const btnR=document.getElementById('rfBtnRetail');
   const btnROI=document.getElementById('rfBtnRoi');
   const btnRpt=document.getElementById('rfBtnReport');
-  const _isPartialRF2=curUser&&(curUser.level==='2F'||curUser.level==='3F');
+  const _isPartialRF2=curUser&&(curUser.level==='2F'||curUser.level==='3F'||curUser.level===5||curUser.level==='5');
   // Set active/inactive styles — but preserve display:none for Allotment btn on 2F/3F
   if(btnA){
     btnA.style.cssText=(v==='allotment')?activeS:inactS;
@@ -3366,7 +3367,7 @@ function onRFViewChange(v){
 function clearF(r=true){
   ['fSrch','fBranch','fSC','fAllotStat','fMod','fVar','fCol','fYr','fStat','rfDateFrom','rfDateTo','daDtFrom','daDtTo','fMode','fBank','fRoiPT','fRoiGST'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   // Reset RF toggle bar — 2F/3F default to Retail, others default to Allotment
-  if(curTab===12)onRFViewChange((curUser&&(curUser.level==='2F'||curUser.level==='3F'))?'retail':'allotment');
+  if(curTab===12)onRFViewChange((curUser&&(curUser.level==='2F'||curUser.level==='3F'||curUser.level===5||curUser.level==='5'))?'retail':'allotment');
   // Re-apply L3, L3F & L4 branch pre-fill whenever filters are cleared
   if(curUser&&!curUser.isAdmin&&(curUser.level===3||curUser.level==='3F'||curUser.level===4)&&curUser.branch&&(curTab===1||curTab===2||curTab===7||curTab===8||curTab===10||curTab===12)){
     const brEl=document.getElementById('fBranch');
@@ -4758,7 +4759,7 @@ function renderDeallotted(){
 /* ── Retail Finance Tab (tab 12) — Allotment view OR Retail_Master date-range view ── */
 function renderRetailFinance(){
   // Level 2F / 3F: Retail + ROI only — redirect allotment view to retail
-  if(curUser&&(curUser.level==='2F'||curUser.level==='3F')&&getRFView()==='allotment')onRFViewChange('retail');
+  if(curUser&&(curUser.level==='2F'||curUser.level==='3F'||curUser.level===5||curUser.level==='5')&&getRFView()==='allotment')onRFViewChange('retail');
   const v=getRFView();
   if(v==='retail'){renderRetailFinanceRetail();return;}
   if(v==='roi')   {renderRetailFinanceROI();return;}
@@ -5668,7 +5669,7 @@ function renderRetailFinanceReport(){
   // Access check — Admin, L1, 1A, 2F, 3F only
   const lvl=curUser?String(curUser.level||''):'';
   const isAdmin=curUser&&curUser.isAdmin;
-  const canView=isAdmin||lvl==='1'||lvl==='1A'||lvl==='2F'||lvl==='3F';
+  const canView=isAdmin||lvl==='1'||lvl==='1A'||lvl==='2F'||lvl==='3F'||lvl===5||lvl==='5';
   if(!canView){area.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:13px;">Access restricted.</div>';return;}
   // Auto-fetch Retail_Master (SD[14]) if not yet loaded
   if(!SD[14]||SD[14].length<2){
