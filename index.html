@@ -6062,27 +6062,52 @@ window.rfRepExportXLSX=function(tableId,title){
 window.rfRepExportPDF=function(tableId,title){
   const el=document.getElementById(tableId);
   if(!el){alert('No table data found.');return;}
-  // Get the <table> — el might be the table itself or a wrapper
   const tbl=el.tagName==='TABLE'?el:el.querySelector('table');
   if(!tbl){alert('No table found for export.');return;}
-  // Capture outerHTML while visible (temporarily show)
   const prevDisplay=el.style.display;
   el.style.display='';
   const tblHTML=tbl.outerHTML;
   el.style.display=prevDisplay;
-  const w=window.open('','_blank','width=1000,height=700');
+  // Detect statement table (10 cols: #,Customer,SC,Model,Bank,Loan,Disbursed,Net,GST,Payout)
+  const isStatement=tableId==='rfRpt5Table';
+  const w=window.open('','_blank','width=1200,height=800');
   if(!w){alert('Popup blocked. Please allow popups for this site.');return;}
-  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title><style>
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+  <meta charset="utf-8">
+  <style>
     *{box-sizing:border-box;}
-    body{font-family:Arial,sans-serif;font-size:11px;padding:16px;margin:0;color:#111;}
-    h2{font-size:14px;margin:0 0 12px;font-weight:700;}
-    table{width:100%;border-collapse:collapse;font-size:11px;}
-    thead th{background:#e8f0e9;padding:6px 10px;text-align:left;border:1px solid #9ec5a0;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;}
-    tbody td{padding:5px 10px;border:1px solid #d1e0d3;}
+    body{font-family:Arial,sans-serif;font-size:${isStatement?'9':'11'}px;padding:12px;margin:0;color:#111;}
+    h2{font-size:13px;margin:0 0 8px;font-weight:700;}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;}
+    thead th{background:#e8f0e9;padding:5px 4px;text-align:left;border:1px solid #9ec5a0;font-weight:700;font-size:${isStatement?'8':'10'}px;text-transform:uppercase;letter-spacing:.03em;word-break:break-word;}
+    tbody td{padding:4px;border:1px solid #d1e0d3;word-break:break-word;vertical-align:middle;}
     tbody tr:nth-child(even) td{background:#f6fbf6;}
     tbody tr:last-child td{font-weight:700;background:#e8f4ea;border-top:2px solid #6aaf6e;}
-    @media print{@page{margin:1cm;size:portrait;}body{padding:0;}h2{font-size:13px;}table{width:100%;font-size:9px;}thead th,tbody td{padding:3px 6px;}}
-  </style></head><body><h2>${title}</h2>${tblHTML}<script>setTimeout(function(){window.print();},300);<\/script></body></html>`);
+    ${isStatement?`
+    /* Statement: fixed column widths to fit A4 landscape */
+    col.c0{width:4%;}   /* # */
+    col.c1{width:14%;}  /* Customer Name */
+    col.c2{width:11%;}  /* SC Name */
+    col.c3{width:18%;}  /* Model & Variant */
+    col.c4{width:12%;}  /* Bank Name */
+    col.c5{width:8%;}   /* Loan Amt */
+    col.c6{width:8%;}   /* Disbursed Amt */
+    col.c7{width:8%;}   /* Net Payout */
+    col.c8{width:8%;}   /* GST Amt */
+    col.c9{width:9%;}   /* Payout Amt */
+    `:''}
+    @media print{
+      @page{margin:8mm;size:A4 landscape;}
+      body{padding:0;font-size:${isStatement?'8.5':'10'}px;}
+      h2{font-size:12px;margin-bottom:6px;}
+      thead th,tbody td{padding:${isStatement?'3px':'4px 6px'};}
+    }
+  </style>
+  </head><body>
+  <h2>${title}</h2>
+  ${isStatement?'<colgroup><col class="c0"><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"><col class="c7"><col class="c8"><col class="c9"></colgroup>'+tblHTML:tblHTML}
+  <script>setTimeout(function(){window.print();},400);<\/script>
+  </body></html>`);
   w.document.close();
 };
 
