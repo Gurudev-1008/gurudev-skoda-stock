@@ -1361,6 +1361,15 @@ function _doStaffLogin(u,p,e){
 
 function loginOK(user){
   curUser=user;
+  // Record last login timestamp for non-admin staff (fire-and-forget)
+  if(!user.isAdmin&&user.username){
+    const _rlCb='__rl_'+Date.now();
+    window[_rlCb]=function(){try{delete window[_rlCb];}catch(e){}};
+    const _rls=document.createElement('script');
+    _rls.src=API+'?action=recordLogin&username='+encodeURIComponent(user.username)+'&callback='+_rlCb;
+    _rls.onerror=function(){try{delete window[_rlCb];}catch(e){}};
+    document.head.appendChild(_rls);
+  }
   document.getElementById('appU').textContent=user.name||user.username;
   document.getElementById('appSub').textContent=user.isAdmin?'Admin Panel':`Level ${user.level||''} Access`;
   document.getElementById('pwBtn').style.display=user.isAdmin?'none':'';
@@ -5753,6 +5762,8 @@ function renderRetailFinanceReport(){
         cn     :String(cnI2>=0?r[cnI2]||'':'').trim(),
         mob    :String(mobI2>=0?r[mobI2]||'':'').trim(),
         mv     :mv||'—',
+        model  :mvVal||'—',   // model name separately
+        variant:vnVal||'—',   // variant name separately
         mode   :String(ftI2>=0?r[ftI2]||'':'').trim(),
         bank   :String(bnI2>=0?r[bnI2]||'':'').trim()||'Unknown',
         la     :parseFloat(String(laI2>=0?r[laI2]||'0':'0').replace(/,/g,''))||0,
@@ -6059,56 +6070,105 @@ window.rfRepExportXLSX=function(tableId,title){
   });
 };
 // ── Finance Report PDF export (browser print) ──
+// ── Shared statement PDF builder ──
+function _rfBuildStatementPDF(dataRows, title){
+  const fmt2=v=>v?Number(v).toLocaleString('en-IN'):'—';
+  const cg='<colgroup>'
+    +'<col style="width:3%">'
+    +'<col style="width:14%">'
+    +'<col style="width:10%">'
+    +'<col style="width:18%">'
+    +'<col style="width:12%">'
+    +'<col style="width:9%">'
+    +'<col style="width:9%">'
+    +'<col style="width:9%">'
+    +'<col style="width:7%">'
+    +'<col style="width:9%">'
+    +'</colgroup>';
+  const hdrRow='<thead><tr>'
+    +'<th>#</th><th>Customer Name</th><th>SC Name</th><th>Model &amp; Variant</th>'
+    +'<th>Bank Name</th><th>Loan Amt (&#8377;)</th><th>Disbursed Amt (&#8377;)</th>'
+    +'<th>Net Payout (&#8377;)</th><th>GST Amt (&#8377;)</th><th>Payout Amt (&#8377;)</th>'
+    +'</tr></thead>';
+  let totLa=0,totDa=0,totNp=0,totGa=0,totPa=0;
+  dataRows.forEach(r=>{totLa+=r.la||0;totDa+=r.da||0;totNp+=r.np||0;totGa+=r.ga||0;totPa+=r.pa||0;});
+  const bodyRows=dataRows.map((r,i)=>`<tr class="${i%2===1?'alt':''}">
+    <td style="text-align:center;">${i+1}</td>
+    <td>${r.cn||'—'}</td><td>${r.sc||'—'}</td><td>${r.mv||'—'}</td><td>${r.bank||'—'}</td>
+    <td style="text-align:right;">${fmt2(r.la)}</td>
+    <td style="text-align:right;">${fmt2(r.da)}</td>
+    <td style="text-align:right;">${fmt2(r.np)}</td>
+    <td style="text-align:right;">${fmt2(r.ga)}</td>
+    <td style="text-align:right;">${fmt2(r.pa)}</td>
+  </tr>`).join('');
+  const totRow=`<tr class="tot">
+    <td colspan="5">TOTAL &mdash; ${dataRows.length} cases</td>
+    <td style="text-align:right;">${fmt2(totLa)}</td>
+    <td style="text-align:right;">${fmt2(totDa)}</td>
+    <td style="text-align:right;">${fmt2(totNp)}</td>
+    <td style="text-align:right;">${fmt2(totGa)}</td>
+    <td style="text-align:right;">${fmt2(totPa)}</td>
+  </tr>`;
+  const tblHTML=`<table>${cg}${hdrRow}<tbody>${bodyRows}${totRow}</tbody></table>`;
+  const w=window.open('','_blank','width=1200,height=800');
+  if(!w){alert('Popup blocked. Please allow popups for this site.');return;}
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title><meta charset="utf-8">
+  <style>
+    *{box-sizing:border-box;}
+    body{font-family:Arial,sans-serif;padding:12px;margin:0;color:#111;font-size:11px;}
+    h2{font-size:14px;font-weight:700;margin:0 0 10px;}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:11px;}
+    thead th{background:#e8f0e9;padding:6px 5px;text-align:left;border:1px solid #9ec5a0;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.03em;word-break:break-word;}
+    tbody td{padding:5px;border:1px solid #d1e0d3;word-break:break-word;vertical-align:middle;font-size:11px;}
+    tr.alt td{background:#f6fbf6;}
+    tr.tot td{font-weight:700;background:#e8f4ea;border-top:2px solid #6aaf6e;}
+    @media print{
+      @page{margin:7mm;size:A4 landscape;}
+      body{padding:0;font-size:10px;}
+      h2{font-size:13px;margin-bottom:6px;}
+      table{font-size:10px;}
+      thead th{font-size:9px;padding:5px 4px;}
+      tbody td{font-size:10px;padding:4px 4px;}
+    }
+  </style>
+  </head><body>
+  <h2>${title}</h2>${tblHTML}
+  <script>setTimeout(function(){window.print();},400);<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
 window.rfRepExportPDF=function(tableId,title){
+  const rows=window._rfR5Rows||[];
+  if(tableId==='rfRpt5Table'){
+    if(!rows.length){alert('No data to export.');return;}
+    _rfBuildStatementPDF(rows,title);
+    return;
+  }
+  // Non-statement reports — original DOM-based approach
   const el=document.getElementById(tableId);
   if(!el){alert('No table data found.');return;}
   const tbl=el.tagName==='TABLE'?el:el.querySelector('table');
   if(!tbl){alert('No table found for export.');return;}
   const prevDisplay=el.style.display;
   el.style.display='';
-  // Strip inline display/width styles so print CSS takes full control
-  let tblHTML=tbl.outerHTML.replace(/(<table)[^>]*/,'$1');
+  const tblHTML=tbl.outerHTML.replace(/(<table)[^>]*/,'$1');
   el.style.display=prevDisplay;
-  const isStatement=tableId==='rfRpt5Table';
-  // For Statement inject colgroup INSIDE the table tag
-  if(isStatement){
-    const cg='<colgroup>'
-      +'<col style="width:3%">'   // #
-      +'<col style="width:14%">'  // Customer Name
-      +'<col style="width:11%">'  // SC Name
-      +'<col style="width:18%">'  // Model & Variant
-      +'<col style="width:12%">'  // Bank Name
-      +'<col style="width:8%">'   // Loan Amt
-      +'<col style="width:8%">'   // Disbursed Amt
-      +'<col style="width:8%">'   // Net Payout
-      +'<col style="width:8%">'   // GST Amt
-      +'<col style="width:10%">'  // Payout Amt
-      +'</colgroup>';
-    tblHTML=tblHTML.replace('<table>','<table>'+cg);
-  }
   const w=window.open('','_blank','width=1200,height=800');
   if(!w){alert('Popup blocked. Please allow popups for this site.');return;}
-  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
-  <meta charset="utf-8">
+  w.document.write(`<!DOCTYPE html><html><head><title>${title}</title><meta charset="utf-8">
   <style>
     *{box-sizing:border-box;}
-    body{font-family:Arial,sans-serif;padding:10px;margin:0;color:#111;}
-    h2{font-size:13px;font-weight:700;margin:0 0 8px;}
-    table{width:100%;border-collapse:collapse;table-layout:fixed;}
-    thead th{background:#e8f0e9;padding:5px 4px;text-align:left;border:1px solid #9ec5a0;font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.03em;overflow:hidden;word-break:break-word;}
-    tbody td{padding:4px;border:1px solid #d1e0d3;font-size:${isStatement?'9':'10'}px;overflow:hidden;word-break:break-word;vertical-align:middle;}
+    body{font-family:Arial,sans-serif;padding:12px;margin:0;color:#111;}
+    h2{font-size:14px;font-weight:700;margin:0 0 10px;}
+    table{width:100%;border-collapse:collapse;}
+    thead th{background:#e8f0e9;padding:6px 10px;text-align:left;border:1px solid #9ec5a0;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;}
+    tbody td{padding:5px 10px;border:1px solid #d1e0d3;}
     tbody tr:nth-child(even) td{background:#f6fbf6;}
     tbody tr:last-child td{font-weight:700;background:#e8f4ea;border-top:2px solid #6aaf6e;}
-    @media print{
-      @page{margin:6mm;size:A4 landscape;}
-      body{padding:0;}
-      thead th,tbody td{padding:3px 3px;font-size:8px;}
-      h2{font-size:11px;margin-bottom:4px;}
-    }
+    @media print{@page{margin:8mm;size:A4 landscape;}body{padding:0;}thead th,tbody td{padding:4px 6px;font-size:9px;}h2{font-size:12px;}}
   </style>
-  </head><body>
-  <h2>${title}</h2>
-  ${tblHTML}
+  </head><body><h2>${title}</h2>${tblHTML}
   <script>setTimeout(function(){window.print();},400);<\/script>
   </body></html>`);
   w.document.close();
@@ -6750,6 +6810,39 @@ function renderStockPlanning(){
   const vaOpts='<option value="">All Variants</option>'+allVariants.map(v=>`<option value="${v}"${fltVariant===v?' selected':''}>${v}</option>`).join('');
   const vaSel=`<select onchange="window._spVariant=this.value;renderStockPlanning()" style="${selSt};max-width:260px">${vaOpts}</select>`;
 
+  // ── Collect flat rows for PDF export ──
+  const spExpRows=[];
+  Object.keys(hierarchy).sort().forEach(function(model){
+    const variants=hierarchy[model];
+    const mPairs=[];
+    Object.keys(variants).forEach(function(va){
+      const mc=varMC[model+'|||'+va]||'';
+      const cls=variants[va];
+      (cls.length?cls:['']).forEach(function(cl){mPairs.push({mc:mc,cl:cl});});
+    });
+    const mAgg=aggFor(mPairs);
+    const mM=planMetrics(mAgg);
+    const mB=cvgBadge(mM.coverage);
+    spExpRows.push({type:'model',label:model,colour:'',free:mAgg.free,allotted:mAgg.allotted,demo:mAgg.demo,ageing:mAgg.ageing,fprOthers:mAgg.fpr+mAgg.others,total:mM.total,vna:mAgg.vna,sales:mAgg.sales,avgSales:mM.avgSales,coverage:mM.coverage,planQty:mM.planQty,statusTxt:mB.badge});
+    Object.keys(variants).sort().forEach(function(va){
+      const vMC2=varMC[model+'|||'+va]||'';
+      const cols=variants[va];
+      const vPairs=(cols.length?cols:['']).map(function(cl){return{mc:vMC2,cl:cl};});
+      const vAgg=aggFor(vPairs);
+      const vM=planMetrics(vAgg);
+      const vB=cvgBadge(vM.coverage);
+      spExpRows.push({type:'variant',label:va,colour:cols.length?cols.length+' colours':'—',free:vAgg.free,allotted:vAgg.allotted,demo:vAgg.demo,ageing:vAgg.ageing,fprOthers:vAgg.fpr+vAgg.others,total:vM.total,vna:vAgg.vna,sales:vAgg.sales,avgSales:vM.avgSales,coverage:vM.coverage,planQty:vM.planQty,statusTxt:vB.badge});
+      [...cols].sort().forEach(function(cl){
+        const cAgg=aggFor([{mc:vMC2,cl:cl}],true);
+        const cM=planMetrics(cAgg);
+        const cB=cvgBadge(cM.coverage);
+        spExpRows.push({type:'colour',label:va,colour:cl||'No colour',free:cAgg.free,allotted:cAgg.allotted,demo:cAgg.demo,ageing:cAgg.ageing,fprOthers:cAgg.fpr+cAgg.others,total:cM.total,vna:cAgg.vna,sales:cAgg.sales,avgSales:cM.avgSales,coverage:cM.coverage,planQty:cM.planQty,statusTxt:cB.badge});
+      });
+    });
+  });
+  window._spExportData={rows:spExpRows,period:period,fltModel:fltModel,fltVariant:fltVariant,brFilter:brFilter||'All Branches',totalStock:totalStock,totalFree:totalFree,totalVNA:totalVNA,avgMo:fmt(avgMo)};
+  const exportBtn='<button onclick="spExportPDF()" style="padding:5px 12px;font-size:11px;font-weight:700;border-radius:10px;cursor:pointer;border:1px solid #60a5fa;color:#60a5fa;background:none;">&#x1F5A8; Export PDF</button>';
+
   // ── Sticky-header table style ──
   const TH_S=`padding:8px 10px;font-size:10px;font-weight:700;text-align:center;background:var(--bg-alt);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;outline:1px solid var(--border);position:sticky;top:0;z-index:3;`;
   const THL_S=TH_S+'text-align:left;';
@@ -6765,6 +6858,7 @@ function renderStockPlanning(){
         ${vaSel}
         <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Avg Period:</span>
         <div style="display:flex;gap:3px">${pBtns}</div>
+        ${exportBtn}
       </div>
     </div>
 
@@ -6825,6 +6919,83 @@ function renderStockPlanning(){
       🔴&lt;1mo &nbsp;🟡 1–2mo &nbsp;🟢 2–3mo &nbsp;✓&gt;3mo
     </div>
   </div>`;
+}
+
+/* ── Stock Planning PDF export ── */
+window.spExportPDF=function(){
+  const d=window._spExportData;
+  if(!d||!d.rows.length){alert('No data to export.');return;}
+  const title='Stock Planning'+(d.fltModel?' — '+d.fltModel:'')+(d.fltVariant?' — '+d.fltVariant:'');
+  _spBuildPDF(d,title);
+};
+function _spBuildPDF(d,title){
+  const rows=d.rows,period=d.period,brFilter=d.brFilter,totalStock=d.totalStock,totalFree=d.totalFree,totalVNA=d.totalVNA,avgMo=d.avgMo;
+  const fmtN=function(n){if(n===null||n===undefined)return'—';if(Number.isInteger(n))return n.toLocaleString('en-IN');return(+n.toFixed(1)).toLocaleString('en-IN');};
+  const stripHtml=function(s){return String(s||'').replace(/<[^>]+>/g,'').trim();};
+  let bodyHtml='';
+  rows.forEach(function(r){
+    var rowBg='',labelColor='',indent='',labelPrefix='';
+    if(r.type==='model'){rowBg='background:#1e3a5f;font-weight:700;';labelColor='color:#93c5fd;';labelPrefix='▶ ';}
+    else if(r.type==='variant'){rowBg='background:rgba(30,41,59,0.7);font-weight:600;';indent='&nbsp;&nbsp;&nbsp;&nbsp;';}
+    else{labelColor='color:#9ca3af;';indent='&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';}
+    var covStr=r.coverage!==null?r.coverage.toFixed(1)+' mo':'—';
+    var planStr=r.planQty>0?String(r.planQty):'—';
+    var statusStr=stripHtml(r.statusTxt||'');
+    bodyHtml+='<tr style="'+rowBg+'">'
+      +'<td style="padding:4px 6px;border:1px solid #334155;'+labelColor+'">'+indent+labelPrefix+r.label+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;color:#9ca3af;font-size:9px">'+String(r.colour||'—')+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.free>0?'color:#4ade80;font-weight:600;':'')+'">'+String(r.free||0)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.allotted>0?'color:#fbbf24;font-weight:600;':'')+'">'+String(r.allotted||0)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;">'+String(r.demo||0)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.ageing>0?'color:#fb923c;font-weight:600;':'')+'">'+String(r.ageing||0)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;color:#6b7280;">'+String(r.fprOthers||0)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;font-weight:700;">'+String(r.total||0)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.vna>0?'color:#f87171;font-weight:700;':'color:#6b7280;')+'">'+String(r.vna||0)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;">'+String(r.sales||0)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;">'+fmtN(r.avgSales)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;">'+covStr+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.planQty>0?'color:#60a5fa;font-weight:700;':'color:#6b7280;')+'">'+planStr+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;font-size:9px;">'+statusStr+'</td>'
+      +'</tr>';
+  });
+  var dateStr=new Date().toLocaleDateString('en-IN');
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+title+'</title>'
+    +'<style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:10px;background:#0f172a;color:#e2e8f0;padding:16px;}'
+    +'h1{font-size:14px;font-weight:700;margin-bottom:4px;color:#f1f5f9;}'
+    +'.meta{font-size:9px;color:#94a3b8;margin-bottom:12px;}'
+    +'.cards{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}'
+    +'.card{background:#1e293b;border:1px solid #334155;border-radius:6px;padding:6px 12px;text-align:center;flex:1;min-width:80px;}'
+    +'.cv{font-size:16px;font-weight:800;}.cl{font-size:8px;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}'
+    +'table{width:100%;border-collapse:collapse;font-size:10px;}'
+    +'th{padding:5px 6px;background:#1e3a5f;color:#93c5fd;border:1px solid #334155;font-size:9px;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap;}'
+    +'th:first-child{text-align:left;}'
+    +'@media print{'
+    +'@page{size:A3 landscape;margin:8mm;}'
+    +'body{background:#fff;color:#111;padding:0;}'
+    +'h1{color:#111;}.meta{color:#555;}'
+    +'.card{background:#f8fafc;border-color:#cbd5e1;}.cv{color:#111!important;}.cl{color:#555;}'
+    +'th{background:#dbeafe!important;color:#1e3a8a!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    +'tr[style*="background:#1e3a5f"]{-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
+    +'}</style></head><body>'
+    +'<h1>'+title+'</h1>'
+    +'<div class="meta">Branch: '+brFilter+' &nbsp;&middot;&nbsp; Avg Period: '+period+' months &nbsp;&middot;&nbsp; Exported: '+dateStr+'</div>'
+    +'<div class="cards">'
+    +'<div class="card"><div class="cv">'+totalStock.toLocaleString('en-IN')+'</div><div class="cl">Total Stock</div></div>'
+    +'<div class="card"><div class="cv" style="color:#4ade80">'+totalFree.toLocaleString('en-IN')+'</div><div class="cl">Free Stock</div></div>'
+    +'<div class="card"><div class="cv" style="color:#f87171">'+totalVNA.toLocaleString('en-IN')+'</div><div class="cl">Total VNA</div></div>'
+    +'<div class="card"><div class="cv" style="color:#60a5fa">'+String(avgMo)+'</div><div class="cl">Avg Retail/Mo</div></div>'
+    +'</div>'
+    +'<table><thead><tr>'
+    +'<th style="text-align:left;min-width:130px">Variant</th>'
+    +'<th>Colour</th><th>Free</th><th>Allot</th><th>Demo</th><th>Ageing</th><th>FPR/Oth</th>'
+    +'<th>Total</th><th>VNA</th><th>Sales ('+period+'M)</th><th>Avg/Mo</th>'
+    +'<th>Coverage</th><th>Plan Qty</th><th>Status</th>'
+    +'</tr></thead><tbody>'+bodyHtml+'</tbody></table>'
+    +'<script>window.onload=function(){window.print();};</scr'+'ipt>'
+    +'</body></html>';
+  var w=window.open('','_blank');
+  if(!w){alert('Pop-up blocked. Please allow pop-ups for this site.');return;}
+  w.document.open();w.document.write(html);w.document.close();
 }
 
 /* ── Stock Tab (tab 0) — fixed column order ── */
