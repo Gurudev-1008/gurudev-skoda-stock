@@ -1467,7 +1467,7 @@ function updateParentTabs(){
 // Returns the set of allowed tab indices for the current user
 function getAllowedTabs(u){
   u=u||curUser;
-  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
   let tabs=[...(LEVEL_TABS[u.level]||[3,5,6])];
   // Level 4: Live RPO (tab 2) only if Role is explicitly "SC" in staff sheet
   if(u.level===4&&String(u.role||'').trim().toUpperCase()!=='SC'){
@@ -1487,7 +1487,7 @@ function goTab(i){
   if(!allowed.includes(i))return;
   curTab=i;isFree=(i===3);sCol=-1;sAsc=true;
   // Regular (non-sub-tab) main bar buttons
-  [0,1,2,4,9,10,11,12,13,14].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===i);});
+  [0,1,2,4,9,10,11,12,13,14,15].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===i);});
   updateParentTabs();
   clearF(false);
   document.getElementById('tH').innerHTML='';
@@ -6514,7 +6514,8 @@ function renderLiveUsers(){
   window[cb]=function(data){
     clearTimeout(t);delete window[cb];
     if(!data||!data.success){
-      el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Failed to load session data.</div>';
+      const errMsg=data&&data.error?data.error:'Unknown error (action may not be deployed)';
+      el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Failed to load session data.<br><span style="font-size:10px;opacity:.6;margin-top:6px;display:block;">'+errMsg+'</span></div>';
       return;
     }
     const sessions=data.sessions||[];
