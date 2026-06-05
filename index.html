@@ -447,6 +447,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
     <button class="tab"    onclick="goTab(11)"       id="t11">🔍 VNA Summary</button>
     <button class="tab"    onclick="goTab(13)"       id="t13">📈 Analytics</button>
     <button class="tab"    onclick="goTab(14)"       id="t14">📦 Stock Planning</button>
+    <button class="tab"    onclick="goTab(15)"       id="t15">🟢 Live Users</button>
     <button class="tab"    onclick="goTab(4)"        id="t4">⚙ Manage</button>
   </div>
   <!-- Free Stock sub-tabs (shown when Free Stock parent is active) -->
@@ -854,6 +855,11 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
   <div id="spContent"><div class="sb"><div class="sp"></div><strong>Loading stock planning…</strong></div></div>
 </div>
 
+<!-- LIVE USERS AREA -->
+<div id="luArea" style="display:none;overflow:auto;max-height:calc(100vh - 115px);padding:0 0 20px;">
+  <div id="luContent"><div class="sb"><div class="sp"></div><strong>Loading live users…</strong></div></div>
+</div>
+
 <!-- LEVEL-3 LOGIN WARNING MODAL -->
 <div class="l3w-overlay" id="l3wOverlay">
   <div class="l3w-box">
@@ -1113,7 +1119,7 @@ function showMaintenanceMsgForTab(){
 let SD=Array.from({length:18},()=>[]); // sheetData SD[0-17]
 let specRows=[],vyMap={},freeMap={},freeBillingMap={},staffList=[];
 let curTab=0,isFree=false,sCol=-1,sAsc=true;
-let curUser=null,lClicks=0,lTimer=null,arTimer=null;
+let curUser=null,lClicks=0,lTimer=null,arTimer=null,_luTimer=null,_luRefTimer=null;
 let _leaseOptions=null; // null=not yet fetched; []=fetched (empty); [...]=fetched with values
 // Record-count display: L3/L4 see only count; others see "X of Y records"
 function setRInfo(filtered,total){
@@ -1369,6 +1375,10 @@ function loginOK(user){
     _rls.src=API+'?action=recordLogin&username='+encodeURIComponent(user.username)+'&callback='+_rlCb;
     _rls.onerror=function(){try{delete window[_rlCb];}catch(e){}};
     document.head.appendChild(_rls);
+    // Session ping for Live Users tab
+    _luPing();
+    if(_luTimer)clearInterval(_luTimer);
+    _luTimer=setInterval(_luPing,2*60*1000); // heartbeat every 2 minutes
   }
   document.getElementById('appU').textContent=user.name||user.username;
   document.getElementById('appSub').textContent=user.isAdmin?'Admin Panel':`Level ${user.level||''} Access`;
@@ -1377,7 +1387,7 @@ function loginOK(user){
   const allowed=getAllowedTabs(user);
   const isL4SC=!user.isAdmin&&user.level===4;
   // Show/hide main-bar tabs (not sub-tabs)
-  [0,1,2,4,9,10,11,12,13].forEach(i=>{
+  [0,1,2,4,9,10,11,12,13,14,15].forEach(i=>{
     const el=document.getElementById('t'+i);if(!el)return;
     el.style.display=allowed.includes(i)?'':'none';
   });
@@ -1414,6 +1424,16 @@ function loginOK(user){
 }
 
 function doLogout(){
+  // End live session (fire-and-forget before clearing curUser)
+  if(curUser&&!curUser.isAdmin&&curUser.username){
+    const _seCb='__se_'+Date.now();
+    window[_seCb]=function(){try{delete window[_seCb];}catch(e){}};
+    const _ses=document.createElement('script');
+    _ses.src=API+'?action=sessionEnd&username='+encodeURIComponent(curUser.username)+'&callback='+_seCb;
+    document.head.appendChild(_ses);
+  }
+  if(_luTimer){clearInterval(_luTimer);_luTimer=null;}
+  if(_luRefTimer){clearInterval(_luRefTimer);_luRefTimer=null;}
   curUser=null;lClicks=0;_l3wShown=false;
   if(arTimer){clearInterval(arTimer);arTimer=null;}
   // Only clear fields if not remembered — keep pre-filled if Remember Me is on
@@ -1482,13 +1502,15 @@ function setupTab(){
   const isVNA=(curTab===11);
   const isAna=(curTab===13);
   const isSP=(curTab===14);
-  document.getElementById('toolBar').style.display=(isM||isRep||isVNA||isAna||isSP)?'none':'flex';
-  document.getElementById('tblArea').style.display=(isM||isRep||isVNA||isAna||isSP)?'none':'block';
+  const isLU=(curTab===15);
+  document.getElementById('toolBar').style.display=(isM||isRep||isVNA||isAna||isSP||isLU)?'none':'flex';
+  document.getElementById('tblArea').style.display=(isM||isRep||isVNA||isAna||isSP||isLU)?'none':'block';
   document.getElementById('repArea').style.display=isRep?'block':'none';
   document.getElementById('manArea').style.display=isM?'block':'none';
   document.getElementById('vnaArea').style.display=isVNA?'block':'none';
   document.getElementById('anaArea').style.display=isAna?'block':'none';
   document.getElementById('spArea').style.display=isSP?'block':'none';
+  document.getElementById('luArea').style.display=isLU?'block':'none';
   // ── Tab Access permission check (non-admin only) ──────────────────────────
   if(isTabUnderMaintenance(curTab)){showMaintenanceMsgForTab();return;}
   // ─────────────────────────────────────────────────────────────────────────
@@ -1496,6 +1518,7 @@ function setupTab(){
   if(isVNA){renderVNASummary();return;}
   if(isAna){renderAnalytics();return;}
   if(isSP){renderStockPlanning();return;}
+  if(isLU){renderLiveUsers();return;}
   document.getElementById('searchWrap').style.display=(isFree||isCustom)?'none':'';
   // For custom tabs show only Model filter; hide Variant, Colour, VIN Year
   ['fVar','fCol','fYr'].forEach(id=>{
@@ -6462,6 +6485,107 @@ function resetReallotRow(sheetRow){
    STOCK PLANNING TAB (tab 14)
    ══════════════════════════════════════════════════════════════ */
 window._spMExp=window._spMExp||new Set(); // expanded model keys
+/* ── Live Users heartbeat ── */
+function _luPing(){
+  if(!curUser||curUser.isAdmin)return;
+  const cb='__lp_'+Date.now();
+  window[cb]=function(){try{delete window[cb];}catch(e){}};
+  const s=document.createElement('script');
+  s.src=API+'?action=sessionPing'
+    +'&username='+encodeURIComponent(curUser.username||'')
+    +'&name='+encodeURIComponent(curUser.name||curUser.username||'')
+    +'&branch='+encodeURIComponent(curUser.branch||'Unknown')
+    +'&callback='+cb;
+  s.onerror=function(){try{delete window[cb];}catch(e){}};
+  document.head.appendChild(s);
+}
+
+/* ── Live Users tab (tab 15) ── */
+function renderLiveUsers(){
+  const el=document.getElementById('luContent');
+  if(!el)return;
+  el.innerHTML='<div class="sb"><div class="sp"></div><strong>Fetching live users…</strong></div>';
+  // Set up 30-second auto-refresh (only renders when tab 15 is active)
+  if(!_luRefTimer){
+    _luRefTimer=setInterval(function(){if(curTab===15)renderLiveUsers();},30000);
+  }
+  const cb='__lu_'+Date.now();
+  const t=setTimeout(function(){delete window[cb];el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Connection timeout — please try again.</div>';},15000);
+  window[cb]=function(data){
+    clearTimeout(t);delete window[cb];
+    if(!data||!data.success){
+      el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Failed to load session data.</div>';
+      return;
+    }
+    const sessions=data.sessions||[];
+    const now=Date.now();
+    const avatarColors=['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#ef4444','#06b6d4','#f97316'];
+    const fmtDur=function(ms){
+      const tot=Math.max(0,Math.floor(ms/60000));
+      const h=Math.floor(tot/60),m=tot%60;
+      return h>0?h+'h '+m+'m':m+'m';
+    };
+    const fmtTime=function(ms){
+      if(!ms)return'—';
+      return new Date(ms).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+    };
+    let html='<div class="ap" style="padding:20px 24px 30px;">';
+    // Header
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">';
+    html+='<div><h2 style="margin:0;font-size:18px;">🟢 Live Users</h2>';
+    html+='<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">'+sessions.length+' user'+(sessions.length!==1?'s':'')+' currently active &nbsp;·&nbsp; Auto-refreshes every 30s</div></div>';
+    html+='<div style="font-size:10px;color:var(--text-muted);background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;">Last updated: '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})+'</div>';
+    html+='</div>';
+    if(sessions.length===0){
+      html+='<div style="text-align:center;padding:80px 20px;color:var(--text-muted);font-size:13px;border:1px dashed var(--border);border-radius:12px;">No active users at this time.</div>';
+    } else {
+      // Summary bar
+      const online=sessions.filter(s=>s.idleMin<3).length;
+      const away  =sessions.filter(s=>s.idleMin>=3).length;
+      html+='<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">';
+      html+='<div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;color:#22c55e;">● Active: '+online+'</div>';
+      html+='<div style="background:rgba(107,114,128,.1);border:1px solid rgba(107,114,128,.3);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;color:#9ca3af;">○ Idle: '+away+'</div>';
+      html+='</div>';
+      // User cards grid
+      html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;">';
+      sessions.forEach(function(s){
+        const activeMs=now-s.loginMs;
+        const idleMin=s.idleMin||0;
+        const isActive=idleMin<3;
+        const statusLabel=isActive?'● Active':'○ Idle '+idleMin+'m';
+        const statusColor=isActive?'#22c55e':'#9ca3af';
+        const initials=String(s.name||'?').split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,2)||'?';
+        const aColor=avatarColors[(s.name||'').charCodeAt(0)%avatarColors.length];
+        html+='<div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;transition:box-shadow .2s;">';
+        // Avatar + name
+        html+='<div style="display:flex;align-items:center;gap:12px;">';
+        html+='<div style="width:46px;height:46px;border-radius:50%;background:'+aColor+';display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;flex-shrink:0;box-shadow:0 2px 8px '+aColor+'66;">'+initials+'</div>';
+        html+='<div style="min-width:0;">';
+        html+='<div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+s.name+'</div>';
+        html+='<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">📍 '+s.branch+'</div>';
+        html+='</div></div>';
+        // Metrics row
+        html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:10px;border-top:1px solid var(--border);">';
+        html+='<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Active For</div>';
+        html+='<div style="font-size:16px;font-weight:800;color:var(--accent);margin-top:3px;">'+fmtDur(activeMs)+'</div></div>';
+        html+='<div style="text-align:right;"><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Login Time</div>';
+        html+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-top:3px;">'+fmtTime(s.loginMs)+'</div></div>';
+        html+='</div>';
+        // Status badge
+        html+='<div style="font-size:11px;font-weight:700;color:'+statusColor+';text-align:right;">'+statusLabel+'</div>';
+        html+='</div>';
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+    el.innerHTML=html;
+  };
+  const s=document.createElement('script');
+  s.src=API+'?action=getLiveSessions&callback='+cb;
+  s.onerror=function(){clearTimeout(t);delete window[cb];el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Network error — please refresh.</div>';};
+  document.head.appendChild(s);
+}
+
 window._spVExp=window._spVExp||new Set(); // expanded variant keys (model|||variant)
 function renderStockPlanning(){
   const el=document.getElementById('spContent');
