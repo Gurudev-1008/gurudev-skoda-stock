@@ -1424,12 +1424,33 @@ function loginOK(user){
 }
 
 function doLogout(){
-  // End live session (fire-and-forget before clearing curUser)
+  // End live session: fetch App_Settings, remove user entry, write back (no new deployment needed)
   if(curUser&&!curUser.isAdmin&&curUser.username){
+    const _lu_eu=curUser.username; // capture before curUser cleared
     const _seCb='__se_'+Date.now();
-    window[_seCb]=function(){try{delete window[_seCb];}catch(e){}};
+    const _seT=setTimeout(function(){try{delete window[_seCb];}catch(e){}},12000);
+    window[_seCb]=function(data){
+      clearTimeout(_seT);try{delete window[_seCb];}catch(e){}
+      if(!Array.isArray(data))return;
+      let lsRow=-1,lsRowIdx=-1;
+      for(let i=0;i<data.length;i++){
+        if(String(data[i][0]||'').trim().toLowerCase()==='live sessions'){lsRow=i+1;lsRowIdx=i;break;}
+      }
+      if(lsRow<0)return;
+      let sess={};
+      try{sess=JSON.parse(String(data[lsRowIdx][1]||'{}'));}catch(e){sess={};}
+      delete sess[_lu_eu];
+      const val=JSON.stringify(sess);
+      const wcb='__lwe_'+Date.now();
+      window[wcb]=function(){try{delete window[wcb];}catch(e){}};
+      const ws=document.createElement('script');
+      ws.src=API+'?action=updateCell&sheet=App_Settings&row='+lsRow+'&col=2&value='+encodeURIComponent(val)+'&callback='+wcb;
+      ws.onerror=function(){try{delete window[wcb];}catch(e){}};
+      document.head.appendChild(ws);
+    };
     const _ses=document.createElement('script');
-    _ses.src=API+'?action=sessionEnd&username='+encodeURIComponent(curUser.username)+'&callback='+_seCb;
+    _ses.src=API+'?sheet=App_Settings&callback='+_seCb;
+    _ses.onerror=function(){clearTimeout(_seT);try{delete window[_seCb];}catch(e){}};
     document.head.appendChild(_ses);
   }
   if(_luTimer){clearInterval(_luTimer);_luTimer=null;}
@@ -1573,11 +1594,12 @@ function setupTab(){
       else if(curTab===2) el.parentElement.style.display='';
     }
   });
-  // Excel export button — Admin / L1 / L1A only
+  // Excel export button — all users on Live RPO (2) & Allotment (7,8); Admin/L1/L1A on other tabs
   {
     const canExp=curUser&&(curUser.isAdmin||curUser.level===1||curUser.level==='1'||curUser.level==='1A'||(curTab===12&&(curUser.level==='2F'||curUser.level==='3F')));
     const teb=document.getElementById('tabExportBtn');
-    if(teb)teb.style.display=(canExp&&[0,1,2,7,8,10,12].includes(curTab))?'inline-flex':'none';
+    const showExp=[2,7,8].includes(curTab)?!!curUser:(canExp&&[0,1,10,12].includes(curTab));
+    if(teb)teb.style.display=showExp?'inline-flex':'none';
     const veb=document.getElementById('vnaExportBtn');
     // VNA export visible for all logged-in users when on VNA tab
     if(veb)veb.style.display=(curUser&&curTab===11)?'inline-flex':'none';
@@ -6485,41 +6507,82 @@ function resetReallotRow(sheetRow){
    STOCK PLANNING TAB (tab 14)
    ══════════════════════════════════════════════════════════════ */
 window._spMExp=window._spMExp||new Set(); // expanded model keys
-/* ── Live Users heartbeat ── */
+/* ── Live Users heartbeat (uses existing updateCell + sheet read — no new deployment needed) ── */
 function _luPing(){
   if(!curUser||curUser.isAdmin)return;
+  const _lu_u=curUser.username,_lu_n=curUser.name||curUser.username,_lu_b=curUser.branch||'Unknown';
   const cb='__lp_'+Date.now();
-  window[cb]=function(){try{delete window[cb];}catch(e){}};
+  const t=setTimeout(function(){try{delete window[cb];}catch(e){}},12000);
+  window[cb]=function(data){
+    clearTimeout(t);try{delete window[cb];}catch(e){}
+    if(!Array.isArray(data))return;
+    let lsRow=-1,lsRowIdx=-1;
+    for(let i=0;i<data.length;i++){
+      if(String(data[i][0]||'').trim().toLowerCase()==='live sessions'){lsRow=i+1;lsRowIdx=i;break;}
+    }
+    const now=Date.now();
+    let sess={};
+    if(lsRow<0){
+      // Auto-create the row on first use
+      lsRow=data.length+1;
+      const lac='__la_'+Date.now();
+      window[lac]=function(){try{delete window[lac];}catch(e){}};
+      const la=document.createElement('script');
+      la.src=API+'?action=updateCell&sheet=App_Settings&row='+lsRow+'&col=1&value=Live+Sessions&callback='+lac;
+      la.onerror=function(){try{delete window[lac];}catch(e){}};
+      document.head.appendChild(la);
+    } else {
+      try{sess=JSON.parse(String(data[lsRowIdx][1]||'{}'));}catch(e){sess={};}
+    }
+    const existing=sess[_lu_u]||{};
+    sess[_lu_u]={name:_lu_n,branch:_lu_b,loginMs:existing.loginMs||now,pingMs:now};
+    // Purge stale sessions (>10 min since last ping)
+    Object.keys(sess).forEach(function(u){if(now-(sess[u].pingMs||0)>10*60*1000)delete sess[u];});
+    const val=JSON.stringify(sess);
+    const wcb='__lw_'+Date.now();
+    window[wcb]=function(){try{delete window[wcb];}catch(e){}};
+    const ws=document.createElement('script');
+    ws.src=API+'?action=updateCell&sheet=App_Settings&row='+lsRow+'&col=2&value='+encodeURIComponent(val)+'&callback='+wcb;
+    ws.onerror=function(){try{delete window[wcb];}catch(e){}};
+    document.head.appendChild(ws);
+  };
   const s=document.createElement('script');
-  s.src=API+'?action=sessionPing'
-    +'&username='+encodeURIComponent(curUser.username||'')
-    +'&name='+encodeURIComponent(curUser.name||curUser.username||'')
-    +'&branch='+encodeURIComponent(curUser.branch||'Unknown')
-    +'&callback='+cb;
-  s.onerror=function(){try{delete window[cb];}catch(e){}};
+  s.src=API+'?sheet=App_Settings&callback='+cb;
+  s.onerror=function(){clearTimeout(t);try{delete window[cb];}catch(e){}};
   document.head.appendChild(s);
 }
 
-/* ── Live Users tab (tab 15) ── */
+/* ── Live Users tab (tab 15) — reads App_Settings sheet, no new deployment needed ── */
 function renderLiveUsers(){
   const el=document.getElementById('luContent');
   if(!el)return;
   el.innerHTML='<div class="sb"><div class="sp"></div><strong>Fetching live users…</strong></div>';
-  // Set up 30-second auto-refresh (only renders when tab 15 is active)
   if(!_luRefTimer){
     _luRefTimer=setInterval(function(){if(curTab===15)renderLiveUsers();},30000);
   }
   const cb='__lu_'+Date.now();
-  const t=setTimeout(function(){delete window[cb];el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Connection timeout — please try again.</div>';},15000);
+  const t=setTimeout(function(){
+    try{delete window[cb];}catch(e){}
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Connection timeout — please try again.</div>';
+  },15000);
   window[cb]=function(data){
-    clearTimeout(t);delete window[cb];
-    if(!data||!data.success){
-      const errMsg=data&&data.error?data.error:'Unknown error (action may not be deployed)';
-      el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Failed to load session data.<br><span style="font-size:10px;opacity:.6;margin-top:6px;display:block;">'+errMsg+'</span></div>';
+    clearTimeout(t);try{delete window[cb];}catch(e){}
+    if(!Array.isArray(data)){
+      el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Failed to load session data — could not read App_Settings.</div>';
       return;
     }
-    const sessions=data.sessions||[];
+    // Find "Live Sessions" row in App_Settings
+    let lsRowIdx=-1;
+    for(let i=0;i<data.length;i++){
+      if(String(data[i][0]||'').trim().toLowerCase()==='live sessions'){lsRowIdx=i;break;}
+    }
+    let sess={};
+    if(lsRowIdx>=0){
+      try{sess=JSON.parse(String(data[lsRowIdx][1]||'{}'));}catch(e){sess={};}
+    }
     const now=Date.now();
+    // Filter out stale sessions (>10 min since last ping)
+    const sessions=Object.values(sess).filter(function(s){return (now-(s.pingMs||0))<10*60*1000;});
     const avatarColors=['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#ef4444','#06b6d4','#f97316'];
     const fmtDur=function(ms){
       const tot=Math.max(0,Math.floor(ms/60000));
@@ -6531,48 +6594,43 @@ function renderLiveUsers(){
       return new Date(ms).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
     };
     let html='<div class="ap" style="padding:20px 24px 30px;">';
-    // Header
     html+='<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">';
     html+='<div><h2 style="margin:0;font-size:18px;">🟢 Live Users</h2>';
     html+='<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">'+sessions.length+' user'+(sessions.length!==1?'s':'')+' currently active &nbsp;·&nbsp; Auto-refreshes every 30s</div></div>';
     html+='<div style="font-size:10px;color:var(--text-muted);background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;">Last updated: '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true})+'</div>';
     html+='</div>';
     if(sessions.length===0){
-      html+='<div style="text-align:center;padding:80px 20px;color:var(--text-muted);font-size:13px;border:1px dashed var(--border);border-radius:12px;">No active users at this time.</div>';
+      html+='<div style="text-align:center;padding:80px 20px;color:var(--text-muted);font-size:13px;border:1px dashed var(--border);border-radius:12px;">No active users at this time.<br><span style="font-size:10px;opacity:.6;display:block;margin-top:6px;">Staff users appear here within 2 minutes of logging in.</span></div>';
     } else {
-      // Summary bar
-      const online=sessions.filter(s=>s.idleMin<3).length;
-      const away  =sessions.filter(s=>s.idleMin>=3).length;
+      const online=sessions.filter(function(s){return(now-s.pingMs)<3*60*1000;}).length;
+      const away  =sessions.filter(function(s){return(now-s.pingMs)>=3*60*1000;}).length;
       html+='<div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;">';
       html+='<div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;color:#22c55e;">● Active: '+online+'</div>';
       html+='<div style="background:rgba(107,114,128,.1);border:1px solid rgba(107,114,128,.3);border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;color:#9ca3af;">○ Idle: '+away+'</div>';
       html+='</div>';
-      // User cards grid
       html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;">';
       sessions.forEach(function(s){
-        const activeMs=now-s.loginMs;
-        const idleMin=s.idleMin||0;
-        const isActive=idleMin<3;
+        const activeMs=now-(s.loginMs||now);
+        const idleMs=now-(s.pingMs||now);
+        const idleMin=Math.floor(idleMs/60000);
+        const isActive=(now-(s.pingMs||0))<3*60*1000;
         const statusLabel=isActive?'● Active':'○ Idle '+idleMin+'m';
         const statusColor=isActive?'#22c55e':'#9ca3af';
         const initials=String(s.name||'?').split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,2)||'?';
-        const aColor=avatarColors[(s.name||'').charCodeAt(0)%avatarColors.length];
-        html+='<div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;transition:box-shadow .2s;">';
-        // Avatar + name
+        const aColor=avatarColors[(String(s.name||'')).charCodeAt(0)%avatarColors.length];
+        html+='<div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">';
         html+='<div style="display:flex;align-items:center;gap:12px;">';
         html+='<div style="width:46px;height:46px;border-radius:50%;background:'+aColor+';display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:700;color:#fff;flex-shrink:0;box-shadow:0 2px 8px '+aColor+'66;">'+initials+'</div>';
         html+='<div style="min-width:0;">';
         html+='<div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+s.name+'</div>';
         html+='<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">📍 '+s.branch+'</div>';
         html+='</div></div>';
-        // Metrics row
         html+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:10px;border-top:1px solid var(--border);">';
         html+='<div><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Active For</div>';
         html+='<div style="font-size:16px;font-weight:800;color:var(--accent);margin-top:3px;">'+fmtDur(activeMs)+'</div></div>';
         html+='<div style="text-align:right;"><div style="font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;">Login Time</div>';
         html+='<div style="font-size:12px;font-weight:600;color:var(--text);margin-top:3px;">'+fmtTime(s.loginMs)+'</div></div>';
         html+='</div>';
-        // Status badge
         html+='<div style="font-size:11px;font-weight:700;color:'+statusColor+';text-align:right;">'+statusLabel+'</div>';
         html+='</div>';
       });
@@ -6582,8 +6640,9 @@ function renderLiveUsers(){
     el.innerHTML=html;
   };
   const s=document.createElement('script');
-  s.src=API+'?action=getLiveSessions&callback='+cb;
-  s.onerror=function(){clearTimeout(t);delete window[cb];el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Network error — please refresh.</div>';};
+  s.src=API+'?sheet=App_Settings&callback='+cb;
+  s.onerror=function(){clearTimeout(t);try{delete window[cb];}catch(e){}
+    el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text-muted);font-size:12px">Network error — please refresh.</div>';};
   document.head.appendChild(s);
 }
 
