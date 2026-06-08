@@ -1120,6 +1120,7 @@ let SD=Array.from({length:18},()=>[]); // sheetData SD[0-17]
 let specRows=[],vyMap={},freeMap={},freeBillingMap={},staffList=[];
 let curTab=0,isFree=false,sCol=-1,sAsc=true;
 let curUser=null,lClicks=0,lTimer=null,arTimer=null,_luTimer=null,_luRefTimer=null;
+let _loginTime=0,_loginUserRow=-1,_loginLastLogColIdx=-1,_loginDurColIdx=-1;
 let _leaseOptions=null; // null=not yet fetched; []=fetched (empty); [...]=fetched with values
 // Record-count display: L3/L4 see only count; others see "X of Y records"
 function setRInfo(filtered,total){
@@ -1365,16 +1366,95 @@ function _doStaffLogin(u,p,e){
   e.textContent='Incorrect username or password.';
 }
 
+/* ══════════════════════════════════════════════════════════════
+   LOGIN TRACKING — record timestamp & duration in Users sheet
+   Uses existing deployed updateCell action; no Code.gs redeploy needed.
+   ══════════════════════════════════════════════════════════════ */
+function _istNow(){
+  const n=new Date(Date.now()+5.5*60*60*1000); // convert UTC → IST (UTC+5:30)
+  const pad=v=>String(v).padStart(2,'0');
+  const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return pad(n.getUTCDate())+'-'+M[n.getUTCMonth()]+'-'+n.getUTCFullYear()+' '+pad(n.getUTCHours())+':'+pad(n.getUTCMinutes())+':'+pad(n.getUTCSeconds());
+}
+function _fmtDuration(ms){
+  const tot=Math.max(0,Math.floor(ms/60000));
+  const h=Math.floor(tot/60),m=tot%60;
+  return h>0?h+'h '+String(m).padStart(2,'0')+'m':(tot>0?tot+'m':'<1m');
+}
+/* Called at login — fetches Users sheet, finds user row, writes "Last Logged in" timestamp */
+function _recordLoginInSheet(){
+  if(!curUser||curUser.isAdmin||!curUser.username)return;
+  _loginTime=Date.now();
+  const ts=_istNow();
+  const cb='__rli_'+Date.now();
+  const t=setTimeout(function(){try{delete window[cb];}catch(e){}},12000);
+  window[cb]=function(data){
+    clearTimeout(t);try{delete window[cb];}catch(e){}
+    if(!Array.isArray(data)||data.length<2)return;
+    // Locate header row
+    let hi=0;
+    for(let i=0;i<Math.min(3,data.length);i++){
+      const rv=data[i].map(x=>String(x||'').toLowerCase()).join(' ');
+      if(rv.includes('username')||rv.includes('password')){hi=i;break;}
+    }
+    const h=data[hi].map(x=>String(x||'').trim().toLowerCase());
+    // Find username column
+    let unI=h.findIndex(x=>x==='username'||x==='user name'||x==='user'||x==='login');
+    if(unI<0)unI=h.findIndex(x=>x.includes('username')||x.includes('user name'));
+    // Find "Last Logged in" column
+    let llI=h.findIndex(x=>x==='last logged in');
+    if(llI<0)llI=h.findIndex(x=>x.includes('last logged in')&&!x.includes('duration'));
+    // Find "Last logged in Duration" column
+    let ldI=h.findIndex(x=>x==='last logged in duration');
+    if(ldI<0)ldI=h.findIndex(x=>x.includes('duration'));
+    if(llI<0&&ldI<0)return; // columns not found — nothing to do
+    // Find user's row by matching username
+    let userRow=-1;
+    const uLower=curUser.username.toLowerCase();
+    for(let i=hi+1;i<data.length;i++){
+      if(unI>=0&&String(data[i][unI]||'').trim().toLowerCase()===uLower){
+        userRow=i+1; // 1-based sheet row
+        break;
+      }
+    }
+    if(userRow<0)return;
+    // Store for logout use
+    _loginUserRow=userRow;_loginLastLogColIdx=llI;_loginDurColIdx=ldI;
+    // Write login timestamp → "Last Logged in" column
+    if(llI>=0){
+      const wcb='__rliw_'+Date.now();
+      window[wcb]=function(){try{delete window[wcb];}catch(e){}};
+      const ws=document.createElement('script');
+      ws.src=API+'?action=updateCell&sheet=Users&row='+userRow+'&col='+(llI+1)+'&value='+encodeURIComponent(ts)+'&callback='+wcb;
+      ws.onerror=function(){try{delete window[wcb];}catch(e){}};
+      document.head.appendChild(ws);
+    }
+  };
+  const s=document.createElement('script');
+  s.src=API+'?sheet=Users&callback='+cb;
+  s.onerror=function(){clearTimeout(t);try{delete window[cb];}catch(e){}};
+  document.head.appendChild(s);
+}
+/* Called at logout — writes session duration to "Last logged in Duration" column */
+function _recordLogoutInSheet(){
+  if(_loginTime===0||_loginUserRow<0||_loginDurColIdx<0)return;
+  const dur=_fmtDuration(Date.now()-_loginTime);
+  _loginTime=0;
+  const row=_loginUserRow,col=_loginDurColIdx+1;
+  _loginUserRow=-1;_loginLastLogColIdx=-1;_loginDurColIdx=-1; // reset
+  const wcb='__rlo_'+Date.now();
+  window[wcb]=function(){try{delete window[wcb];}catch(e){}};
+  const ws=document.createElement('script');
+  ws.src=API+'?action=updateCell&sheet=Users&row='+row+'&col='+col+'&value='+encodeURIComponent(dur)+'&callback='+wcb;
+  ws.onerror=function(){try{delete window[wcb];}catch(e){}};
+  document.head.appendChild(ws);
+}
+
 function loginOK(user){
   curUser=user;
-  // Record last login timestamp for non-admin staff (fire-and-forget)
+  // Record login timestamp & prep duration tracking in Users sheet (fire-and-forget)
   if(!user.isAdmin&&user.username){
-    const _rlCb='__rl_'+Date.now();
-    window[_rlCb]=function(){try{delete window[_rlCb];}catch(e){}};
-    const _rls=document.createElement('script');
-    _rls.src=API+'?action=recordLogin&username='+encodeURIComponent(user.username)+'&callback='+_rlCb;
-    _rls.onerror=function(){try{delete window[_rlCb];}catch(e){}};
-    document.head.appendChild(_rls);
+    _recordLoginInSheet();
     // Session ping for Live Users tab
     _luPing();
     if(_luTimer)clearInterval(_luTimer);
@@ -1424,6 +1504,8 @@ function loginOK(user){
 }
 
 function doLogout(){
+  // Record session duration in Users sheet before clearing curUser
+  _recordLogoutInSheet();
   // End live session: fetch App_Settings, remove user entry, write back (no new deployment needed)
   if(curUser&&!curUser.isAdmin&&curUser.username){
     const _lu_eu=curUser.username; // capture before curUser cleared
