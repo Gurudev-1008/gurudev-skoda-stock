@@ -86,16 +86,16 @@ header{background:var(--bg-card);border-bottom:1px solid var(--border-strong);pa
 
 /* TABLE — compact layout, scrollbar always visible at viewport bottom */
 .tw{padding:0 20px;overflow:auto;max-height:calc(100vh - 175px);}
-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12px;}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:11px;}
 thead tr{background:var(--bg-surface);}
-th{font-family:var(--font-d);font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);padding:7px 10px;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;position:sticky;top:0;z-index:10;background:var(--bg-surface);box-shadow:0 -1px 0 var(--border) inset, 0 -2px 0 var(--border-strong) inset;}
+th{font-family:var(--font-d);font-size:9px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);padding:5px 8px;text-align:left;cursor:pointer;user-select:none;white-space:nowrap;position:sticky;top:0;z-index:10;background:var(--bg-surface);box-shadow:0 -1px 0 var(--border) inset, 0 -2px 0 var(--border-strong) inset;}
 th:active{color:var(--accent);}
 th.sorted{color:var(--accent);}
 th .si2{display:inline-block;margin-left:3px;opacity:.35;font-size:9px;}
 th.sorted .si2{opacity:1;}
 tbody tr{border-bottom:1px solid var(--border);transition:background .12s;animation:rowIn .15s ease both;}
 tbody tr:active{background:var(--accent-glow);}
-td{padding:6px 10px;color:var(--text-primary);vertical-align:middle;white-space:nowrap;}
+td{padding:3px 8px;color:var(--text-primary);vertical-align:middle;white-space:nowrap;}
 td.dim{color:var(--text-muted);}
 .cc{display:flex;align-items:center;gap:7px;}
 .cd{width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.18);flex-shrink:0;}
@@ -532,6 +532,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
     <div class="fw"><span class="fl">Colour</span><select class="fs" id="fCol" onchange="onCol()"><option value="">All Colours</option></select></div>
     <div class="fw"><span class="fl">VIN Year</span><select class="fs" id="fYr" onchange="renderTable()"><option value="">All Years</option></select></div>
     <div class="fw" id="fStatWrap" style="display:none"><span class="fl">Stock Status</span><select class="fs" id="fStat" onchange="renderTable()"><option value="">All Status</option></select></div>
+    <div class="fw" id="fBkStatWrap" style="display:none"><span class="fl">Booking Status</span><select class="fs" id="fBkStat" onchange="renderTable()"><option value="">All Booking Status</option></select></div>
     <div class="fw" id="daDtWrap" style="display:none;">
       <span class="fl">📅 De-allot Date</span>
       <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;white-space:nowrap;">
@@ -1631,6 +1632,11 @@ function setupTab(){
   // Stock Status filter — only visible on Stock tab (0)
   const statWrap=document.getElementById('fStatWrap');
   if(statWrap)statWrap.style.display=(curTab===0)?'':'none';
+  // Booking Status filter — only visible on Live RPO tab (2)
+  const bkStatWrap=document.getElementById('fBkStatWrap');
+  if(bkStatWrap)bkStatWrap.style.display=(curTab===2)?'':'none';
+  // Mode & Bank filters belong to Retail Finance only — hide on all other tabs
+  if(curTab!==12){['rfModeWrap','rfBankWrap','rfPayTypWrap','rfGSTWrap','rfBlankChkWrap'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});}
   // De-allotted date range — only visible on De-allotted tab (10)
   const daDtWrap=document.getElementById('daDtWrap');
   if(daDtWrap)daDtWrap.style.display=(curTab===10)?'flex':'none';
@@ -4186,6 +4192,15 @@ function updateBankCell(modeEl,sheet,sheetRow,bnI,ppI=-1){
     bankTd.innerHTML=editCellDD(curBank,sheet,sheetRow,bnI,lo.length?lo:['—']);
   }else if(modeL==='own fund'){
     bankTd.innerHTML=`<span title="Not applicable for Own Fund" style="color:var(--text-dim);font-size:11px;padding:2px 6px;">N/A</span>`;
+    // Clear bank name in sheet when switching to Own Fund
+    if(bnI>=0&&sheetRow>0){
+      const _bc='__bnc_'+Date.now();
+      window[_bc]=function(){try{delete window[_bc];}catch(e){}};
+      const _bs=document.createElement('script');
+      _bs.src=API+'?action=updateCell&sheet='+encodeURIComponent(sheet)+'&row='+sheetRow+'&col='+(bnI+1)+'&value=&callback='+_bc;
+      _bs.onerror=function(){try{delete window[_bc];}catch(e){}};
+      document.head.appendChild(_bs);
+    }
   }else{
     bankTd.innerHTML=editCell(curBank,sheet,sheetRow,bnI);
   }
@@ -4273,7 +4288,8 @@ function renderLiveRPO(){
     {label:'Corporate',      keys:['Corp','Corporate','CORP','CORPORATE']},
     {label:'Loyalty',        keys:['Loyalty','LOYALTY']},
     {label:'Exchange',       keys:['Exchange','EXCHANGE']},
-    {label:'Source',         keys:['Source','SOURCE']}
+    {label:'Source',         keys:['Source','SOURCE']},
+    {label:'Booking Status', keys:['Booking Status','BOOKING STATUS','Booking_Status','BKG Status','BKG_STATUS']}
   ];
   const NCOLS=COLS.length;
   if(!rows||rows.length<1){
@@ -4304,6 +4320,10 @@ function renderLiveRPO(){
   const fV=document.getElementById('fVar').value;
   const fC=document.getElementById('fCol').value;
   const fYr=document.getElementById('fYr').value;
+  const bkStIdx=idxs[NCOLS-1]; // last col = Booking Status
+  const fBkStat=(document.getElementById('fBkStat')||{}).value||'';
+  // Populate Booking Status filter dropdown
+  {const bkSel=document.getElementById('fBkStat');if(bkSel){const cur=bkSel.value;const vals=[...new Set(bodyWithIdx.map(({r})=>bkStIdx>=0?String(r[bkStIdx]||'').trim():'').filter(x=>x&&!x.startsWith('#')))].sort();bkSel.innerHTML='<option value="">All Booking Status</option>';vals.forEach(x=>bkSel.add(new Option(x,x)));if(vals.includes(cur))bkSel.value=cur;}}
   let filtered=bodyWithIdx.filter(({r})=>{
     const sno=String(r[snIdxRP]||'').trim();
     if(sno.toUpperCase().startsWith('CF'))return false;
@@ -4329,6 +4349,7 @@ function renderLiveRPO(){
     if(fV&&vI>=0&&String(r[vI]||'').trim()!==fV)return false;
     if(fC&&cI>=0&&String(r[cI]||'').trim()!==fC)return false;
     if(fYr&&yI>=0&&String(r[yI]||'').trim()!==fYr)return false;
+    if(fBkStat&&bkStIdx>=0&&String(r[bkStIdx]||'').trim()!==fBkStat)return false;
     return true;
   });
   if(sCol>=0&&sCol<NCOLS){
@@ -4359,6 +4380,8 @@ function renderLiveRPO(){
       if(si===11){const sv=ci>=0?String(r[ci]||'').trim():'';if(sv&&sv!=='—'){const _sc=(s=>{s=s.toLowerCase();if(s==='retail'||s==='invoiced'||s==='sold'||s==='invoice done')return'#4ade80';if(s==='allotted'||s==='booking confirmed'||s==='booking')return'#60a5fa';if(s==='tentative'||s==='enquiry')return'#facc15';if(s==='cancelled'||s==='cancel'||s==='lost')return'#f87171';return'#94a3b8';})(sv);return`<td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${_sc}22;color:${_sc};border:1px solid ${_sc}55;">${sv}</span></td>`;}return`<td class="dim">—</td>`;}
       // Corporate / Loyalty / Exchange — Yes/No editable dropdown
       if(si===12||si===13||si===14)return`<td>${editRPOYN(ci>=0?r[ci]||'':'',sheetRow,ci)}</td>`;
+      if(si===NCOLS-1){// Booking Status — coloured badge
+        if(v&&v!=='—'){const _bsc=(s=>{s=s.toLowerCase();if(s.includes('confirm')||s==='booked')return'#60a5fa';if(s.includes('cancel')||s.includes('lost'))return'#f87171';if(s.includes('tentative'))return'#facc15';if(s.includes('retail')||s.includes('deliver'))return'#4ade80';return'#94a3b8';})(v);return`<td><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:${_bsc}22;color:${_bsc};border:1px solid ${_bsc}55;">${v}</span></td>`;}return`<td class="dim">—</td>`;}
       return`<td class="${v==='—'?'dim':''}">${v}</td>`;
     }).join('')}</tr>`;
   }).join('');
@@ -4422,8 +4445,9 @@ function renderAllotment(){
   const ipdI=fc(h,'Invoice Plan Date');
   const ftI =fc(h,'Finance Type');
   const bnI =fc(h,'Bank Name');
-  const frI =21; // Finance Remarks = Column V (index 21)
-  const smrI=fc(h,'SM Remarks'); // SM Remarks column — dynamic lookup
+  const frI =(()=>{for(const k of['Finance Remarks','FINANCE REMARKS','Finance Remark','Fin Remarks','Fin Remark']){const i=fce(h,k);if(i>=0)return i;}return 21;})();
+  const smrI=(()=>{for(const k of['SM Remarks','SM REMARKS','Sm Remarks','SM Remark']){const i=fce(h,k);if(i>=0)return i;}return frI+1;})();
+  const ssI =(()=>{for(const k of['Stock Status','STOCK STATUS','Stk Status','STK STATUS']){const i=fce(h,k);if(i>=0)return i;}return -1;})(); // Stock Status
   // De-allot pending detection — columns written by Apps Script when request is raised
   const daReasonI=(()=>{for(const k of['De-allot Reason','DeAllot Reason','Deallot Reason','DA Reason','De-Allot Reason']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   const daRaisedByI=(()=>{for(const k of['Raised By','De-allot Raised By','DA Raised By','RaisedBy']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
@@ -4518,7 +4542,7 @@ function renderAllotment(){
   //          [19]Corp [20]Loyalty [21]Exchange [22]CorpType [23]CorpName [24]ExchBrand [25]Action
   const EDITABLE_COLS=new Set([14,15,16,17,18,19,20,21,22,23,24]);
   const CORP_TYPE_OPTS=['National Corporates','MSME','Professionals','Government Employees','Leasing & Fleet','SAVWIPL Group Employees & Vendors','Government e-Market (GeM)','Bulk Deal','Canteen Store Department (CSD)','Dealer Regional'];
-  const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Model','Variant','Colour','MY','VY','Invoice Status','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Corp','Loyalty','Exchange','Corp Type','Corp Name','Exch Brand','Action'];
+  const HEADERS=['SL No','Branch','Customer Name','Mobile','SC Name','Allotment Date','No of Days','Stock Location','Stock Status','Model','Variant','Colour','MY','VY','Invoice Status','Invoice Plan Date','Mode','Bank Name','Finance Remarks','SM Remarks','Corp','Loyalty','Exchange','Corp Type','Corp Name','Exch Brand','Action'];
   const NCOLS_A=HEADERS.length;
   document.getElementById('tH').innerHTML=HEADERS.map((d,i)=>{
     const frzCls=i<=2?('col-frz'+(i===2?' col-frz-last':'')):'';
@@ -4573,6 +4597,7 @@ function renderAllotment(){
       <td>${aDate}</td>
       <td>${ageing}</td>
       <td>${stLoc}</td>
+      <td>${ssI>=0?fmtCell(r[ssI])||'—':'—'}</td>
       <td><strong>${model}</strong></td>
       <td>${variant}</td>
       <td>${colour!=='—'?`<div class="cc"><div class="cd" style="background:${hue(colour)}"></div>${colour}</div>`:colour}</td>
@@ -4626,8 +4651,8 @@ function renderAGDMAllotment(){
   const ipdI=fc(h,'Invoice Plan Date');
   const ftI =fc(h,'Finance Type');
   const bnI =fc(h,'Bank Name');
-  const frI =21;
-  const smrI=fc(h,'SM Remarks');
+  const frI =(()=>{for(const k of['Finance Remarks','FINANCE REMARKS','Finance Remark','Fin Remarks','Fin Remark']){const i=fce(h,k);if(i>=0)return i;}return 21;})();
+  const smrI=(()=>{for(const k of['SM Remarks','SM REMARKS','Sm Remarks','SM Remark']){const i=fce(h,k);if(i>=0)return i;}return frI+1;})();
   const daReasonI8=(()=>{for(const k of['De-allot Reason','DeAllot Reason','Deallot Reason','DA Reason','De-Allot Reason']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   const daRaisedByI8=(()=>{for(const k of['Raised By','De-allot Raised By','DA Raised By','RaisedBy']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   const daSMRemarksI8=(()=>{for(const k of['De-allot SM Remarks','Deallot SM Remarks','DA SM Remarks','De-Allot SM Remarks']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
@@ -4773,7 +4798,7 @@ function renderDeallotted(){
   const frI =21;
   const smrI=fc(h,'SM Remarks');
   const clrI=(()=>{for(const k of ['Colour','Color','COLOUR','COLOR']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
-  const rsI =fc(h,'Reason');                // De-allot reason column
+  const rsI =(()=>{for(const k of['Reason','De-allot Reason','DeAllot Reason','Deallot Reason','DA Reason']){const i=fc(h,k);if(i>=0)return i;}return -1;})(); // De-allot reason column
   const daI =fc(h,'De-Allotted Date');       // De-allotted date column
   const vinMap=buildVinModelMap();
   const vinDetailMap10=buildVinDetailMap();
@@ -4883,8 +4908,8 @@ function renderDeallotted(){
       <td>${invPlan}</td>
       <td>${mode}</td>
       <td>${bank}</td>
-      <td>${finRem}</td>
-      <td>${smRem}</td>
+      <td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;cursor:pointer;" title="${finRem.replace(/"/g,'&quot;')}" onclick="showCellPopup('Finance Remarks','${finRem.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"> ${finRem}</td>
+      <td style="max-width:90px;overflow:hidden;text-overflow:ellipsis;cursor:pointer;" title="${smRem.replace(/"/g,'&quot;')}" onclick="showCellPopup('SM Remarks','${smRem.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"> ${smRem}</td>
       <td style="color:#fb923c;font-weight:600;">${reason}</td>
       <td style="color:var(--text-muted);">${daDate}</td>
       <td>${renderReallotCell(sheetRow,cust,sc,branch,model,variant,colour)}</td>
@@ -7281,7 +7306,8 @@ function renderStock(){
     {label:'Stock Location',  keys:['YARD','Yard','Location']},
     {label:'Customer Name',   keys:['CUSTOMER NAME','Customer Name']},
     {label:'SC Name',         keys:['SC NAME','SC Name']},
-    {label:'Branch Name',     keys:['BRANCH NAME','Branch Name']}
+    {label:'Branch Name',     keys:['BRANCH NAME','Branch Name']},
+    {label:'Stock Status',    keys:['Stock Status','STOCK STATUS','Stk Status','STK STATUS','Vehicle Status','VEHICLE STATUS']}
   ];
   const NCOLS=COLS.length;
   if(!rows||rows.length<1){
@@ -7889,6 +7915,26 @@ function _downloadCSV(csv,filename){
   a.href=url;a.download=filename.replace(/[<>:"/\\|?*]/g,'_')+'.csv';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ── Cell popup: shows full value of truncated cells on click ── */
+function showCellPopup(label,value){
+  let ov=document.getElementById('_cpOverlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='_cpOverlay';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;';
+    ov.innerHTML='<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;padding:20px 24px;max-width:420px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.4);">'+
+      '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:8px;" id="_cpLabel"></div>'+
+      '<div style="font-size:13px;color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word;" id="_cpBody"></div>'+
+      '<div style="text-align:right;margin-top:14px;"><button onclick="document.getElementById(\'_cpOverlay\').style.display=\'none\'" style="padding:5px 18px;font-size:11px;font-weight:700;border-radius:14px;background:var(--accent);color:var(--bg-deep);border:none;cursor:pointer;">Close</button></div>'+
+      '</div>';
+    ov.addEventListener('click',function(e){if(e.target===ov)ov.style.display='none';});
+    document.body.appendChild(ov);
+  }
+  document.getElementById('_cpLabel').textContent=label;
+  document.getElementById('_cpBody').textContent=value||'(empty)';
+  ov.style.display='flex';
 }
 
 // ── Export current toolbar-tab table (tabs 0,1,2,7,8,10,12) ──
