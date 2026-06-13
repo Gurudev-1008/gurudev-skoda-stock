@@ -448,6 +448,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
     <button class="tab"    onclick="goTab(13)"       id="t13">📈 Analytics</button>
     <button class="tab"    onclick="goTab(14)"       id="t14">📦 Stock Planning</button>
     <button class="tab"    onclick="goTab(15)"       id="t15">🟢 Live Users</button>
+    <button class="tab"    onclick="goParent('tools')" id="tpTools">🔧 Tools</button>
     <button class="tab"    onclick="goTab(4)"        id="t4">⚙ Manage</button>
   </div>
   <!-- Free Stock sub-tabs (shown when Free Stock parent is active) -->
@@ -460,6 +461,10 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
   <div class="sub-tabs" id="subTabsAllot" style="display:none">
     <button class="sub-tab" onclick="goTab(7)" id="t7">🚗 New Car Allotment</button>
     <button class="sub-tab" onclick="goTab(8)" id="t8">📦 Ageing &amp; Demo Allotment</button>
+  </div>
+  <!-- Tools sub-tabs (shown when Tools parent is active) -->
+  <div class="sub-tabs" id="subTabsTools" style="display:none">
+    <button class="sub-tab" onclick="goTab(17)" id="t17">🔍 Compare</button>
   </div>
       <div class="fsbs">Select a model to view availability</div>
     </div>
@@ -861,6 +866,11 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
   <div id="luContent"><div class="sb"><div class="sp"></div><strong>Loading live users…</strong></div></div>
 </div>
 
+<!-- COMPARE AREA (Tools → Compare sub-tab) -->
+<div id="cmpArea" style="display:none;overflow:auto;max-height:calc(100vh - 115px);padding:0 0 40px;">
+  <div id="cmpContent"></div>
+</div>
+
 <!-- LEVEL-3 LOGIN WARNING MODAL -->
 <div class="l3w-overlay" id="l3wOverlay">
   <div class="l3w-box">
@@ -1025,8 +1035,8 @@ const CY=String(new Date().getFullYear());
 // Level-based tab access — tab indices each level can see
 // Tabs: 0=Stock,1=Allocation,2=LiveRPO,3=FreeStock,4=Manage,5=Ageing,6=Demo,7=Allotment,8=AG/DM Allotment,9=Reports,10=De-allotted
 const LEVEL_TABS={
-  1:  [0,1,2,3,5,6,7,8,9,10,11,12],          // All tabs except Manage, Analytics, Stock Planning (Admin only)
-  '1A':[0,1,2,3,5,6,7,8,9,10,11,12],         // Same as L1 (no Manage, Analytics, Stock Planning)
+  1:  [0,1,2,3,5,6,7,8,9,10,11,12,17],        // All tabs except Manage, Analytics, Stock Planning (Admin only) + Tools
+  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,17],      // Same as L1 + Tools
   2:  [2,3,5,6,7,8,9,10,11],                  // No Stock/Allocation/Manage — no Retail Finance
   '2F':[2,3,5,6,7,8,9,10,11,12],              // Same as L2 + Retail Finance (Retail + ROI sub-tabs only, no Allotment)
   3:  [2,3,5,6,7,8,9,10,11],                  // Same as L2 — branch pre-filled, no Retail Finance, no Stock Planning
@@ -1037,6 +1047,7 @@ const LEVEL_TABS={
 
 const FREE_TABS=[3,5,6]; // sub-tabs under "Free Stock" parent
 const ALLOT_TABS=[7,8];  // sub-tabs under "Allotment" parent (tab 12 is now a standalone main tab)
+const TOOLS_TABS=[17];   // sub-tabs under "Tools" parent — 17=Compare
 
 // All accepted name aliases per tab index — any one of these may appear in the "Tab Name"
 // column of the "Tab Access" Google Sheet.
@@ -1056,7 +1067,8 @@ const TAB_NAMES_ALT={
   10:['De-allotted','De-Allotted','Deallotted'],
   11:['VNA Summary','VNA'],
   12:['Retail Finance'],
-  13:['Analytics','Analytics Dashboard']
+  13:['Analytics','Analytics Dashboard'],
+  17:['Compare','Tools Compare','Vehicle Compare']
 };
 
 // Returns a Set of lowercase tab names that have "No" permission in SD[15] (Tab Access sheet)
@@ -1475,12 +1487,15 @@ function loginOK(user){
   // Show/hide parent tab buttons based on whether user has any sub-tabs in that group
   const hasFree=FREE_TABS.some(t=>allowed.includes(t));
   const hasAllot=ALLOT_TABS.some(t=>allowed.includes(t));
-  const tpF=document.getElementById('tpFree'),tpA=document.getElementById('tpAllot');
+  const hasTools=TOOLS_TABS.some(t=>allowed.includes(t));
+  const tpF=document.getElementById('tpFree'),tpA=document.getElementById('tpAllot'),tpT=document.getElementById('tpTools');
   if(tpF)tpF.style.display=hasFree?'':'none';
   if(tpA)tpA.style.display=hasAllot?'':'none';
+  if(tpT)tpT.style.display=hasTools?'':'none';
   // Show/hide individual sub-tab buttons
   FREE_TABS.forEach(i=>{const el=document.getElementById('t'+i);if(el)el.style.display=allowed.includes(i)?'':'none';});
   ALLOT_TABS.forEach(i=>{const el=document.getElementById('t'+i);if(el)el.style.display=allowed.includes(i)?'':'none';});
+  TOOLS_TABS.forEach(i=>{const el=document.getElementById('t'+i);if(el)el.style.display=allowed.includes(i)?'':'none';});
   curTab=user.isAdmin?0:allowed[0];isFree=(curTab===3);
   // Set active states for main bar and parent tabs
   [0,1,2,4,9,10,11,12].forEach(i=>{const el=document.getElementById('t'+i);if(el)el.classList.toggle('active',i===curTab);});
@@ -1557,21 +1572,24 @@ function logoClick(){
 /* ═══ TABS ═══ */
 // Update parent-tab active styles and show/hide sub-tab bars
 function updateParentTabs(){
-  const inFree=FREE_TABS.includes(curTab),inAllot=ALLOT_TABS.includes(curTab);
-  const tpF=document.getElementById('tpFree'),tpA=document.getElementById('tpAllot');
+  const inFree=FREE_TABS.includes(curTab),inAllot=ALLOT_TABS.includes(curTab),inTools=TOOLS_TABS.includes(curTab);
+  const tpF=document.getElementById('tpFree'),tpA=document.getElementById('tpAllot'),tpT=document.getElementById('tpTools');
   if(tpF){tpF.classList.toggle('active',inFree);tpF.classList.toggle('parent-active',inFree);}
   if(tpA){tpA.classList.toggle('active',inAllot);tpA.classList.toggle('parent-active',inAllot);}
-  const stF=document.getElementById('subTabsFree'),stA=document.getElementById('subTabsAllot');
+  if(tpT){tpT.classList.toggle('active',inTools);tpT.classList.toggle('parent-active',inTools);}
+  const stF=document.getElementById('subTabsFree'),stA=document.getElementById('subTabsAllot'),stT=document.getElementById('subTabsTools');
   if(stF)stF.style.display=inFree?'flex':'none';
   if(stA)stA.style.display=inAllot?'flex':'none';
+  if(stT)stT.style.display=inTools?'flex':'none';
   // Update sub-tab button active states
   [3,5,6].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===curTab);});
   [7,8,12].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===curTab);});
+  [17].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===curTab);});
 }
 // Returns the set of allowed tab indices for the current user
 function getAllowedTabs(u){
   u=u||curUser;
-  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
+  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,17];
   let tabs=[...(LEVEL_TABS[u.level]||[3,5,6])];
   // Level 4: Live RPO (tab 2) only if Role is explicitly "SC" in staff sheet
   if(u.level===4&&String(u.role||'').trim().toUpperCase()!=='SC'){
@@ -1582,7 +1600,7 @@ function getAllowedTabs(u){
 // Navigate to first available sub-tab for a group
 function goParent(group){
   const allowed=getAllowedTabs();
-  const tabs=group==='free'?FREE_TABS:ALLOT_TABS;
+  const tabs=group==='free'?FREE_TABS:group==='tools'?TOOLS_TABS:ALLOT_TABS;
   const first=tabs.find(t=>allowed.includes(t));
   if(first!==undefined)goTab(first);
 }
@@ -1591,7 +1609,7 @@ function goTab(i){
   if(!allowed.includes(i))return;
   curTab=i;isFree=(i===3);sCol=-1;sAsc=true;
   // Regular (non-sub-tab) main bar buttons
-  [0,1,2,4,9,10,11,12,13,14,15].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===i);});
+  [0,1,2,4,9,10,11,12,13,14,15,17].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===i);});
   updateParentTabs();
   clearF(false);
   document.getElementById('tH').innerHTML='';
@@ -1607,14 +1625,17 @@ function setupTab(){
   const isAna=(curTab===13);
   const isSP=(curTab===14);
   const isLU=(curTab===15);
-  document.getElementById('toolBar').style.display=(isM||isRep||isVNA||isAna||isSP||isLU)?'none':'flex';
-  document.getElementById('tblArea').style.display=(isM||isRep||isVNA||isAna||isSP||isLU)?'none':'block';
+  const isCmp=(curTab===17);
+  const isSpecial=isM||isRep||isVNA||isAna||isSP||isLU||isCmp;
+  document.getElementById('toolBar').style.display=isSpecial?'none':'flex';
+  document.getElementById('tblArea').style.display=isSpecial?'none':'block';
   document.getElementById('repArea').style.display=isRep?'block':'none';
   document.getElementById('manArea').style.display=isM?'block':'none';
   document.getElementById('vnaArea').style.display=isVNA?'block':'none';
   document.getElementById('anaArea').style.display=isAna?'block':'none';
   document.getElementById('spArea').style.display=isSP?'block':'none';
   document.getElementById('luArea').style.display=isLU?'block':'none';
+  document.getElementById('cmpArea').style.display=isCmp?'block':'none';
   // ── Tab Access permission check (non-admin only) ──────────────────────────
   if(isTabUnderMaintenance(curTab)){showMaintenanceMsgForTab();return;}
   // ─────────────────────────────────────────────────────────────────────────
@@ -1623,6 +1644,7 @@ function setupTab(){
   if(isAna){renderAnalytics();return;}
   if(isSP){renderStockPlanning();return;}
   if(isLU){renderLiveUsers();return;}
+  if(isCmp){renderCompare();return;}
   document.getElementById('searchWrap').style.display=(isFree||isCustom)?'none':'';
   // For custom tabs show only Model filter; hide Variant, Colour, VIN Year
   ['fVar','fCol','fYr'].forEach(id=>{
@@ -5953,13 +5975,13 @@ function renderRetailFinanceReport(){
   // ── Style helpers ──
   const fmt=n=>n?Math.round(n).toLocaleString('en-IN'):'—';
   const pct=(a,b)=>b>0?(a/b*100).toFixed(1)+'%':'—';
-  const thS='padding:4px 6px;background:var(--bg-surface);color:var(--text-muted);font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-bottom:2px solid var(--border);white-space:nowrap;text-align:center;';
+  const thS='padding:7px 8px;background:#f1f5f9;color:#64748b;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-bottom:2px solid #dde3ea;border:1px solid #dde3ea;white-space:nowrap;text-align:center;font-family:\'Segoe UI\',system-ui,sans-serif;';
   const thL=thS+'text-align:left;';
-  const tdS='padding:3px 6px;font-size:11px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap;';
+  const tdS='padding:7px 8px;font-size:13px;font-weight:500;border-bottom:1px solid #e8edf3;text-align:right;white-space:nowrap;color:#1a2636;font-family:\'Segoe UI\',system-ui,sans-serif;';
   const tdL=tdS+'text-align:left;font-weight:600;';
-  const totS=tdS+'font-weight:700;background:rgba(74,222,128,0.07);border-top:2px solid var(--border);';
-  const totL=tdL+'background:rgba(74,222,128,0.07);border-top:2px solid var(--border);';
-  const tblWrap=html=>`<div style="overflow-x:auto;margin-top:12px;border:1px solid var(--border);border-radius:8px;"><table style="width:100%;border-collapse:collapse;font-size:12px;">${html}</table></div>`;
+  const totS=tdS+'font-weight:700;background:#e8f0fe;border-top:2px solid #c8d3ea;color:#1a2636;';
+  const totL=tdL+'background:#e8f0fe;border-top:2px solid #c8d3ea;font-size:14px;';
+  const tblWrap=html=>`<div style="overflow-x:auto;margin-top:12px;border:1px solid #dde3ea;border-radius:10px;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.06);"><table style="width:100%;border-collapse:collapse;font-size:13px;">${html}</table></div>`;
   // Export buttons HTML
   const expBtns=(id,title)=>`<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
     <button onclick="rfRepExportXLSX('${id}','${title}')" style="padding:4px 12px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid #4caf6e;background:none;color:#4caf6e;display:flex;align-items:center;gap:4px;">&#x1F4E5; Excel</button>
@@ -5980,19 +6002,19 @@ function renderRetailFinanceReport(){
       <td style="${cls||tdS}">${g.own}</td>
       <td style="${cls||tdS}">${g.lease}</td>
       <td style="${cls||tdS}">${g.blank}</td>
-      <td style="${cls||tdS};color:${g.total?'#4ade80':'var(--text-muted)'}">${pct(g.inhouse,g.total)}</td>
-      <td style="${cls||tdS};color:${fin?'#60a5fa':'var(--text-muted)'}">${pct(g.inhouse,fin)}</td>
+      <td style="${cls||tdS};color:${g.total?'#16a34a':'#94a3b8'}">${pct(g.inhouse,g.total)}</td>
+      <td style="${cls||tdS};color:${fin?'#1d4ed8':'#94a3b8'}">${pct(g.inhouse,fin)}</td>
     </tr>`;};
     const fin2=tot.inhouse+tot.outhouse;
     const hdr=`<thead><tr><th style="${thL}">${grpLabel}</th><th style="${thS}">Total Retail</th><th style="${thS}">Inhouse</th><th style="${thS}">Outhouse</th><th style="${thS}">Own Fund</th><th style="${thS}">Lease</th><th style="${thS}">Blank</th><th style="${thS}">Inhouse% (Overall)</th><th style="${thS}">Inhouse% (Finance)</th></tr></thead>`;
     const body=`<tbody>${keys.map(k=>row(k,map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.total}</td><td style="${totS}">${tot.inhouse}</td><td style="${totS}">${tot.outhouse}</td><td style="${totS}">${tot.own}</td><td style="${totS}">${tot.lease}</td><td style="${totS}">${tot.blank}</td><td style="${totS};color:#4ade80;">${pct(tot.inhouse,tot.total)}</td><td style="${totS};color:#60a5fa;">${pct(tot.inhouse,fin2)}</td></tr></tbody>`;
-    return`<div id="rfRpt1"><h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">1. ${grpLabel} wise &mdash; Mode wise Report</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Inhouse % on Overall Retail &amp; on Finance (Inhouse+Outhouse) cases.</p>${expBtns('rfRpt1Table','Mode Wise Report')}${tblWrap(hdr+body)}</div><table id="rfRpt1Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+    return`<div id="rfRpt1"><h3 style="font-size:14px;font-weight:700;color:#1a2636;margin:0 0 4px;font-family:'Segoe UI',system-ui,sans-serif;">1. ${grpLabel} wise &mdash; Mode wise Report</h3><p style="font-size:12px;color:#64748b;margin:0 0 4px;font-family:'Segoe UI',system-ui,sans-serif;">Inhouse % on Overall Retail &amp; on Finance (Inhouse+Outhouse) cases.</p>${expBtns('rfRpt1Table','Mode Wise Report')}${tblWrap(hdr+body)}</div><table id="rfRpt1Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
   }
   // ── Report 2: Bank wise Inhouse/Outhouse (bank overview + drill-down) ──
   function buildR2(){
     const finRows=rows.filter(r=>r.mode==='Inhouse'||r.mode==='Outhouse');
     const drill=window._rfR2Drill||null;
-    const backBtn=`<button onclick="window._rfR2Drill=null;renderRetailFinanceReport()" style="padding:4px 14px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);margin-right:10px;">&#8592; Back to Banks</button>`;
+    const backBtn=`<button onclick="window._rfR2Drill=null;renderRetailFinanceReport()" style="padding:4px 14px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid #dde3ea;background:#fff;color:#64748b;margin-right:10px;font-family:'Segoe UI',system-ui,sans-serif;">&#8592; Back to Banks</button>`;
     if(drill){
       // Drill-down: branch/SC breakdown for selected bank
       const bankRows=finRows.filter(r=>r.bank===drill);
@@ -6002,10 +6024,10 @@ function renderRetailFinanceReport(){
       let tot={inhouse:0,outhouse:0};
       keys.forEach(k=>{const g=map.get(k);tot.inhouse+=g.inhouse;tot.outhouse+=g.outhouse;});
       const totFin=tot.inhouse+tot.outhouse;
-      const row=(g,cls)=>{const fin=g.inhouse+g.outhouse;return`<tr><td style="${cls||tdL}">${g.grp}</td><td style="${cls||tdS}">${g.inhouse}</td><td style="${cls||tdS}">${g.outhouse}</td><td style="${cls||tdS}">${fin}</td><td style="${cls||tdS};color:${fin?'#4ade80':'var(--text-muted)'}">${pct(g.inhouse,fin)}</td></tr>`;};
+      const row=(g,cls)=>{const fin=g.inhouse+g.outhouse;return`<tr><td style="${cls||tdL}">${g.grp}</td><td style="${cls||tdS}">${g.inhouse}</td><td style="${cls||tdS}">${g.outhouse}</td><td style="${cls||tdS}">${fin}</td><td style="${cls||tdS};color:${fin?'#16a34a':'#94a3b8'}">${pct(g.inhouse,fin)}</td></tr>`;};
       const hdr=`<thead><tr><th style="${thL}">${grpLabel}</th><th style="${thS}">Inhouse</th><th style="${thS}">Outhouse</th><th style="${thS}">Total Finance</th><th style="${thS}">Inhouse%</th></tr></thead>`;
-      const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.inhouse}</td><td style="${totS}">${tot.outhouse}</td><td style="${totS}">${totFin}</td><td style="${totS};color:#4ade80;">${pct(tot.inhouse,totFin)}</td></tr></tbody>`;
-      return`<div id="rfRpt2"><div style="display:flex;align-items:center;margin-bottom:8px;">${backBtn}<h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0;">2. Bank: <span style="color:var(--accent);">${drill}</span> &mdash; ${grpLabel} wise Breakdown</h3></div>${expBtns('rfRpt2Table','Bank '+drill+' Branch Wise')}${tblWrap(hdr+body)}</div><table id="rfRpt2Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+      const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.inhouse}</td><td style="${totS}">${tot.outhouse}</td><td style="${totS}">${totFin}</td><td style="${totS};color:#16a34a;">${pct(tot.inhouse,totFin)}</td></tr></tbody>`;
+      return`<div id="rfRpt2"><div style="display:flex;align-items:center;margin-bottom:8px;">${backBtn}<h3 style="font-size:14px;font-weight:700;color:#1a2636;margin:0;font-family:'Segoe UI',system-ui,sans-serif;">2. Bank: <span style="color:#1d4ed8;">${drill}</span> &mdash; ${grpLabel} wise Breakdown</h3></div>${expBtns('rfRpt2Table','Bank '+drill+' Branch Wise')}${tblWrap(hdr+body)}</div><table id="rfRpt2Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
     }
     // Bank overview
     const map=new Map();
@@ -6014,10 +6036,10 @@ function renderRetailFinanceReport(){
     let tot={inhouse:0,outhouse:0};
     keys.forEach(k=>{const g=map.get(k);tot.inhouse+=g.inhouse;tot.outhouse+=g.outhouse;});
     const totFin=tot.inhouse+tot.outhouse;
-    const row=(g,cls)=>{const fin=g.inhouse+g.outhouse;const safe=g.bank.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<tr style="cursor:pointer;" onclick="window._rfR2Drill='${safe}';renderRetailFinanceReport()"><td style="${cls||tdL};color:var(--accent);text-decoration:underline;cursor:pointer;">${g.bank}</td><td style="${cls||tdS}">${g.inhouse}</td><td style="${cls||tdS}">${g.outhouse}</td><td style="${cls||tdS}">${fin}</td><td style="${cls||tdS};color:${fin?'#4ade80':'var(--text-muted)'}">${pct(g.inhouse,fin)}</td></tr>`;};
-    const hdr=`<thead><tr><th style="${thL}">Bank <span style="font-size:9px;font-weight:400;color:var(--text-dim);">(click to drill down)</span></th><th style="${thS}">Inhouse</th><th style="${thS}">Outhouse</th><th style="${thS}">Total Finance</th><th style="${thS}">Inhouse%</th></tr></thead>`;
-    const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.inhouse}</td><td style="${totS}">${tot.outhouse}</td><td style="${totS}">${totFin}</td><td style="${totS};color:#4ade80;">${pct(tot.inhouse,totFin)}</td></tr></tbody>`;
-    return`<div id="rfRpt2"><h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">2. Bank wise &mdash; Inhouse &amp; Outhouse</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Click a bank name to see ${grpLabel.toLowerCase()}-wise breakdown.</p>${expBtns('rfRpt2Table','Bank Wise Inhouse Outhouse')}${tblWrap(hdr+body)}</div><table id="rfRpt2Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+    const row=(g,cls)=>{const fin=g.inhouse+g.outhouse;const safe=g.bank.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<tr style="cursor:pointer;" onclick="window._rfR2Drill='${safe}';renderRetailFinanceReport()"><td style="${cls||tdL};color:#1d4ed8;text-decoration:underline;cursor:pointer;">${g.bank}</td><td style="${cls||tdS}">${g.inhouse}</td><td style="${cls||tdS}">${g.outhouse}</td><td style="${cls||tdS}">${fin}</td><td style="${cls||tdS};color:${fin?'#16a34a':'#94a3b8'}">${pct(g.inhouse,fin)}</td></tr>`;};
+    const hdr=`<thead><tr><th style="${thL}">Bank <span style="font-size:10px;font-weight:400;color:#94a3b8;">(click to drill down)</span></th><th style="${thS}">Inhouse</th><th style="${thS}">Outhouse</th><th style="${thS}">Total Finance</th><th style="${thS}">Inhouse%</th></tr></thead>`;
+    const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.inhouse}</td><td style="${totS}">${tot.outhouse}</td><td style="${totS}">${totFin}</td><td style="${totS};color:#16a34a;">${pct(tot.inhouse,totFin)}</td></tr></tbody>`;
+    return`<div id="rfRpt2"><h3 style="font-size:14px;font-weight:700;color:#1a2636;margin:0 0 4px;font-family:'Segoe UI',system-ui,sans-serif;">2. Bank wise &mdash; Inhouse &amp; Outhouse</h3><p style="font-size:12px;color:#64748b;margin:0 0 4px;font-family:'Segoe UI',system-ui,sans-serif;">Click a bank name to see ${grpLabel.toLowerCase()}-wise breakdown.</p>${expBtns('rfRpt2Table','Bank Wise Inhouse Outhouse')}${tblWrap(hdr+body)}</div><table id="rfRpt2Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
   }
   // ── Report 3: Bank wise Payout (bank overview + drill-down) ──
   function buildR3(){
@@ -6029,16 +6051,16 @@ function renderRetailFinanceReport(){
     const showAvg  =selCols.has('avg');
     const chkLbl=(key,label)=>{
       const on=selCols.has(key);
-      const brd=on?'#4ade80':'var(--border)';
-      const bg=on?'rgba(74,222,128,0.12)':'none';
-      const col=on?'#4ade80':'var(--text-muted)';
-      return`<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid ${brd};background:${bg};color:${col};user-select:none;">
-        <input type="checkbox" ${on?'checked':''} style="accent-color:#4ade80;width:12px;height:12px;"
+      const brd=on?'#1d4ed8':'#dde3ea';
+      const bg=on?'#eff6ff':'#fff';
+      const col=on?'#1d4ed8':'#64748b';
+      return`<label style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;padding:4px 10px;border-radius:12px;border:1px solid ${brd};background:${bg};color:${col};user-select:none;font-family:'Segoe UI',system-ui,sans-serif;">
+        <input type="checkbox" ${on?'checked':''} style="accent-color:#1d4ed8;width:12px;height:12px;"
           onchange="(window._rfR3Cols=window._rfR3Cols||new Set())[this.checked?'add':'delete']('${key}');renderRetailFinanceReport()"> ${label}
       </label>`;
     };
-    const colSelector=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0 10px;border-bottom:1px solid var(--border);margin-bottom:14px;">
-      <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;">Extra Columns</span>
+    const colSelector=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0 10px;border-bottom:1px solid #dde3ea;margin-bottom:14px;">
+      <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;font-family:'Segoe UI',system-ui,sans-serif;">Extra Columns</span>
       ${chkLbl('cases','No of Cases')}
       ${chkLbl('da','Total Disbursed Amount')}
       ${chkLbl('avg','Avg Net Payout')}
@@ -6066,7 +6088,7 @@ function renderRetailFinanceReport(){
       (showAvg?eTd(g.cnt>0?Math.round(g.np/g.cnt).toLocaleString('en-IN'):'—',cls):'');
 
     const drill=window._rfR3Drill||null;
-    const backBtn=`<button onclick="window._rfR3Drill=null;renderRetailFinanceReport()" style="padding:4px 14px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);margin-right:10px;">&#8592; Back to Banks</button>`;
+    const backBtn=`<button onclick="window._rfR3Drill=null;renderRetailFinanceReport()" style="padding:4px 14px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid #dde3ea;background:#fff;color:#64748b;margin-right:10px;font-family:'Segoe UI',system-ui,sans-serif;">&#8592; Back to Banks</button>`;
     if(drill){
       // Drill-down: branch/SC payout breakdown for selected bank
       const bankRows=rows.filter(r=>r.bank===drill&&(r.pa||r.np||r.ga||r.mode==='Inhouse'));
@@ -6078,7 +6100,7 @@ function renderRetailFinanceReport(){
       const row=(g,cls)=>`<tr><td style="${cls||tdL}">${g.grp}</td>${buildCells(g,cls)}</tr>`;
       const hdr=buildHdr(grpLabel);
       const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td>${buildCells(tot,totS)}</tr></tbody>`;
-      return`<div id="rfRpt3">${colSelector}<div style="display:flex;align-items:center;margin-bottom:8px;">${backBtn}<h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0;">3. Bank: <span style="color:var(--accent);">${drill}</span> &mdash; ${grpLabel} wise Payout</h3></div>${expBtns('rfRpt3Table','Bank '+drill+' Payout Branch Wise')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+      return`<div id="rfRpt3">${colSelector}<div style="display:flex;align-items:center;margin-bottom:8px;">${backBtn}<h3 style="font-size:14px;font-weight:700;color:#1a2636;margin:0;font-family:'Segoe UI',system-ui,sans-serif;">3. Bank: <span style="color:#1d4ed8;">${drill}</span> &mdash; ${grpLabel} wise Payout</h3></div>${expBtns('rfRpt3Table','Bank '+drill+' Payout Branch Wise')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
     }
     // Bank overview — include inhouse rows even if payout is zero (needed for cnt/da)
     const map=new Map();
@@ -6086,10 +6108,10 @@ function renderRetailFinanceReport(){
     const keys=[...map.keys()].sort();
     let tot={pa:0,np:0,ga:0,cnt:0,da:0};
     keys.forEach(k=>{const g=map.get(k);tot.pa+=g.pa;tot.np+=g.np;tot.ga+=g.ga;tot.cnt+=g.cnt;tot.da+=g.da;});
-    const row=(g,cls)=>{const safe=g.bank.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<tr style="cursor:pointer;" onclick="window._rfR3Drill='${safe}';renderRetailFinanceReport()"><td style="${cls||tdL};color:var(--accent);text-decoration:underline;cursor:pointer;">${g.bank}</td>${buildCells(g,cls)}</tr>`;};
-    const hdr=buildHdr('Bank <span style="font-size:9px;font-weight:400;color:var(--text-dim);">(click to drill down)</span>');
+    const row=(g,cls)=>{const safe=g.bank.replace(/\\/g,'\\\\').replace(/'/g,"\\'");return`<tr style="cursor:pointer;" onclick="window._rfR3Drill='${safe}';renderRetailFinanceReport()"><td style="${cls||tdL};color:#1d4ed8;text-decoration:underline;cursor:pointer;">${g.bank}</td>${buildCells(g,cls)}</tr>`;};
+    const hdr=buildHdr('Bank <span style="font-size:10px;font-weight:400;color:#94a3b8;">(click to drill down)</span>');
     const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td>${buildCells(tot,totS)}</tr></tbody>`;
-    return`<div id="rfRpt3">${colSelector}<h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">3. Bank wise &mdash; Payout Report</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Click a bank name to see ${grpLabel.toLowerCase()}-wise payout breakdown.</p>${expBtns('rfRpt3Table','Bank Wise Payout Report')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+    return`<div id="rfRpt3">${colSelector}<h3 style="font-size:14px;font-weight:700;color:#1a2636;margin:0 0 4px;font-family:'Segoe UI',system-ui,sans-serif;">3. Bank wise &mdash; Payout Report</h3><p style="font-size:12px;color:#64748b;margin:0 0 4px;font-family:'Segoe UI',system-ui,sans-serif;">Click a bank name to see ${grpLabel.toLowerCase()}-wise payout breakdown.</p>${expBtns('rfRpt3Table','Bank Wise Payout Report')}${tblWrap(hdr+body)}</div><table id="rfRpt3Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
   }
   // ── Report 4: Branch/SC Summary ──
   function buildR4(){
@@ -6098,10 +6120,10 @@ function renderRetailFinanceReport(){
     const keys=[...map.keys()].sort();
     let tot={pa:0,np:0,ga:0,cnt:0,inhouse:0,total:0};
     keys.forEach(k=>{const g=map.get(k);Object.keys(tot).forEach(f=>tot[f]+=g[f]||0);});
-    const row=(g,cls)=>`<tr><td style="${cls||tdL}">${g.grp}</td><td style="${cls||tdS}">${g.total}</td><td style="${cls||tdS}">${g.inhouse}</td><td style="${cls||tdS};color:${g.total?'#4ade80':'var(--text-muted)'}">${pct(g.inhouse,g.total)}</td><td style="${cls||tdS}">${fmt(g.pa)}</td><td style="${cls||tdS}">${fmt(g.np)}</td><td style="${cls||tdS}">${fmt(g.ga)}</td></tr>`;
+    const row=(g,cls)=>`<tr><td style="${cls||tdL}">${g.grp}</td><td style="${cls||tdS}">${g.total}</td><td style="${cls||tdS}">${g.inhouse}</td><td style="${cls||tdS};color:${g.total?'#16a34a':'#94a3b8'}">${pct(g.inhouse,g.total)}</td><td style="${cls||tdS}">${fmt(g.pa)}</td><td style="${cls||tdS}">${fmt(g.np)}</td><td style="${cls||tdS}">${fmt(g.ga)}</td></tr>`;
     const hdr=`<thead><tr><th style="${thL}">${grpLabel}</th><th style="${thS}">Total Records</th><th style="${thS}">Inhouse</th><th style="${thS}">Inhouse%</th><th style="${thS}">Payout Amount (&#8377;)</th><th style="${thS}">Net Payout (&#8377;)</th><th style="${thS}">GST Amount (&#8377;)</th></tr></thead>`;
-    const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.total}</td><td style="${totS}">${tot.inhouse}</td><td style="${totS};color:#4ade80;">${pct(tot.inhouse,tot.total)}</td><td style="${totS}">${fmt(tot.pa)}</td><td style="${totS}">${fmt(tot.np)}</td><td style="${totS}">${fmt(tot.ga)}</td></tr></tbody>`;
-    return`<div id="rfRpt4"><h3 style="font-size:13px;font-weight:700;color:var(--text-primary);margin:0 0 4px;">4. ${grpLabel} wise &mdash; Summary Report</h3><p style="font-size:11px;color:var(--text-muted);margin:0 0 4px;">Overall payout summary with Inhouse % per ${grpLabel.toLowerCase()}.</p>${expBtns('rfRpt4Table','Summary Report')}${tblWrap(hdr+body)}</div><table id="rfRpt4Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
+    const body=`<tbody>${keys.map(k=>row(map.get(k))).join('')}<tr><td style="${totL}">TOTAL</td><td style="${totS}">${tot.total}</td><td style="${totS}">${tot.inhouse}</td><td style="${totS};color:#16a34a;">${pct(tot.inhouse,tot.total)}</td><td style="${totS}">${fmt(tot.pa)}</td><td style="${totS}">${fmt(tot.np)}</td><td style="${totS}">${fmt(tot.ga)}</td></tr></tbody>`;
+    return`<div id="rfRpt4"><h3 style="font-size:14px;font-weight:700;color:#1a2636;margin:0 0 4px;font-family:'Segoe UI',system-ui,sans-serif;">4. ${grpLabel} wise &mdash; Summary Report</h3><p style="font-size:12px;color:#64748b;margin:0 0 4px;font-family:'Segoe UI',system-ui,sans-serif;">Overall payout summary with Inhouse % per ${grpLabel.toLowerCase()}.</p>${expBtns('rfRpt4Table','Summary Report')}${tblWrap(hdr+body)}</div><table id="rfRpt4Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`;
   }
   // ── Report 5: Statement (Inhouse cases detail list) ──
   function buildR5(){
@@ -6120,11 +6142,11 @@ function renderRetailFinanceReport(){
     if(chkLa)stRows=stRows.filter(r=>!(r.la>0));
     if(chkDa)stRows=stRows.filter(r=>!(r.da>0));
     if(chkPp)stRows=stRows.filter(r=>!(r.pa>0));
-    const selS='padding:3px 7px;font-size:10px;border:1px solid var(--border);border-radius:5px;background:var(--bg-surface);color:var(--text-primary);';
-    const chkStyle='display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-muted);cursor:pointer;white-space:nowrap;';
-    const chkBox=(name,label,checked,flag)=>`<label style="${chkStyle}"><input type="checkbox" style="accent-color:var(--accent);width:12px;height:12px;cursor:pointer;" ${checked?'checked':''} onchange="window.${flag}=this.checked;renderRetailFinanceReport()"><span style="font-weight:600;">${label}</span></label>`;
-    const filterBar=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0 8px;border-bottom:1px solid var(--border);margin-bottom:8px;">
-      <span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;">Filter</span>
+    const selS='padding:4px 8px;font-size:11px;border:1px solid #c8d3de;border-radius:6px;background:#fff;color:#1a2636;font-family:\'Segoe UI\',system-ui,sans-serif;';
+    const chkStyle='display:flex;align-items:center;gap:4px;font-size:11px;color:#64748b;cursor:pointer;white-space:nowrap;font-family:\'Segoe UI\',system-ui,sans-serif;';
+    const chkBox=(name,label,checked,flag)=>`<label style="${chkStyle}"><input type="checkbox" style="accent-color:#1d4ed8;width:12px;height:12px;cursor:pointer;" ${checked?'checked':''} onchange="window.${flag}=this.checked;renderRetailFinanceReport()"><span style="font-weight:600;">${label}</span></label>`;
+    const filterBar=`<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0 8px;border-bottom:1px solid #dde3ea;margin-bottom:8px;">
+      <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;font-family:'Segoe UI',system-ui,sans-serif;">Filter</span>
       <select style="${selS}" onchange="window._rfR5Branch=this.value;renderRetailFinanceReport()">
         <option value="">All Branches</option>
         ${branches.map(b=>`<option value="${b}"${b===stBranch?' selected':''}>${b}</option>`).join('')}
@@ -6133,13 +6155,13 @@ function renderRetailFinanceReport(){
         <option value="">All Banks</option>
         ${banks.map(b=>`<option value="${b}"${b===stBank?' selected':''}>${b}</option>`).join('')}
       </select>
-      ${(stBranch||stBank)?`<button onclick="window._rfR5Branch='';window._rfR5Bank='';renderRetailFinanceReport()" style="padding:3px 8px;font-size:9px;border-radius:10px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);">&#x2715; Clear</button>`:''}
-      <span style="width:1px;height:18px;background:var(--border);display:inline-block;margin:0 2px;"></span>
-      <span style="font-size:9px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;">Blank only</span>
+      ${(stBranch||stBank)?`<button onclick="window._rfR5Branch='';window._rfR5Bank='';renderRetailFinanceReport()" style="padding:3px 8px;font-size:10px;border-radius:10px;cursor:pointer;border:1px solid #dde3ea;background:#fff;color:#64748b;font-family:'Segoe UI',system-ui,sans-serif;">&#x2715; Clear</button>`:''}
+      <span style="width:1px;height:18px;background:#dde3ea;display:inline-block;margin:0 2px;"></span>
+      <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;font-family:'Segoe UI',system-ui,sans-serif;">Blank only</span>
       ${chkBox('chkLa','Loan Amt',chkLa,'_rfR5ChkLa')}
       ${chkBox('chkDa','Disbursed Amt',chkDa,'_rfR5ChkDa')}
       ${chkBox('chkPp','Payout Amt',chkPp,'_rfR5ChkPp')}
-      <span style="font-size:10px;color:var(--accent);font-weight:600;margin-left:4px;">${stRows.length} case${stRows.length!==1?'s':''}</span>
+      <span style="font-size:11px;color:#1d4ed8;font-weight:600;margin-left:4px;font-family:'Segoe UI',system-ui,sans-serif;">${stRows.length} case${stRows.length!==1?'s':''}</span>
     </div>`;
     const totLa=stRows.reduce((s,r)=>s+(r.la||0),0);
     const totDa=stRows.reduce((s,r)=>s+(r.da||0),0);
@@ -6158,7 +6180,7 @@ function renderRetailFinanceReport(){
       <th style="${thS}">GST Amt (&#8377;)</th>
       <th style="${thS}">Payout Amt (&#8377;)</th>
     </tr></thead>`;
-    const body=`<tbody>${stRows.map((r,i)=>`<tr style="${i%2===1?'background:rgba(255,255,255,0.025)':''}">
+    const body=`<tbody>${stRows.map((r,i)=>`<tr style="${i%2===1?'background:#f7f9fc':''}">
       <td style="${tdS}text-align:center;">${i+1}</td>
       <td style="${tdL}">${r.cn||'—'}</td>
       <td style="${tdS}text-align:left;">${r.sc||'—'}</td>
@@ -6177,29 +6199,29 @@ function renderRetailFinanceReport(){
       <td style="${totS}">${fmt(totGa)}</td>
       <td style="${totS}">${fmt(totPa)}</td>
     </tr></tbody>`;
-    const noData=`<div style="padding:30px;text-align:center;color:var(--text-muted);font-size:12px;">No Inhouse records found${stBranch||stBank||chkLa||chkDa||chkPp?' for selected filters':''}.</div>`;
-    return`<div id="rfRpt5"><h3 style="font-size:12px;font-weight:700;color:var(--text-primary);margin:0 0 3px;">5. Finance Statement &mdash; Inhouse Cases</h3>${filterBar}${stRows.length>0?expBtns('rfRpt5Table','Finance Statement'):''}${stRows.length>0?tblWrap(hdr+body):noData}</div>${stRows.length>0?`<table id="rfRpt5Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`:''}`;
+    const noData=`<div style="padding:30px;text-align:center;color:#64748b;font-size:13px;font-family:'Segoe UI',system-ui,sans-serif;">No Inhouse records found${stBranch||stBank||chkLa||chkDa||chkPp?' for selected filters':''}.</div>`;
+    return`<div id="rfRpt5"><h3 style="font-size:14px;font-weight:700;color:#1a2636;margin:0 0 3px;font-family:'Segoe UI',system-ui,sans-serif;">5. Finance Statement &mdash; Inhouse Cases</h3>${filterBar}${stRows.length>0?expBtns('rfRpt5Table','Finance Statement'):''}${stRows.length>0?tblWrap(hdr+body):noData}</div>${stRows.length>0?`<table id="rfRpt5Table" style="display:none;width:100%;border-collapse:collapse;">${hdr+body}</table>`:''}`;
   }
   // ── Date filter UI bar ──
-  const inpS='padding:5px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--bg-surface);color:var(--text-primary);font-family:var(--font-d,monospace);cursor:pointer;';
-  const clearBtnS='padding:5px 12px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--text-muted);';
-  const dateBar=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 14px;border-bottom:1px solid var(--border);margin-bottom:16px;">
-    <span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;">Invoice Date Filter</span>
-    <span style="font-size:11px;color:var(--text-muted);">From</span>
+  const inpS='padding:5px 10px;font-size:12px;border:1px solid #c8d3de;border-radius:6px;background:#fff;color:#1a2636;font-family:\'Segoe UI\',system-ui,sans-serif;cursor:pointer;';
+  const clearBtnS='padding:5px 12px;font-size:11px;font-weight:700;border-radius:12px;cursor:pointer;border:1px solid #dde3ea;background:#fff;color:#64748b;';
+  const dateBar=`<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 0 14px;border-bottom:1px solid #dde3ea;margin-bottom:16px;">
+    <span style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;font-family:'Segoe UI',system-ui,sans-serif;">Invoice Date Filter</span>
+    <span style="font-size:12px;color:#64748b;font-family:'Segoe UI',system-ui,sans-serif;">From</span>
     <input type="date" value="${_rfFrom}" onchange="window._rfRepFrom=this.value;renderRetailFinanceReport()" style="${inpS}">
-    <span style="font-size:11px;color:var(--text-muted);">To</span>
+    <span style="font-size:12px;color:#64748b;font-family:'Segoe UI',system-ui,sans-serif;">To</span>
     <input type="date" value="${_rfTo}" onchange="window._rfRepTo=this.value;renderRetailFinanceReport()" style="${inpS}">
     ${(_rfFrom||_rfTo)?`<button onclick="window._rfRepFrom='';window._rfRepTo='';renderRetailFinanceReport()" style="${clearBtnS}">&#x2715; Clear</button>`:''}
-    ${(fromD||toD)?`<span style="font-size:11px;color:var(--accent);font-weight:600;">${rows.length} record${rows.length!==1?'s':''} in range</span>`:''}
+    ${(fromD||toD)?`<span style="font-size:12px;color:#1d4ed8;font-weight:600;font-family:'Segoe UI',system-ui,sans-serif;">${rows.length} record${rows.length!==1?'s':''} in range</span>`:''}
   </div>`;
   if(rows.length===0){
-    area.innerHTML=`<div style="padding:16px 0;">${dateBar}<div style="padding:40px;text-align:center;"><strong style="color:var(--text-muted);">No finance data found${(fromD||toD)?' for selected date range':''}.</strong><p style="font-size:12px;color:var(--text-muted);margin-top:8px;">${(fromD||toD)?'Try adjusting or clearing the date filter.':'Ensure Allotment data is loaded and has rows with <em>Focus Invoiced</em> in the Invoice Plan Date column.'}</p></div></div>`;
+    area.innerHTML=`<div style="padding:16px 0;">${dateBar}<div style="padding:40px;text-align:center;"><strong style="color:#64748b;font-family:'Segoe UI',system-ui,sans-serif;">No finance data found${(fromD||toD)?' for selected date range':''}.</strong><p style="font-size:13px;color:#64748b;margin-top:8px;font-family:'Segoe UI',system-ui,sans-serif;">${(fromD||toD)?'Try adjusting or clearing the date filter.':'Ensure Allotment data is loaded and has rows with <em>Focus Invoiced</em> in the Invoice Plan Date column.'}</p></div></div>`;
     return;
   }
   // Build sub-tabs layout
   const activeTab=window._rfRepTab||'r1';
-  const tabBtn=(id,label)=>{const on=activeTab===id;return`<button onclick="window._rfRepTab='${id}';renderRetailFinanceReport()" style="padding:4px 10px;font-size:10px;font-weight:700;font-family:var(--font-d,monospace);letter-spacing:.04em;border-radius:14px;cursor:pointer;border:1px solid ${on?'var(--accent)':'var(--border)'};background:${on?'var(--accent)':'none'};color:${on?'var(--bg-deep)':'var(--text-muted)'};transition:all .15s;">${label}</button>`;};
-  const tabs=`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+  const tabBtn=(id,label)=>{const on=activeTab===id;return`<button onclick="window._rfRepTab='${id}';renderRetailFinanceReport()" style="padding:5px 12px;font-size:11px;font-weight:700;font-family:'Segoe UI',system-ui,sans-serif;letter-spacing:.04em;border-radius:14px;cursor:pointer;border:1px solid ${on?'#1d4ed8':'#dde3ea'};background:${on?'#1d4ed8':'#fff'};color:${on?'#fff':'#64748b'};transition:all .15s;">${label}</button>`;};
+  const tabs=`<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #dde3ea;">
     ${tabBtn('r1','Mode Wise')}${tabBtn('r2','Bank Wise - Inhouse/Outhouse')}${tabBtn('r3','Bank Wise - Payout')}${tabBtn('r4','Summary')}${tabBtn('r5','Statement')}
   </div>`;
   const content=activeTab==='r1'?buildR1():activeTab==='r2'?buildR2():activeTab==='r3'?buildR3():activeTab==='r4'?buildR4():buildR5();
@@ -7917,6 +7939,528 @@ function _downloadCSV(csv,filename){
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
+/* ══════════════════════════════════════════════════════════════
+   TOOLS → COMPARE (tab 17)
+   MTD  sources: Leads+QL Sheet (ENQ), TD Sheet (TD), Live RPO (BKG), Retail_Master (RET)
+   LMTD sources: Leads YTD+QL YTD (ENQ), TD YTD (TD), RPO Master (BKG), Retail_Master (RET)
+   ENQ/TD counted via SC Owner → Branch mapping (Users sheet)
+   BKG/RET counted via direct Branch column
+   ══════════════════════════════════════════════════════════════ */
+function runCmpReport(){
+  const f=document.getElementById('cmpFrom'),t=document.getElementById('cmpTo');
+  if(f&&t&&f.value&&t.value){window._cmpFrom=f.value;window._cmpTo=t.value;}
+  renderCompare();
+}
+
+function renderCompare(){
+  const el=document.getElementById('cmpContent');
+  if(!el)return;
+
+  // Preserve any date inputs before overwriting innerHTML
+  const prevF=document.getElementById('cmpFrom'),prevT=document.getElementById('cmpTo');
+  if(prevF&&prevF.value)window._cmpFrom=prevF.value;
+  if(prevT&&prevT.value)window._cmpTo=prevT.value;
+
+  // Show loading immediately
+  el.innerHTML=`<div class="ap" style="padding:40px 24px;text-align:center;">
+    <div class="sb"><div class="sp"></div><strong>Loading comparison data…</strong></div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:10px;">Fetching Leads YTD, TD Sheet YTD and RPO Master…</div>
+  </div>`;
+
+  const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const today=new Date();
+  const curY=today.getFullYear(), curM=today.getMonth();
+  const todayDay=today.getDate();
+
+  // ── Date range: custom or default MTD ──
+  const fmtInput=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let mtdFrom,mtdTo;
+  if(window._cmpFrom&&window._cmpTo){
+    mtdFrom=new Date(window._cmpFrom+'T00:00:00');
+    mtdTo  =new Date(window._cmpTo  +'T23:59:59.999');
+  } else {
+    mtdFrom=new Date(curY,curM,1);
+    mtdTo  =new Date(curY,curM,todayDay,23,59,59,999);
+  }
+  const fromVal=window._cmpFrom||fmtInput(mtdFrom);
+  const toVal  =window._cmpTo  ||fmtInput(mtdTo);
+
+  // ── LMTD = same day-range in previous month ──
+  const lmtdFrom=new Date(mtdFrom); lmtdFrom.setMonth(lmtdFrom.getMonth()-1);
+  const lmtdTo  =new Date(mtdTo);   lmtdTo.setMonth(lmtdTo.getMonth()-1);
+  // Guard against month-end overflow (e.g. Mar 31 → Feb 31 = Mar 3)
+  if(lmtdTo.getDate()!==mtdTo.getDate()){lmtdTo.setDate(0);lmtdTo.setHours(23,59,59,999);}
+  if(lmtdFrom.getDate()!==mtdFrom.getDate()){lmtdFrom.setDate(1);}
+
+  const fmtLabel=(f,t)=>`${MNAMES[f.getMonth()]} ${f.getFullYear()} (${f.getDate()}–${t.getDate()})`;
+  const mtdLabel =fmtLabel(mtdFrom,mtdTo);
+  const lmtdLabel=fmtLabel(lmtdFrom,lmtdTo);
+
+  const BRANCHES=['TEYNAMPET','AMBATTUR','ANNA NAGAR','PORUR','TRICHY','TANJORE','VELLORE'];
+
+  // ── Date parser ──
+  const pD=v=>{
+    if(!v)return null;
+    const s=String(v).trim();
+    const n=parseFloat(s);
+    if(!isNaN(n)&&n>40000&&n<60000)return new Date(Math.round((n-25569)*86400*1000));
+    const m1=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m1)return new Date(+m1[3],+m1[2]-1,+m1[1]);
+    const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m2)return new Date(+m2[1],+m2[2]-1,+m2[3]);
+    const MNS=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const m3=s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,})[-\s](\d{4})$/);
+    if(m3){const mi=MNS.indexOf(m3[2].toLowerCase().slice(0,3));if(mi>=0)return new Date(+m3[3],mi,+m3[1]);}
+    const d=new Date(s);return isNaN(d.getTime())?null:d;
+  };
+
+  // ── Header finder ──
+  const gH=data=>{
+    if(!data||!data.length)return{h:[],hi:0};
+    let hi=0;
+    for(let i=0;i<Math.min(5,data.length);i++){
+      if(!Array.isArray(data[i]))continue;
+      const rv=data[i].map(x=>String(x||'').toLowerCase()).join(' ');
+      if(rv.includes('branch')||rv.includes('date')||rv.includes('owner')||rv.includes('customer')||rv.includes('sc name')||rv.includes('lead')){hi=i;break;}
+    }
+    return{h:Array.isArray(data[hi])?data[hi].map(x=>String(x||'').replace(/^﻿/,'').trim()):[],hi};
+  };
+
+  // ── Column finder ──
+  const fI=(h,names)=>{
+    const nm=s=>String(s||'').trim().toLowerCase();
+    for(const k of names){
+      const nv=nm(k);
+      let i=h.findIndex(x=>nm(x)===nv);if(i>=0)return i;
+      i=h.findIndex(x=>nm(x).includes(nv)&&nm(x).length<nv.length+10);if(i>=0)return i;
+    }
+    return -1;
+  };
+
+  // ── Build SC Name → Branch map from Users sheet (SD[4]) ──
+  // Leads/QL/TD sheets store SC Owner name, not branch directly
+  const scToBranch={};
+  {
+    const ud=SD[4]||[];
+    if(ud.length>=2){
+      const{h,hi}=gH(ud);
+      const zI=fI(h,['Zoho Name','ZohoName','Zoho name','Zoho ID','Zoho']);
+      const nI=fI(h,['Internal name','Internal Name','InternalName','SC Name','Name','Emp Name']);
+      const bI=fI(h,['Branch Name','Branch','Location']);
+      if(bI>=0){
+        ud.slice(hi+1).forEach(r=>{
+          if(!Array.isArray(r))return;
+          const br=String(r[bI]||'').trim().toUpperCase();
+          if(!br)return;
+          // Register both Zoho name and Internal name
+          const reg=key=>{
+            if(!key)return;
+            const kl=key.toLowerCase();
+            scToBranch[kl]=br;
+            // Also register underscore↔space variant
+            const alt=kl.includes('_')?kl.replace(/_/g,' '):kl.replace(/ /g,'_');
+            if(alt!==kl)scToBranch[alt]=br;
+          };
+          if(zI>=0)reg(String(r[zI]||'').trim());
+          if(nI>=0)reg(String(r[nI]||'').trim());
+        });
+      }
+    }
+  }
+  // ── Count by SC Owner → aggregate to branch (for Leads, TD sheets) ──
+  // Deduplicates by Record Id so follow-up rows don't inflate the count.
+  // Optional: srcCols = array of source-column names, srcMatch = function(val)=>bool for filtering by lead source
+  const countBrSC=(sheets,ownerCols,dateCols,from,to,srcCols=null,srcMatch=null)=>{
+    const m={};
+    const seenIds=new Set(); // across all sheets passed together
+    sheets.forEach((data,si)=>{
+      if(!data||data.length<2)return;
+      const{h,hi}=gH(data);
+      const oI=fI(h,ownerCols);
+      // ID column for deduplication (Record Id in Leads, similar in TD)
+      const idI=fI(h,['Record Id','RecordId','Record ID','Lead Id','Lead ID','ID','Id','Zoho Id']);
+      // Date column
+      let dI=-1;
+      for(const k of dateCols){const nm=s=>String(s||'').trim().toLowerCase();const i=h.findIndex(x=>nm(x)===nm(k));if(i>=0){dI=i;break;}}
+      if(dI<0)for(const k of dateCols){const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(k);const i=h.findIndex(x=>nm(x).includes(nv));if(i>=0){dI=i;break;}}
+      // Source filter column (optional — e.g. for Walk-in filter)
+      let sI=-1;
+      if(srcCols&&srcMatch){
+        sI=fI(h,srcCols);
+        if(sI<0)for(const k of srcCols){const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(k);const i=h.findIndex(x=>nm(x).includes(nv));if(i>=0){sI=i;break;}}
+      }
+      if(oI<0)return;
+      data.slice(hi+1).forEach(r=>{
+        if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+        if(dI>=0){const d=pD(r[dI]);if(!d||d<from||d>to)return;}
+        // Source filter: skip rows that don't match (if filter active and col found)
+        if(srcCols&&srcMatch&&sI>=0){if(!srcMatch(String(r[sI]||'').trim()))return;}
+        // Dedup by Record Id — skip if already counted
+        if(idI>=0){
+          const rid=String(r[idI]||'').trim();
+          if(rid){
+            if(seenIds.has(rid))return;
+            seenIds.add(rid);
+          }
+        }
+        const owner=String(r[oI]||'').trim().toLowerCase();
+        if(!owner)return;
+        const br=scToBranch[owner]||'';
+        if(br)m[br]=(m[br]||0)+1;
+      });
+    });
+    return m;
+  };
+
+  // ── Count directly by Branch column (for Live RPO, RPO Master, Retail_Master) ──
+  // srcCols/srcMatch : optional source filter (e.g. Walk-in).
+  // wiKeys           : optional {ids:Set, mobiles:Set} built from Walk-in leads.
+  //   Fallback chain when source col not found in a sheet:
+  //     1. Lead ID cross-reference  (wiKeys.ids  matched against Lead Id / Enquiry Id cols)
+  //     2. Mobile cross-reference   (wiKeys.mobiles matched against Mobile / Phone cols)
+  //     3. Exclude row              (cannot determine source — prevents silent all-rows pass)
+  const LEAD_REF_COLS=['Lead Id','Lead ID','Zoho Lead Id','Lead Reference','Enquiry Id',
+                       'Enquiry ID','Prospect Id','Opportunity Id','Lead Ref','CRM Lead Id'];
+  const MOB_COLS     =['Mobile','Phone','Mobile Number','Customer Mobile','Mobile No',
+                       'Contact No','Contact Number','Phone Number','Cell','Mob',
+                       'Telephone','Tel','Cust Mobile','Cust Phone','Customer Phone',
+                       'Customer Contact','Mobile 1','Phone 1','Primary Mobile','Primary Phone'];
+  const normMob=v=>{const d=String(v||'').replace(/\D/g,'');return d.length>=10?d.slice(-10):d;};
+  // Customer name cross-reference (for sheets like Retail_Master that have no source/mobile col)
+  const CNAME_COLS   =['Customer Name','Name','Full Name','Lead Name','Contact Name','Client Name'];
+  const FNAME_COLS   =['First Name','FirstName','Given Name','Fname'];
+  const LNAME_COLS   =['Last Name','LastName','Surname','Family Name','Lname'];
+  const normName=v=>String(v||'').toLowerCase().trim().replace(/^(mr|mrs|ms|dr|sir|prof)\.?\s*/i,'').replace(/\s+/g,' ');
+  const countBrDirect=(sheets,brCols,dateCols,from,to,srcCols=null,srcMatch=null,wiKeys=null)=>{
+    const m={};
+    sheets.forEach((data,si)=>{
+      if(!data||data.length<2)return;
+      const{h,hi}=gH(data);
+      const bI=fI(h,brCols);
+      // Date: try exact then partial match across all date column candidates
+      let dI=-1;
+      for(const k of dateCols){const nm=s=>String(s||'').trim().toLowerCase();const i=h.findIndex(x=>nm(x)===nm(k));if(i>=0){dI=i;break;}}
+      if(dI<0)for(const k of dateCols){const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(k);const i=h.findIndex(x=>nm(x).includes(nv));if(i>=0){dI=i;break;}}
+      // Source filter + cross-reference columns
+      let sI=-1,lrI=-1,mobI=-1,cnI=-1;
+      if(srcCols&&srcMatch){
+        sI=fI(h,srcCols);
+        if(sI<0)for(const k of srcCols){const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(k);const i=h.findIndex(x=>nm(x).includes(nv));if(i>=0){sI=i;break;}}
+        if(sI<0&&wiKeys){
+          // Lead ID cross-reference
+          lrI=fI(h,LEAD_REF_COLS);
+          if(lrI<0)for(const k of LEAD_REF_COLS){const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(k);const i=h.findIndex(x=>nm(x).includes(nv));if(i>=0){lrI=i;break;}}
+          // Mobile cross-reference
+          mobI=fI(h,MOB_COLS);
+          if(mobI<0){const nm=s=>String(s||'').trim().toLowerCase();const i=h.findIndex(x=>{const xn=nm(x);return xn.includes('mobile')||xn.includes('phone')||(xn.includes('cell')&&xn.length<10);});if(i>=0)mobI=i;}
+          // Customer name cross-reference (Retail_Master has Customer Name but no mobile/source)
+          cnI=fI(h,CNAME_COLS);
+          if(cnI<0)for(const k of CNAME_COLS){const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(k);const i=h.findIndex(x=>nm(x).includes(nv));if(i>=0){cnI=i;break;}}
+        }
+      }
+      if(bI<0)return;
+      data.slice(hi+1).forEach(r=>{
+        if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+        const br=String(r[bI]||'').trim().toUpperCase();
+        if(!br||br.startsWith('#')||br.toLowerCase()==='branch name')return;
+        if(dI>=0){const d=pD(r[dI]);if(!d||d<from||d>to)return;}
+        if(srcCols&&srcMatch){
+          if(sI>=0){
+            if(!srcMatch(String(r[sI]||'').trim()))return;
+          } else if(wiKeys){
+            let matched=false;
+            if(!matched&&lrI>=0&&wiKeys.ids){const lid=String(r[lrI]||'').trim();if(lid&&wiKeys.ids.has(lid))matched=true;}
+            if(!matched&&mobI>=0&&wiKeys.mobiles){const mob=normMob(r[mobI]);if(mob&&wiKeys.mobiles.has(mob))matched=true;}
+            if(!matched&&cnI>=0&&wiKeys.names){const nn=normName(r[cnI]);if(nn.length>1&&wiKeys.names.has(nn))matched=true;}
+            if(!matched)return;
+          } else {
+            return;
+          }
+        }
+        m[br]=(m[br]||0)+1;
+      });
+    });
+    return m;
+  };
+
+  // ── Fuzzy branch lookup ──
+  const getC=(map,fixedBr)=>{
+    let t=0;
+    const fN=fixedBr.replace(/\s+/g,'');
+    for(const[k,v]of Object.entries(map)){
+      const kN=k.replace(/\s+/g,'');
+      // Match if equal, one starts with other, OR one contains other (handles "GURUDEV TEYNAMPET" ↔ "TEYNAMPET")
+      if(kN===fN||kN.startsWith(fN)||fN.startsWith(kN)||kN.includes(fN)||fN.includes(kN))t+=v;
+    }
+    return t;
+  };
+
+  // ── Column name pools ──
+  // BR_COLS: used for direct branch lookup (RPO, Retail, and now Leads via Sub Outlet1)
+  const BR_COLS   =['Branch Name','Branch','BRANCH','Lead Branch','Sub Outlet1','Sub Outlet',
+                    'Outlet','Sub Dealer','Dealer Branch','Branch Code'];
+  // ENQ_OWN covers both Leads sheet and QL Sheet column name variants
+  const ENQ_OWN   =['Lead Owner','LeadOwner','SC Owner','QL Owner','Qualified Lead Owner','Qualified Leads Owner',
+                    'Owner','Salesperson','SC Name','Assigned To','Sales Executive','Lead Assignee',
+                    'Assigned SC','Owner Name','Salesrep','SC','Salesperson Name','Assigned User','Lead Assigned To'];
+  const QL_OWN    =['Qualified Leads Owner','QL Owner','SC Owner','Owner','Salesperson','SC Name','Lead Owner'];
+  const TD_OWN    =['Test Drive Owner','TD Owner','Activity Owner','SC Owner','Owner','Salesperson','SC Name'];
+  // MTD  → Leads/QL sheet: "Created Time" (Zoho entry timestamp for current-period rows)
+  //         QL Sheet may use "QL Date" or "Qualified Date" — included in list
+  // LMTD → YTD sheets: "Lead creation date" (original enquiry date in historical data)
+  const ENQ_DATE_MTD =['Created Time','QL Date','Qualified Date','Created Date','Created On',
+                       'Lead Date','Enquiry Date','Date'];
+  const ENQ_DATE_LMT =['Lead creation date','Lead Creation Date','QL Date','Qualified Date',
+                       'Lead Date','Enquiry Date','Created Date','Created Time','Date'];
+  const QL_DATE   =['QL Date','Qualified Date','Created Date','Created Time','Date','Lead Date'];
+  const TD_DATE   =['Test Drive Date','TD Date','Activity Date','Date','TD Conducted Date','Created Time','Created Date'];
+  // Booking: Live RPO uses "Booking Date" (creation date = correct for MTD).
+  // RPO Master also uses "Booking Date" — keeping same so comparison is like-for-like.
+  const BKG_DATE  =['Booking Date','Created Date','Order Date','Booking Created','Allotment Date',
+                    'RPO Date','Allotment Order Date','RPO Created Date','Booking On','Allot Date',
+                    'Order Created','Created','Date of Booking','Entry Date','Transaction Date'];
+  const RET_DATE  =['Invoice Date','Invoiced Date','Invoice Done Date','Retail Date','Billing Date','Date',
+                    'Date of Invoice','Invoice On','Retailed Date','Delivery Date'];
+
+  // ── Fetch LMTD-only sheets ──
+  Promise.all([
+    jFetch('Leads YTD'),
+    jFetch('QL Sheet YTD'),
+    jFetch('TD Sheet YTD'),
+    jFetch('RPO Master')
+  ]).then(([leadsYTD,qlYTD,tdYTD,rpoMaster])=>{
+    if(curTab!==17)return;
+
+    // ENQ: Sub Outlet1 is empty → use Lead Owner → Branch mapping (scToBranch)
+    //   MTD  uses "Created Time" as date col (Zoho timestamp in main Leads sheet)
+    //   LMTD uses "Lead creation date" as date col (actual enquiry date in YTD sheets)
+    //   Both periods include Leads + QL Sheet (QL tracks additional qualified enquiries)
+    // TD:  SC owner mapping; BKG/RET: direct Branch Name column
+    const leadsYTDData = (leadsYTD&&leadsYTD.length>=2) ? leadsYTD : (SD[10]||[]);
+    const enqLmtdSrc   = (leadsYTD&&leadsYTD.length>=2) ? 'Leads YTD + QL YTD' : 'Leads + QL (date-filtered)';
+
+    // Walk-in source filter — matches "walk in", "walk-in", "walkin" etc. (case-insensitive)
+    const WI_SRC_COLS=['Lead Source','Source','Enquiry Source','Source of Enquiry','Lead Type',
+                       'Customer Source','Enquiry Type','How did you hear','Walk In Source'];
+    const isWalkIn=v=>{const n=v.toLowerCase().replace(/[\s\-_]/g,'');return n.includes('walkin');};
+
+    // Build {ids, mobiles} sets for ALL Walk-in leads (no date filter) from Leads + QL.
+    // Used as cross-reference when Retail_Master / RPO Master lack a source column.
+    const buildWiKeys=(sheets)=>{
+      const ids=new Set(),mobiles=new Set(),names=new Set();
+      const ID_COLS=['Record Id','RecordId','Record ID','Lead Id','Lead ID','ID','Id','Zoho Id'];
+      sheets.forEach(data=>{
+        if(!data||data.length<2)return;
+        const{h,hi}=gH(data);
+        const idI=fI(h,ID_COLS);
+        // Mobile col — exact list then keyword match
+        let mobI=fI(h,MOB_COLS);
+        if(mobI<0){const nm=s=>String(s||'').trim().toLowerCase();const i=h.findIndex(x=>{const xn=nm(x);return xn.includes('mobile')||xn.includes('phone')||(xn.includes('cell')&&xn.length<10);});if(i>=0)mobI=i;}
+        // Customer name col — full name first, then first+last separate
+        let cnI=fI(h,CNAME_COLS);
+        if(cnI<0)for(const k of CNAME_COLS){const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(k);const i=h.findIndex(x=>nm(x).includes(nv));if(i>=0){cnI=i;break;}}
+        let fnI=cnI<0?fI(h,FNAME_COLS):-1;
+        let lnI=cnI<0?fI(h,LNAME_COLS):-1;
+        // Source col — exact then partial
+        let sI=fI(h,WI_SRC_COLS);
+        if(sI<0)for(const k of WI_SRC_COLS){const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(k);const i=h.findIndex(x=>nm(x).includes(nv));if(i>=0){sI=i;break;}}
+        if(sI<0)return; // no source col in this sheet — skip
+        data.slice(hi+1).forEach(r=>{
+          if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+          if(!isWalkIn(String(r[sI]||'').trim()))return;
+          if(idI>=0){const id=String(r[idI]||'').trim();if(id)ids.add(id);}
+          if(mobI>=0){const mob=normMob(r[mobI]);if(mob)mobiles.add(mob);}
+          // Customer name
+          let nameStr='';
+          if(cnI>=0)nameStr=String(r[cnI]||'').trim();
+          else if(fnI>=0||lnI>=0)nameStr=[fnI>=0?String(r[fnI]||''):'',lnI>=0?String(r[lnI]||''):''].join(' ').trim();
+          const nn=normName(nameStr);
+          if(nn.length>1)names.add(nn);
+        });
+      });
+      return{ids,mobiles,names};
+    };
+    const wiKeys=buildWiKeys([SD[10]||[],SD[11]||[]]);
+
+    // MTD: SD[10]=Leads, SD[11]=QL Sheet — "Created Time" date
+    const enqM=countBrSC([SD[10]||[],SD[11]||[]], ENQ_OWN, ENQ_DATE_MTD, mtdFrom, mtdTo);
+    const tdM =countBrSC([SD[12]||[]],            TD_OWN,  TD_DATE,      mtdFrom, mtdTo);
+    const bkgM=countBrDirect([SD[2]||[]],         BR_COLS, BKG_DATE,     mtdFrom, mtdTo);
+    const retM=countBrDirect([SD[14]||[]],        BR_COLS, RET_DATE,     mtdFrom, mtdTo);
+
+    // LMTD: Leads YTD + QL Sheet YTD — "Lead creation date" date
+    const enqL=countBrSC([leadsYTDData,qlYTD||[]],ENQ_OWN, ENQ_DATE_LMT, lmtdFrom, lmtdTo);
+    const tdL =countBrSC([tdYTD||[]],             TD_OWN,  TD_DATE,      lmtdFrom, lmtdTo);
+    const bkgL=countBrDirect([rpoMaster||[]],     BR_COLS, BKG_DATE,     lmtdFrom, lmtdTo);
+    const retL=countBrDirect([SD[14]||[]],        BR_COLS, RET_DATE,     lmtdFrom, lmtdTo);
+
+    // Walk-in counts — all four metrics filtered to Walk-in source only
+    // Retail/Booking: pass wiKeys as cross-reference fallback (lead ID + mobile) if source col absent
+    const wiEnqM=countBrSC   ([SD[10]||[],SD[11]||[]], ENQ_OWN, ENQ_DATE_MTD, mtdFrom,  mtdTo,  WI_SRC_COLS, isWalkIn);
+    const wiTdM =countBrSC   ([SD[12]||[]],            TD_OWN,  TD_DATE,      mtdFrom,  mtdTo,  WI_SRC_COLS, isWalkIn);
+    const wiBkgM=countBrDirect([SD[2]||[]],            BR_COLS, BKG_DATE,     mtdFrom,  mtdTo,  WI_SRC_COLS, isWalkIn, wiKeys);
+    const wiRetM=countBrDirect([SD[14]||[]],           BR_COLS, RET_DATE,     mtdFrom,  mtdTo,  WI_SRC_COLS, isWalkIn, wiKeys);
+
+    const wiEnqL=countBrSC   ([leadsYTDData,qlYTD||[]],ENQ_OWN, ENQ_DATE_LMT, lmtdFrom, lmtdTo, WI_SRC_COLS, isWalkIn);
+    const wiTdL =countBrSC   ([tdYTD||[]],             TD_OWN,  TD_DATE,      lmtdFrom, lmtdTo, WI_SRC_COLS, isWalkIn);
+    const wiBkgL=countBrDirect([rpoMaster||[]],        BR_COLS, BKG_DATE,     lmtdFrom, lmtdTo, WI_SRC_COLS, isWalkIn, wiKeys);
+    const wiRetL=countBrDirect([SD[14]||[]],           BR_COLS, RET_DATE,     lmtdFrom, lmtdTo, WI_SRC_COLS, isWalkIn, wiKeys);
+
+
+
+    // ── Table data ──
+    const brRows=BRANCHES.map(br=>({br,
+      eM:getC(enqM,br),eL:getC(enqL,br),
+      tM:getC(tdM ,br),tL:getC(tdL ,br),
+      bM:getC(bkgM,br),bL:getC(bkgL,br),
+      rM:getC(retM,br),rL:getC(retL,br),
+    }));
+    const tot={br:'Total',
+      eM:brRows.reduce((s,r)=>s+r.eM,0),eL:brRows.reduce((s,r)=>s+r.eL,0),
+      tM:brRows.reduce((s,r)=>s+r.tM,0),tL:brRows.reduce((s,r)=>s+r.tL,0),
+      bM:brRows.reduce((s,r)=>s+r.bM,0),bL:brRows.reduce((s,r)=>s+r.bL,0),
+      rM:brRows.reduce((s,r)=>s+r.rM,0),rL:brRows.reduce((s,r)=>s+r.rL,0),
+    };
+
+    const titleBr=s=>s.split(' ').map(w=>w.charAt(0)+w.slice(1).toLowerCase()).join(' ');
+    const thG=(label,col)=>`<th colspan="3" style="padding:10px 10px;text-align:center;border:1px solid #dde3ea;background:#f1f5f9;color:${col};font-size:12px;font-weight:700;letter-spacing:.07em;font-family:'Segoe UI',system-ui,sans-serif;">${label}</th>`;
+    const thS=(label,col)=>`<th style="padding:7px 8px;text-align:center;border:1px solid #dde3ea;background:#f8fafc;color:${col};font-size:11px;font-weight:700;white-space:nowrap;font-family:'Segoe UI',system-ui,sans-serif;letter-spacing:.04em;">${label}</th>`;
+
+    const growHTML=(m,l)=>{
+      if(!m&&!l)return`<td class="cmp-g" style="color:#94a3b8;">—</td>`;
+      if(!l)return`<td class="cmp-g" style="color:#16a34a;">New</td>`;
+      const p=(m-l)/l*100;
+      const col=p>0?'#16a34a':p<0?'#dc2626':'#64748b';
+      return`<td class="cmp-g" style="color:${col};">${p>0?'▲':'▼'}${Math.abs(p).toFixed(0)}%</td>`;
+    };
+
+    const dataRow=(r,isTot=false)=>{
+      const fw=isTot?'font-weight:700;':'font-weight:500;';
+      const bg=isTot?'background:#e8f0fe;border-top:2px solid #c8d3ea;':'';
+      const nc=v=>`<td class="cmp-n" style="${fw}color:#1a2636;">${v||0}</td>`;
+      const lc=v=>`<td class="cmp-n" style="${fw}color:#1d4ed8;">${v||0}</td>`;
+      return`<tr style="${bg}">
+        <td class="cmp-br" style="${fw}color:${isTot?'#166534':'#1a2636'};${isTot?'font-size:14px;':''}">${isTot?'Total':titleBr(r.br)}</td>
+        ${nc(r.eM)}${lc(r.eL)}${growHTML(r.eM,r.eL)}
+        ${nc(r.tM)}${lc(r.tL)}${growHTML(r.tM,r.tL)}
+        ${nc(r.bM)}${lc(r.bL)}${growHTML(r.bM,r.bL)}
+        ${nc(r.rM)}${lc(r.rL)}${growHTML(r.rM,r.rL)}
+      </tr>`;
+    };
+
+    el.innerHTML=`
+    <style>
+      .cmp-wrap{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;}
+      .cmp-tbl-box{background:#fff;border-radius:12px;border:1px solid #dde3ea;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.07);}
+      .cmp-br{padding:9px 14px;border:1px solid #e8edf3;white-space:nowrap;font-size:13px;font-weight:600;color:#1a2636;font-family:'Segoe UI',system-ui,sans-serif;}
+      .cmp-n {padding:8px 10px;text-align:center;border:1px solid #e8edf3;font-size:13px;font-family:'Segoe UI',system-ui,sans-serif;font-weight:600;}
+      .cmp-g {padding:8px 8px;text-align:center;border:1px solid #e8edf3;font-size:12px;font-family:'Segoe UI',system-ui,sans-serif;font-weight:700;}
+      .cmp-tbl tbody tr:nth-child(even){background:#f7f9fc;}
+      .cmp-tbl tbody tr:hover{background:#eef3fb;}
+      .cmp-date{background:#fff;border:1px solid #c8d3de;border-radius:6px;color:#1a2636;font-size:11px;padding:4px 8px;outline:none;font-family:'Segoe UI',system-ui,sans-serif;}
+      .cmp-date:focus{border-color:#4caf6e;}
+    </style>
+    <div class="ap cmp-wrap" style="padding:16px 24px 30px;background:#f0f4f8;">
+
+      <!-- ── Date range selector ── -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:10px 16px;background:#fff;border-radius:10px;border:1px solid #dde3ea;box-shadow:0 1px 4px rgba(0,0,0,0.05);">
+        <span style="font-size:10px;font-weight:700;color:#7a909f;letter-spacing:.07em;white-space:nowrap;font-family:'Segoe UI',system-ui,sans-serif;">📅 REPORT PERIOD</span>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4b6070;font-family:'Segoe UI',system-ui,sans-serif;">
+          From <input type="date" id="cmpFrom" value="${fromVal}" class="cmp-date">
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:#4b6070;font-family:'Segoe UI',system-ui,sans-serif;">
+          To <input type="date" id="cmpTo" value="${toVal}" class="cmp-date">
+        </label>
+        <button onclick="runCmpReport()" style="padding:5px 16px;background:#4caf6e;color:#fff;border:none;border-radius:7px;font-weight:700;font-size:11px;cursor:pointer;font-family:'Segoe UI',system-ui,sans-serif;">▶ Run</button>
+        <button onclick="window._cmpFrom=null;window._cmpTo=null;renderCompare()" style="padding:5px 12px;background:#fff;color:#4b6070;border:1px solid #c8d3de;border-radius:7px;font-size:10px;cursor:pointer;font-family:'Segoe UI',system-ui,sans-serif;">↺ Reset MTD</button>
+        <span style="margin-left:auto;font-size:11px;color:#4b6070;font-family:'Segoe UI',system-ui,sans-serif;">
+          <strong style="color:#4caf6e;">●</strong> ${mtdLabel} &nbsp;vs&nbsp; <strong style="color:#3b82f6;">●</strong> ${lmtdLabel}
+          &nbsp;<span style="color:#7a909f;font-size:9px;">(LMTD = same days, prev month)</span>
+        </span>
+      </div>
+
+      <!-- ── Title ── -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+        <h2 style="margin:0;font-size:16px;font-family:'Segoe UI',system-ui,sans-serif;font-weight:700;color:#1a2636;letter-spacing:.01em;">
+          📊 Comparison — Current Period ETBR over Previous Period ETBR
+        </h2>
+        <button onclick="renderCompare()" style="padding:6px 16px;background:#4caf6e;color:#fff;border:none;border-radius:8px;font-weight:700;font-size:11px;cursor:pointer;white-space:nowrap;font-family:'Segoe UI',system-ui,sans-serif;">⟳ Refresh</button>
+      </div>
+
+      <div class="cmp-tbl-box" style="overflow-x:auto;">
+      <table id="cmpTbl" class="cmp-tbl" style="width:100%;border-collapse:collapse;font-size:12px;min-width:680px;">
+        <thead style="position:sticky;top:0;z-index:5;">
+          <tr>
+            <th rowspan="2" style="padding:10px 14px;text-align:left;border:1px solid #dde3ea;background:#f1f5f9;color:#1a2636;font-size:12px;font-family:'Segoe UI',system-ui,sans-serif;font-weight:700;vertical-align:middle;white-space:nowrap;min-width:120px;letter-spacing:.05em;">BRANCH NAME</th>
+            ${thG('Enquiry','#4caf6e')}${thG('Test Drive','#3b82f6')}${thG('Booking','#f59e0b')}${thG('Retail','#8b5cf6')}
+          </tr>
+          <tr>
+            ${['#4caf6e','#3b82f6','#f59e0b','#8b5cf6'].map(()=>
+              [['MTD','#166534'],['LMTD','#1d4ed8'],['Growth %','#92400e']].map(([l,c])=>thS(l,c)).join('')
+            ).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${brRows.map(r=>dataRow(r)).join('')}
+          ${dataRow(tot,true)}
+        </tbody>
+      </table>
+      </div>
+
+      <!-- ── Walk-In Report ── -->
+      ${(()=>{
+        const wiBrRows=BRANCHES.map(br=>({br,
+          eM:getC(wiEnqM,br),eL:getC(wiEnqL,br),
+          tM:getC(wiTdM ,br),tL:getC(wiTdL ,br),
+          bM:getC(wiBkgM,br),bL:getC(wiBkgL,br),
+          rM:getC(wiRetM,br),rL:getC(wiRetL,br),
+        }));
+        const wiTot={br:'Total',
+          eM:wiBrRows.reduce((s,r)=>s+r.eM,0),eL:wiBrRows.reduce((s,r)=>s+r.eL,0),
+          tM:wiBrRows.reduce((s,r)=>s+r.tM,0),tL:wiBrRows.reduce((s,r)=>s+r.tL,0),
+          bM:wiBrRows.reduce((s,r)=>s+r.bM,0),bL:wiBrRows.reduce((s,r)=>s+r.bL,0),
+          rM:wiBrRows.reduce((s,r)=>s+r.rM,0),rL:wiBrRows.reduce((s,r)=>s+r.rL,0),
+        };
+        return `
+        <div style="margin-top:28px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:12px;">
+            <h2 style="margin:0;font-size:16px;font-family:'Segoe UI',system-ui,sans-serif;font-weight:700;color:#1a2636;letter-spacing:.01em;">
+              🚶 Walk-In Comparison — Current Period ETBR over Previous Period ETBR
+            </h2>
+            <span style="font-size:10px;color:#4b6070;padding:4px 12px;border:1px solid #c8d3de;border-radius:6px;background:#fff;font-family:'Segoe UI',system-ui,sans-serif;">Walk-In source only</span>
+          </div>
+          <div class="cmp-tbl-box" style="overflow-x:auto;">
+          <table id="cmpWiTbl" class="cmp-tbl" style="width:100%;border-collapse:collapse;font-size:12px;min-width:680px;">
+            <thead style="position:sticky;top:0;z-index:5;">
+              <tr>
+                <th rowspan="2" style="padding:10px 14px;text-align:left;border:1px solid #dde3ea;background:#f1f5f9;color:#1a2636;font-size:12px;font-family:'Segoe UI',system-ui,sans-serif;font-weight:700;vertical-align:middle;white-space:nowrap;min-width:120px;letter-spacing:.05em;">BRANCH NAME</th>
+                ${thG('Walk-In Enquiry','#4caf6e')}${thG('Test Drive','#3b82f6')}${thG('Booking','#f59e0b')}${thG('Retail','#8b5cf6')}
+              </tr>
+              <tr>
+                ${['#4caf6e','#3b82f6','#f59e0b','#8b5cf6'].map(()=>
+                  [['MTD','#166534'],['LMTD','#1d4ed8'],['Growth %','#92400e']].map(([l,c])=>thS(l,c)).join('')
+                ).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${wiBrRows.map(r=>dataRow(r)).join('')}
+              ${dataRow(wiTot,true)}
+            </tbody>
+          </table>
+          </div>
+        </div>`;
+      })()}
+
+    </div>`;
+  }).catch(err=>{
+    el.innerHTML=`<div class="ap" style="padding:40px 24px;text-align:center;color:#f87171;">
+      Failed to load comparison data. Please check your connection and try again.<br>
+      <button onclick="renderCompare()" style="margin-top:14px;padding:6px 16px;background:var(--accent);color:var(--bg-deep);border:none;border-radius:8px;font-weight:700;font-size:11px;cursor:pointer;">⟳ Retry</button>
+    </div>`;
+    console.error('renderCompare fetch error:',err);
+  });
+}
+
 /* ── Cell popup: shows full value of truncated cells on click ── */
 function showCellPopup(label,value){
   let ov=document.getElementById('_cpOverlay');
@@ -9330,7 +9874,7 @@ function renderReports(){
         </tr></thead>
         <tbody>${bodyRows.join('')}</tbody>
         <tfoot><tr style="border-top:2px solid var(--border-strong);">
-          <td style="padding:5px 7px;font-weight:700;color:var(--accent);font-family:var(--font-d);font-size:12px;letter-spacing:.04em;">TOTAL</td>
+          <td style="padding:7px 7px;font-weight:700;color:var(--accent);font-family:var(--font-d);font-size:12px;letter-spacing:.04em;">TOTAL</td>
           ${cTd(tE,'#60a5fa')}${cTd(tTD,'#a78bfa')}${cTdBar(pct(tTD,tE),'#a78bfa')}
           ${cTd(tB,'#34d399')}${cTdBar(pct(tB,tE),'#34d399')}
           ${cTd(tR,'#4caf6e')}${cTdBar(pct(tR,tE),'#4caf6e')}
@@ -9345,8 +9889,8 @@ function renderReports(){
 
     // ── Tab switcher ─────────────────────────────────
     const uid2='srcw'+Math.random().toString(36).slice(2,8);
-    const aSty='padding:4px 14px;font-size:11px;font-weight:700;border-radius:14px;cursor:pointer;background:var(--accent);color:var(--bg-deep);border:1px solid var(--accent);font-family:var(--font-d);letter-spacing:.04em;';
-    const iSty='padding:4px 14px;font-size:11px;font-weight:700;border-radius:14px;cursor:pointer;background:none;color:var(--text-muted);border:1px solid var(--border);font-family:var(--font-d);letter-spacing:.04em;';
+    const aSty="padding:5px 14px;font-size:11px;font-weight:700;border-radius:14px;cursor:pointer;background:var(--accent);color:var(--bg-deep);border:1px solid var(--accent);font-family:var(--font-d);letter-spacing:.04em;";
+    const iSty="padding:5px 14px;font-size:11px;font-weight:700;border-radius:14px;cursor:pointer;background:none;color:var(--text-muted);border:1px solid var(--border);font-family:var(--font-d);letter-spacing:.04em;";
     window[`_sw_${uid2}`]=(idx)=>{
       srcDefs.forEach((_,i)=>{
         const btn=document.getElementById(`${uid2}_b${i}`),div=document.getElementById(`${uid2}_d${i}`);
@@ -9372,7 +9916,7 @@ function renderReports(){
   // buildPenetrationRpt: branch-wise penetration for a yes/no field
   // fieldAliases = header name aliases; fieldLabel = display name; rptNum = card number
   (()=>{
-    const thS=`padding:7px 10px;font-size:10px;font-family:var(--font-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--bg-surface);border-bottom:2px solid var(--border);white-space:nowrap;text-align:center;`;
+    const thS=`padding:7px 10px;font-size:10px;font-family:var(--font-d);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);background:var(--bg-surface);border-bottom:2px solid var(--border);white-space:nowrap;text-align:center;`;
     const tdS=`padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);`;
     const tdL=`padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);font-weight:600;color:var(--text-primary);white-space:nowrap;`;
     const pct=(n,d)=>d>0?(n/d*100).toFixed(1)+'%':'—';
