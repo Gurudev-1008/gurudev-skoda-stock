@@ -9627,16 +9627,17 @@ function renderReports(){
       // Normalise branch string: uppercase, strip spaces/underscores/hyphens for loose comparison
       const normBr=s=>s.toUpperCase().replace(/[\s_\-\.]/g,'');
       const brFN=normBr(brF||'');
-      const brMatch=(b)=>!b||b===brF||normBr(b)===brFN;
+      const brMatch=(b)=>b===brF||normBr(b)===brFN;
       const rowPassesBranch=(r)=>{
         if(!brF)return true;
-        if(bFI>=0){const b=String(r[bFI]||'').trim().toUpperCase();return brMatch(b);}
+        if(bFI>=0){const b=String(r[bFI]||'').trim().toUpperCase();return b&&brMatch(b);}
         // No branch col — normalise to internal name first, then look up branch
         if(scFallbackI>=0){
           const raw=String(r[scFallbackI]||'').trim();
+          if(!raw)return false; // no SC name → exclude when branch filter active
           const intName=toIntSW(raw);
           const br=ownerToBr[intName.toLowerCase()]||ownerToBr[raw.toLowerCase()]||'';
-          return brMatch(br);
+          return br?brMatch(br):false; // unresolvable SC → exclude (don't bleed into other branches)
         }
         return true; // can't determine → include
       };
