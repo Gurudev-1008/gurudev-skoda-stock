@@ -5152,23 +5152,34 @@ async function moveToRetailMaster(){
     return {src,sheetRow,sh,targetRow,cells};
   }).filter(j=>j.cells.length>0);
 
-  // Fire all rows simultaneously — each row's cells all fire at once
-  const results=await Promise.allSettled(
-    jobsWithCells.map(({src,sheetRow,sh,targetRow,cells})=>
-      Promise.all(cells.map(({col,val})=>_writeCell('Retail_Master',targetRow,col,val)))
-        .then(()=>({ok:true,src,sheetRow,sh}))
-    )
-  );
-
-  for(const r of results){
-    if(r.status==='fulfilled'&&r.value.ok){
+  // Fire rows SEQUENTIALLY — avoids GAS rate-limiting from too many concurrent requests.
+  // Within each row, cells still fire in parallel (they all target the same row, no conflict).
+  for(let ji=0;ji<jobsWithCells.length;ji++){
+    const {src,sheetRow,sh,targetRow,cells}=jobsWithCells[ji];
+    _mrmOverlay(true,`Copying record ${ji+1} of ${jobsWithCells.length} to Retail Master…`);
+    // Write all cells for this row in parallel, but cap at 8 at a time to avoid GAS overload
+    const _runBatch=async(items)=>{
+      const out=[];
+      for(let bi=0;bi<items.length;bi+=8){
+        const slice=items.slice(bi,bi+8);
+        const bRes=await Promise.allSettled(slice.map(({col,val})=>_writeCell('Retail_Master',targetRow,col,val)));
+        out.push(...bRes);
+        if(bi+8<items.length)await new Promise(r=>setTimeout(r,150)); // brief pause between batches
+      }
+      return out;
+    };
+    const cellResults=await _runBatch(cells);
+    const anyFailed=cellResults.some(r=>r.status==='rejected');
+    if(anyFailed){
+      const failMsg=cellResults.find(r=>r.status==='rejected')?.reason?.message||'Network error';
+      errors.push(`Row ${sheetRow}: ${failMsg}`);
+    } else {
       movedCount++;
-      const {src,sheetRow,sh}=r.value;
       const _retMIdx=sh.findIndex(h=>{const hl=h.toLowerCase().trim();return hl==='ret_master'||hl==='ret master'||hl==='retmaster';});
       if(_retMIdx>=0)flagQueue.push({src,sheetRow,retMIdx:_retMIdx,srcSheet:src===7?'Allotment':'AG/DM Allotment'});
-    } else if(r.status==='rejected'){
-      errors.push(r.reason?.message||'Unknown error');
     }
+    // Small pause between records to let GAS breathe
+    if(ji<jobsWithCells.length-1)await new Promise(r=>setTimeout(r,300));
   }
 
   // ── PHASE 2: Write "Yes" to Ret_Master in each source row (all copies done first) ──
