@@ -465,6 +465,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
   <!-- Tools sub-tabs (shown when Tools parent is active) -->
   <div class="sub-tabs" id="subTabsTools" style="display:none">
     <button class="sub-tab" onclick="goTab(17)" id="t17">🔍 Compare</button>
+    <button class="sub-tab" onclick="goTab(18)" id="t18">📊 Graph</button>
   </div>
       <div class="fsbs">Select a model to view availability</div>
     </div>
@@ -537,6 +538,15 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
     <div class="fw"><span class="fl">Colour</span><select class="fs" id="fCol" onchange="onCol()"><option value="">All Colours</option></select></div>
     <div class="fw"><span class="fl">VIN Year</span><select class="fs" id="fYr" onchange="renderTable()"><option value="">All Years</option></select></div>
     <div class="fw" id="fStatWrap" style="display:none"><span class="fl">Stock Status</span><select class="fs" id="fStat" onchange="renderTable()"><option value="">All Status</option></select></div>
+    <div class="fw" id="fLocWrap" style="display:none"><span class="fl">Stock Location</span><select class="fs" id="fLoc" onchange="renderTable()"><option value="">All Locations</option></select></div>
+    <div class="fw" id="fAgeWrap" style="display:none">
+      <span class="fl">Stock Age (Days)</span>
+      <div style="display:flex;align-items:center;gap:4px">
+        <input class="fs" type="number" id="fAgeFrom" min="0" placeholder="From" oninput="clearTimeout(window._ageIT);window._ageIT=setTimeout(renderTable,500)" style="width:58px;text-align:center">
+        <span style="font-size:10px;color:var(--text-dim)">–</span>
+        <input class="fs" type="number" id="fAgeTo" min="0" placeholder="To" oninput="clearTimeout(window._ageIT2);window._ageIT2=setTimeout(renderTable,500)" style="width:58px;text-align:center">
+      </div>
+    </div>
     <div class="fw" id="fBkStatWrap" style="display:none"><span class="fl">Booking Status</span><select class="fs" id="fBkStat" onchange="renderTable()"><option value="">All Booking Status</option></select></div>
     <div class="fw" id="daDtWrap" style="display:none;">
       <span class="fl">📅 De-allot Date</span>
@@ -871,6 +881,11 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
   <div id="cmpContent"></div>
 </div>
 
+<!-- GRAPH AREA (Tools → Graph sub-tab) -->
+<div id="gphArea" style="display:none;overflow:auto;max-height:calc(100vh - 115px);padding:20px 20px 40px;">
+  <div id="gphContent"></div>
+</div>
+
 <!-- LEVEL-3 LOGIN WARNING MODAL -->
 <div class="l3w-overlay" id="l3wOverlay">
   <div class="l3w-box">
@@ -1035,8 +1050,8 @@ const CY=String(new Date().getFullYear());
 // Level-based tab access — tab indices each level can see
 // Tabs: 0=Stock,1=Allocation,2=LiveRPO,3=FreeStock,4=Manage,5=Ageing,6=Demo,7=Allotment,8=AG/DM Allotment,9=Reports,10=De-allotted
 const LEVEL_TABS={
-  1:  [0,1,2,3,5,6,7,8,9,10,11,12,17],        // All tabs except Manage, Analytics, Stock Planning (Admin only) + Tools
-  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,17],      // Same as L1 + Tools
+  1:  [0,1,2,3,5,6,7,8,9,10,11,12,17,18],        // All tabs except Manage, Analytics, Stock Planning (Admin only) + Tools
+  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,17,18],      // Same as L1 + Tools
   2:  [2,3,5,6,7,8,9,10,11],                  // No Stock/Allocation/Manage — no Retail Finance
   '2F':[2,3,5,6,7,8,9,10,11,12],              // Same as L2 + Retail Finance (Retail + ROI sub-tabs only, no Allotment)
   3:  [2,3,5,6,7,8,9,10,11],                  // Same as L2 — branch pre-filled, no Retail Finance, no Stock Planning
@@ -1047,7 +1062,7 @@ const LEVEL_TABS={
 
 const FREE_TABS=[3,5,6]; // sub-tabs under "Free Stock" parent
 const ALLOT_TABS=[7,8];  // sub-tabs under "Allotment" parent (tab 12 is now a standalone main tab)
-const TOOLS_TABS=[17];   // sub-tabs under "Tools" parent — 17=Compare
+const TOOLS_TABS=[17,18]; // sub-tabs under "Tools" parent — 17=Compare, 18=Graph
 
 // All accepted name aliases per tab index — any one of these may appear in the "Tab Name"
 // column of the "Tab Access" Google Sheet.
@@ -1068,7 +1083,8 @@ const TAB_NAMES_ALT={
   11:['VNA Summary','VNA'],
   12:['Retail Finance'],
   13:['Analytics','Analytics Dashboard'],
-  17:['Compare','Tools Compare','Vehicle Compare']
+  17:['Compare','Tools Compare','Vehicle Compare'],
+  18:['Graph','Tools Graph','Target Graph']
 };
 
 // Returns a Set of lowercase tab names that have "No" permission in SD[15] (Tab Access sheet)
@@ -1589,7 +1605,7 @@ function updateParentTabs(){
 // Returns the set of allowed tab indices for the current user
 function getAllowedTabs(u){
   u=u||curUser;
-  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,17];
+  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18];
   let tabs=[...(LEVEL_TABS[u.level]||[3,5,6])];
   // Level 4: Live RPO (tab 2) only if Role is explicitly "SC" in staff sheet
   if(u.level===4&&String(u.role||'').trim().toUpperCase()!=='SC'){
@@ -1626,7 +1642,8 @@ function setupTab(){
   const isSP=(curTab===14);
   const isLU=(curTab===15);
   const isCmp=(curTab===17);
-  const isSpecial=isM||isRep||isVNA||isAna||isSP||isLU||isCmp;
+  const isGph=(curTab===18);
+  const isSpecial=isM||isRep||isVNA||isAna||isSP||isLU||isCmp||isGph;
   document.getElementById('toolBar').style.display=isSpecial?'none':'flex';
   document.getElementById('tblArea').style.display=isSpecial?'none':'block';
   document.getElementById('repArea').style.display=isRep?'block':'none';
@@ -1636,6 +1653,7 @@ function setupTab(){
   document.getElementById('spArea').style.display=isSP?'block':'none';
   document.getElementById('luArea').style.display=isLU?'block':'none';
   document.getElementById('cmpArea').style.display=isCmp?'block':'none';
+  document.getElementById('gphArea').style.display=isGph?'block':'none';
   // ── Tab Access permission check (non-admin only) ──────────────────────────
   if(isTabUnderMaintenance(curTab)){showMaintenanceMsgForTab();return;}
   // ─────────────────────────────────────────────────────────────────────────
@@ -1645,15 +1663,20 @@ function setupTab(){
   if(isSP){renderStockPlanning();return;}
   if(isLU){renderLiveUsers();return;}
   if(isCmp){renderCompare();return;}
+  if(isGph){renderGraphTab();return;}
   document.getElementById('searchWrap').style.display=(isFree||isCustom)?'none':'';
   // For custom tabs show only Model filter; hide Variant, Colour, VIN Year
   ['fVar','fCol','fYr'].forEach(id=>{
     const el=document.getElementById(id);
     if(el&&el.parentElement)el.parentElement.style.display=isCustom?'none':'';
   });
-  // Stock Status filter — only visible on Stock tab (0)
+  // Stock Status / Location / Age filters — only visible on Stock tab (0)
   const statWrap=document.getElementById('fStatWrap');
   if(statWrap)statWrap.style.display=(curTab===0)?'':'none';
+  const locWrap=document.getElementById('fLocWrap');
+  if(locWrap)locWrap.style.display=(curTab===0)?'':'none';
+  const ageWrap=document.getElementById('fAgeWrap');
+  if(ageWrap)ageWrap.style.display=(curTab===0)?'':'none';
   // Booking Status filter — only visible on Live RPO tab (2)
   const bkStatWrap=document.getElementById('fBkStatWrap');
   if(bkStatWrap)bkStatWrap.style.display=(curTab===2)?'':'none';
@@ -3529,7 +3552,7 @@ function onRFViewChange(v){
   renderTable();
 }
 function clearF(r=true){
-  ['fSrch','fBranch','fSC','fAllotStat','fMod','fVar','fCol','fYr','fStat','rfDateFrom','rfDateTo','daDtFrom','daDtTo','fMode','fBank','fRoiPT','fRoiGST'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['fSrch','fBranch','fSC','fAllotStat','fMod','fVar','fCol','fYr','fStat','fLoc','fAgeFrom','fAgeTo','rfDateFrom','rfDateTo','daDtFrom','daDtTo','fMode','fBank','fRoiPT','fRoiGST'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   // Reset RF toggle bar — 2F/3F default to Retail, others default to Allotment
   if(curTab===12)onRFViewChange((curUser&&(curUser.level==='2F'||curUser.level==='3F'||curUser.level===5||curUser.level==='5'))?'retail':'allotment');
   // Re-apply L3, L3F & L4 branch pre-fill whenever filters are cleared
@@ -7382,6 +7405,17 @@ function renderStock(){
   // Dynamically populate Stock Status dropdown from actual sheet values
   {const statSel=document.getElementById('fStat');if(statSel){const cur=statSel.value;const vals=[...new Set(body.map(r=>String(r[stI]||'').trim()).filter(x=>x&&!x.startsWith('#')))].sort();statSel.innerHTML='<option value="">All Status</option>';vals.forEach(x=>statSel.add(new Option(x,x)));if(vals.includes(cur))statSel.value=cur;}}
   const fStat=(document.getElementById('fStat').value||'').trim();
+  // Stock Location column index (YARD / Yard / Location)
+  const locI=(()=>{for(const k of['YARD','Yard','Location','Stock Location']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
+  // Stock Age column index
+  const ageI=(()=>{for(const k of['STOCK AGEING','STOCK_AGEING','Stock Ageing','Stock Age','Ageing']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
+  // Dynamically populate Stock Location dropdown from actual sheet values
+  {const locSel=document.getElementById('fLoc');if(locSel&&locI>=0){const cur=locSel.value;const vals=[...new Set(body.map(r=>String(r[locI]||'').trim()).filter(Boolean))].sort();locSel.innerHTML='<option value="">All Locations</option>';vals.forEach(x=>locSel.add(new Option(x,x)));if(vals.includes(cur))locSel.value=cur;}}
+  const fLoc=(document.getElementById('fLoc')?.value||'').trim();
+  const fAgeFromRaw=(document.getElementById('fAgeFrom')?.value||'').trim();
+  const fAgeToRaw=(document.getElementById('fAgeTo')?.value||'').trim();
+  const fAgeFrom=fAgeFromRaw!==''?parseInt(fAgeFromRaw):null;
+  const fAgeTo=fAgeToRaw!==''?parseInt(fAgeToRaw):null;
   let filtered=body.filter(r=>{
     if(srch&&!r.map(c=>String(c||'').toLowerCase()).join(' ').includes(srch))return false;
     if(fM&&mI>=0&&String(r[mI]||'').trim()!==fM)return false;
@@ -7390,6 +7424,15 @@ function renderStock(){
     if(fC&&cI>=0&&String(r[cI]||'').trim()!==fC)return false;
     if(fYr&&fyI>=0&&String(r[fyI]||'').trim()!==fYr)return false;
     if(fStat&&String(r[stI]||'').trim()!==fStat)return false;
+    // Stock Location filter
+    if(fLoc&&locI>=0&&String(r[locI]||'').trim()!==fLoc)return false;
+    // Stock Age From–To range filter
+    if((fAgeFrom!==null||fAgeTo!==null)&&ageI>=0){
+      const age=parseInt(String(r[ageI]||''));
+      if(isNaN(age))return false;
+      if(fAgeFrom!==null&&age<fAgeFrom)return false;
+      if(fAgeTo!==null&&age>fAgeTo)return false;
+    }
     return true;
   });
   if(sCol>=0&&sCol<NCOLS){
@@ -10813,6 +10856,492 @@ window.tvsTab=function(uid,tab){
     btn.style.border=active?'1px solid var(--accent)':'1px solid var(--border)';
   });
 };
+
+/* ══════════════════════════════════════════════════════════════
+   Tools → Graph tab
+   Reads the same __etbrActuals / Target Sheet data as R6.
+══════════════════════════════════════════════════════════════ */
+function renderGraphTab(){
+  const el=document.getElementById('gphContent');
+  if(!el)return;
+
+  // ── Pull same data as buildTargetVsActual ──
+  const etbrCache=window.__etbrActuals||{};
+  const etbrKeys=Object.keys(etbrCache);
+  if(!etbrKeys.length){
+    el.innerHTML=`<div style="padding:40px;text-align:center;color:#64748b;font-size:14px;border:2px dashed #cbd5e1;border-radius:12px;margin-top:20px;background:#f8fafc;">
+      <div style="font-size:32px;margin-bottom:10px;">📊</div>
+      <strong style="color:#1e293b;">No data yet.</strong><br>
+      <span style="font-size:12px;color:#64748b;margin-top:6px;display:block;">
+        Please open the <strong>Reports tab → R6 Target vs Actuals</strong> first so actuals are loaded, then come back here.
+      </span>
+    </div>`;
+    return;
+  }
+
+  // Per-chart sort states (tv = target-vs-actual charts, ac = achievement charts)
+  if(!window._gphSorts) window._gphSorts={bk:'orig',rt:'orig',cv:'orig',bkA:'orig',rtA:'orig',cvA:'orig'};
+
+  const lvl=curUser?curUser.level:4;
+  const isL3=(lvl===3||lvl==='3'||lvl==='3F');
+  const norm=s=>String(s||'').trim().toLowerCase().replace(/[\s_]+/g,' ');
+
+  // ── Parse Target Sheet ──
+  const targetData=SD[13]||[];
+  const tgtMap=new Map();
+  if(targetData&&targetData.length>1){
+    let tHi=0;
+    for(let i=0;i<Math.min(3,targetData.length);i++){
+      const r=targetData[i].map(x=>String(x||'').toLowerCase()).join(' ');
+      if(r.includes('branch')||r.includes('sc name')||r.includes('booking')){tHi=i;break;}
+    }
+    const tH=targetData[tHi].map(x=>String(x||'').trim());
+    const fcT=n=>{const nm=s=>String(s||'').trim().toLowerCase();const nv=nm(n);let i=tH.findIndex(x=>nm(x)===nv);return i>=0?i:tH.findIndex(x=>nm(x).includes(nv));};
+    const scI_t=fcT('SC Name')>=0?fcT('SC Name'):fcT('SC');
+    const brI_t=fcT('Branch Name')>=0?fcT('Branch Name'):fcT('Branch');
+    const bkI_t=isL3?(fcT('Booking')>=0?fcT('Booking'):fcT('Booking Target')):(fcT('Booking Target')>=0?fcT('Booking Target'):fcT('Booking'));
+    const rtI_t=isL3?(fcT('New & Ageing Car Retail')>=0?fcT('New & Ageing Car Retail'):fcT('Retail')):(fcT('New Car')>=0?fcT('New Car'):(fcT('New & Ageing Car Retail')>=0?fcT('New & Ageing Car Retail'):fcT('Retail')));
+    const keyIdx=isL3?scI_t:brI_t;
+    const _etbrSCRaw=window.__etbrSCList||[];
+    const _etbrSCSet=_etbrSCRaw.length?new Set(_etbrSCRaw.map(s=>norm(s))):null;
+    targetData.slice(tHi+1).forEach(r=>{
+      if(!r.some(c=>String(c||'').trim()))return;
+      const key=keyIdx>=0?String(r[keyIdx]||'').trim():'';
+      if(!key)return;
+      if(isL3&&_etbrSCSet&&!_etbrSCSet.has(norm(key)))return;
+      const bkTgt=parseFloat(String(r[bkI_t>=0?bkI_t:0]||'').replace(/,/g,''))||0;
+      const rtTgt=parseFloat(String(r[rtI_t>=0?rtI_t:0]||'').replace(/,/g,''))||0;
+      tgtMap.set(norm(key),{bkTgt,rtTgt,origKey:key});
+    });
+  }
+  const findTgt=key=>{
+    const nk=norm(key);
+    if(tgtMap.has(nk))return tgtMap.get(nk);
+    for(const [tk,tv] of tgtMap){if(tk.includes(nk)||nk.includes(tk))return tv;}
+    return{bkTgt:0,rtTgt:0};
+  };
+
+  // ── Build base rows (original order) ──
+  const baseRows=etbrKeys
+    .filter(k=>k&&k!=='__BRANCH__'&&!k.toUpperCase().includes('CORPORATE'))
+    .map(k=>{
+      const {bkTgt,rtTgt}=findTgt(k);
+      const {booking:bkAct=0,retail:rtAct=0,coverage:cvAct=0}=etbrCache[k]||{};
+      return{key:k,bkTgt,rtTgt,bkAct,rtAct,cvAct};
+    })
+    .filter(t=>t.bkTgt||t.rtTgt||t.bkAct||t.rtAct||t.cvAct);
+
+  if(!baseRows.length){
+    el.innerHTML=`<div style="padding:30px;text-align:center;color:#64748b;">No data available.</div>`;
+    return;
+  }
+
+  // ── Sort rows per current sort mode ──
+  // valFn = which actual field to sort by (per-chart)
+  const sortRows=(mode,valFn)=>{
+    const r=[...baseRows];
+    const v=valFn||(row=>row.bkAct+row.rtAct+row.cvAct);
+    if(mode==='asc') r.sort((a,b)=>v(a)-v(b));
+    else if(mode==='desc') r.sort((a,b)=>v(b)-v(a));
+    return r;
+  };
+  // Sort by achievement % for achievement charts
+  const sortRowsAch=(mode,tgtFn,actFn)=>{
+    const r=[...baseRows];
+    const pct=row=>{const t=tgtFn(row);return t>0?actFn(row)/t:0;};
+    if(mode==='asc') r.sort((a,b)=>pct(a)-pct(b));
+    else if(mode==='desc') r.sort((a,b)=>pct(b)-pct(a));
+    return r;
+  };
+
+  // ── Hex color helpers for 3D shading ──
+  const lighten=(hex,amt)=>{
+    let n=parseInt(hex.slice(1),16);
+    const r=Math.min(255,((n>>16)&0xff)+amt),g=Math.min(255,((n>>8)&0xff)+amt),b=Math.min(255,(n&0xff)+amt);
+    return`#${((1<<24)|(r<<16)|(g<<8)|b).toString(16).slice(1)}`;
+  };
+  const darken=(hex,amt)=>lighten(hex,-amt);
+
+  // ── 3D bar chart renderer (light background, pseudo-3D bars) ──
+  const drawChart3D=(canvasId,seriesDef,title,rows)=>{
+    const canvas=document.getElementById(canvasId);
+    if(!canvas)return;
+    const dpr=window.devicePixelRatio||1;
+    const W=canvas.offsetWidth||700;
+    // Extra height to accommodate 3D depth offset + labels
+    const D=10; // 3D depth in px (screen units before dpr)
+    const H=300+D;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    canvas.style.width=W+'px';canvas.style.height=H+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+
+    // ── Light background ──
+    ctx.fillStyle='#f8fafc';
+    ctx.fillRect(0,0,W,H);
+
+    // Subtle inner white panel
+    const pad={l:52,r:D+16,t:36,b:66};
+    ctx.fillStyle='#ffffff';
+    ctx.beginPath();
+    ctx.roundRect?ctx.roundRect(pad.l-8,pad.t-8,W-pad.l-pad.r+16,H-pad.t-pad.b+16,8):ctx.rect(pad.l-8,pad.t-8,W-pad.l-pad.r+16,H-pad.t-pad.b+16);
+    ctx.fill();
+    ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;ctx.stroke();
+
+    const chartW=W-pad.l-pad.r,chartH=H-pad.t-pad.b-D;
+    const labels=rows.map(r=>r.key);
+    const n=labels.length;
+    const nS=seriesDef.length;
+    const grpW=chartW/Math.max(n,1);
+    const barW=Math.max(10,Math.min(28,grpW/(nS+0.8)));
+    const gap=(grpW-(nS*barW))/2;
+
+    const allVals=seriesDef.flatMap(s=>rows.map(r=>s.val(r)));
+    const maxV=Math.max(...allVals,1);
+    // Round maxV up to a nice number
+    const niceMax=(v)=>{const p=Math.pow(10,Math.floor(Math.log10(v)));const f=v/p;return(f<=1?1:f<=2?2:f<=5?5:10)*p;};
+    const axisMax=niceMax(maxV);
+
+    // ── Grid lines & Y-axis labels ──
+    const gridLines=5;
+    for(let g=0;g<=gridLines;g++){
+      const yv=(g/gridLines)*axisMax;
+      const y=pad.t+chartH-(g/gridLines)*chartH;
+      ctx.strokeStyle=g===0?'#94a3b8':'#e2e8f0';
+      ctx.lineWidth=g===0?1.5:1;
+      ctx.setLineDash(g===0?[]:[4,4]);
+      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+chartW,y);ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#64748b';ctx.font=`bold ${11/dpr*dpr}px 'Segoe UI',sans-serif`;
+      ctx.textAlign='right';ctx.textBaseline='middle';
+      ctx.fillText(yv>=1000?(yv/1000).toFixed(yv%1000===0?0:1)+'k':yv,pad.l-8,y);
+    }
+
+    // ── Draw 3D bars (back-to-front so depth faces don't overlap front) ──
+    seriesDef.forEach((ser,si)=>{
+      rows.forEach((row,li)=>{
+        const v=ser.val(row);
+        if(!v&&v!==0)return;
+        const barH=Math.round((v/axisMax)*chartH);
+        const x=pad.l+li*grpW+gap+si*barW;
+        const yTop=pad.t+chartH-barH;
+        const yBot=pad.t+chartH;
+        const fc=ser.color;       // front face color
+        const rc=darken(fc,35);   // right side face (darker)
+        const tc=lighten(fc,45);  // top face (lighter)
+        const dx=D,dy=-D*0.5;     // 3D depth direction
+
+        if(ser.hollow){
+          // Target bar: dashed outline 3D style
+          // Right side outline
+          ctx.strokeStyle=darken(fc,20);ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+          ctx.beginPath();
+          ctx.moveTo(x+barW,yTop);ctx.lineTo(x+barW+dx,yTop+dy);
+          ctx.lineTo(x+barW+dx,yBot+dy);ctx.lineTo(x+barW,yBot);
+          ctx.stroke();ctx.setLineDash([]);
+          // Top outline
+          ctx.beginPath();
+          ctx.moveTo(x,yTop);ctx.lineTo(x+dx,yTop+dy);
+          ctx.lineTo(x+barW+dx,yTop+dy);ctx.lineTo(x+barW,yTop);
+          ctx.closePath();ctx.stroke();
+          // Front outline + light fill
+          ctx.globalAlpha=0.18;ctx.fillStyle=fc;ctx.fillRect(x,yTop,barW,barH);ctx.globalAlpha=1;
+          ctx.strokeStyle=fc;ctx.lineWidth=2;ctx.setLineDash([4,3]);
+          ctx.strokeRect(x,yTop,barW,barH);ctx.setLineDash([]);
+          // Target value label — inside bar if tall, just above top if short
+          if(v>0){
+            const lbl=String(v);
+            const fs=Math.min(10,Math.max(7,barW*0.4));
+            ctx.font=`bold ${fs}px 'Segoe UI',sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+            if(barH>16){
+              ctx.fillStyle=darken(fc,30);ctx.globalAlpha=0.85;
+              ctx.fillText(lbl,x+barW/2,yTop+Math.min(barH/2,12));
+              ctx.globalAlpha=1;
+            } else {
+              ctx.fillStyle=darken(fc,25);
+              ctx.fillText(lbl,x+barW/2,yTop-7);
+            }
+          }
+        } else {
+          // Right side face
+          ctx.fillStyle=rc;
+          ctx.beginPath();
+          ctx.moveTo(x+barW,yTop);ctx.lineTo(x+barW+dx,yTop+dy);
+          ctx.lineTo(x+barW+dx,yBot+dy);ctx.lineTo(x+barW,yBot);
+          ctx.closePath();ctx.fill();
+          // Top face
+          ctx.fillStyle=tc;
+          ctx.beginPath();
+          ctx.moveTo(x,yTop);ctx.lineTo(x+dx,yTop+dy);
+          ctx.lineTo(x+barW+dx,yTop+dy);ctx.lineTo(x+barW,yTop);
+          ctx.closePath();ctx.fill();
+          // Front face
+          ctx.fillStyle=fc;ctx.fillRect(x,yTop,barW,barH);
+          // Subtle border
+          ctx.strokeStyle=darken(fc,25);ctx.lineWidth=0.5;ctx.strokeRect(x,yTop,barW,barH);
+          // Value label (inside bar if tall enough, above if short)
+          if(v>0){
+            const lbl=String(v);
+            const fs=Math.min(11,Math.max(8,barW*0.45));
+            ctx.font=`bold ${fs}px 'Segoe UI',sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+            if(barH>18){
+              ctx.fillStyle='#fff';ctx.globalAlpha=0.92;
+              ctx.fillText(lbl,x+barW/2,yTop+Math.min(barH/2,14));
+              ctx.globalAlpha=1;
+            } else {
+              ctx.fillStyle=darken(fc,40);
+              ctx.fillText(lbl,x+barW/2,yTop-6);
+            }
+          }
+        }
+      });
+    });
+
+    // ── X-axis labels ──
+    ctx.fillStyle='#334155';ctx.textAlign='center';ctx.textBaseline='top';
+    ctx.font=`600 10px 'Segoe UI',sans-serif`;
+    labels.forEach((l,li)=>{
+      const x=pad.l+li*grpW+grpW/2;
+      const disp=l.length>12?l.slice(0,11)+'…':l;
+      ctx.fillText(disp,x,pad.t+chartH+8);
+    });
+
+    // ── Chart title ──
+    ctx.fillStyle='#0f172a';ctx.font=`bold 13px 'Segoe UI',sans-serif`;ctx.textAlign='left';ctx.textBaseline='middle';
+    ctx.fillText(title,pad.l,18);
+
+    // ── Legend ──
+    const legY=pad.t+chartH+38;
+    let legX=pad.l;
+    seriesDef.forEach((ser,si)=>{
+      // Color swatch
+      ctx.fillStyle=ser.color;ctx.globalAlpha=ser.hollow?0.5:1;
+      ctx.fillRect(legX,legY-5,14,10);ctx.globalAlpha=1;
+      if(ser.hollow){ctx.strokeStyle=ser.color;ctx.lineWidth=1.5;ctx.strokeRect(legX,legY-5,14,10);}
+      ctx.fillStyle='#334155';ctx.font=`10px 'Segoe UI',sans-serif`;ctx.textAlign='left';ctx.textBaseline='middle';
+      ctx.fillText(ser.label,legX+18,legY);
+      legX+=ctx.measureText(ser.label).width+36;
+    });
+  };
+
+  // ── Achievement bar chart (single 3D bar per location, % of target) ──
+  const drawAchievement=(canvasId,rows,title,tgtFn,actFn,barColor)=>{
+    const canvas=document.getElementById(canvasId);
+    if(!canvas)return;
+    const dpr=window.devicePixelRatio||1;
+    const W=canvas.offsetWidth||700;
+    const D=8;
+    const H=280+D;
+    canvas.width=W*dpr;canvas.height=H*dpr;
+    canvas.style.width=W+'px';canvas.style.height=H+'px';
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+
+    // Light background
+    ctx.fillStyle='#f8fafc';ctx.fillRect(0,0,W,H);
+    const pad={l:52,r:D+20,t:36,b:72};
+    ctx.fillStyle='#ffffff';
+    ctx.strokeStyle='#e2e8f0';ctx.lineWidth=1;
+    ctx.beginPath();
+    if(ctx.roundRect)ctx.roundRect(pad.l-8,pad.t-8,W-pad.l-pad.r+16,H-pad.t-pad.b+16,8);
+    else ctx.rect(pad.l-8,pad.t-8,W-pad.l-pad.r+16,H-pad.t-pad.b+16);
+    ctx.fill();ctx.stroke();
+
+    const chartW=W-pad.l-pad.r, chartH=H-pad.t-pad.b-D;
+    const n=rows.length;
+    const grpW=chartW/Math.max(n,1);
+    const barW=Math.max(14,Math.min(36,grpW*0.55));
+    const gapX=(grpW-barW)/2;
+
+    const pcts=rows.map(r=>{const t=tgtFn(r),a=actFn(r);return t>0?Math.round(a/t*100):0;});
+    const maxPct=Math.max(...pcts,110);
+    const axisMax=Math.ceil(maxPct/10)*10;
+
+    // Grid lines + Y axis
+    const steps=[0,25,50,75,100,125,150].filter(v=>v<=axisMax+15);
+    steps.forEach(v=>{
+      const y=pad.t+chartH-Math.min(v/axisMax,1)*chartH;
+      ctx.strokeStyle=v===100?'#ef4444':'#e2e8f0';
+      ctx.lineWidth=v===100?1.5:1;
+      ctx.setLineDash(v===100?[6,3]:[]);
+      ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+chartW,y);ctx.stroke();
+      ctx.setLineDash([]);
+      if(v===100){ctx.fillStyle='#ef4444';ctx.font=`bold 9px 'Segoe UI',sans-serif`;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText('100% Target',pad.l-4,y);}
+      else{ctx.fillStyle='#94a3b8';ctx.font=`9px 'Segoe UI',sans-serif`;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(v+'%',pad.l-6,y);}
+    });
+
+    // Bars
+    rows.forEach((row,li)=>{
+      const pct=pcts[li];
+      const barH=Math.round(Math.min(pct/axisMax,1)*chartH);
+      const x=pad.l+li*grpW+gapX;
+      const yTop=pad.t+chartH-barH;
+      const yBot=pad.t+chartH;
+      // Color by achievement
+      const fc=pct>=100?'#10b981':pct>=75?'#f59e0b':'#ef4444';
+      const rc=lighten(fc,-38); // darken for right face
+      const tc=lighten(fc,40);  // lighten for top face
+      const dx=D, dy=-D*0.5;
+      if(barH>0){
+        // Right side
+        ctx.fillStyle=rc;
+        ctx.beginPath();ctx.moveTo(x+barW,yTop);ctx.lineTo(x+barW+dx,yTop+dy);ctx.lineTo(x+barW+dx,yBot+dy);ctx.lineTo(x+barW,yBot);ctx.closePath();ctx.fill();
+        // Top
+        ctx.fillStyle=tc;
+        ctx.beginPath();ctx.moveTo(x,yTop);ctx.lineTo(x+dx,yTop+dy);ctx.lineTo(x+barW+dx,yTop+dy);ctx.lineTo(x+barW,yTop);ctx.closePath();ctx.fill();
+        // Front
+        ctx.fillStyle=fc;ctx.fillRect(x,yTop,barW,barH);
+        ctx.strokeStyle=lighten(fc,-25);ctx.lineWidth=0.5;ctx.strokeRect(x,yTop,barW,barH);
+      }
+      // % label
+      const lbl=pct+'%';
+      const fs=Math.min(11,Math.max(8,barW*0.38));
+      ctx.font=`bold ${fs}px 'Segoe UI',sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+      if(barH>16){ctx.fillStyle='#fff';ctx.globalAlpha=0.92;ctx.fillText(lbl,x+barW/2,yTop+Math.min(barH/2,13));ctx.globalAlpha=1;}
+      else{ctx.fillStyle=fc;ctx.fillText(lbl,x+barW/2,yTop-7);}
+    });
+
+    // X-axis labels
+    ctx.fillStyle='#334155';ctx.textAlign='center';ctx.textBaseline='top';ctx.font=`600 10px 'Segoe UI',sans-serif`;
+    rows.forEach((row,li)=>{const x=pad.l+li*grpW+grpW/2;const d=row.key.length>12?row.key.slice(0,11)+'…':row.key;ctx.fillText(d,x,pad.t+chartH+8);});
+
+    // Actual / Target sub-labels
+    ctx.fillStyle='#94a3b8';ctx.font=`9px 'Segoe UI',sans-serif`;
+    rows.forEach((row,li)=>{
+      const x=pad.l+li*grpW+grpW/2;
+      const a=actFn(row),t=tgtFn(row);
+      ctx.fillText(`${a}/${t}`,x,pad.t+chartH+22);
+    });
+
+    // Title
+    ctx.fillStyle='#0f172a';ctx.font=`bold 13px 'Segoe UI',sans-serif`;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(title,pad.l,18);
+
+    // Legend
+    const legY=pad.t+chartH+46;
+    const lgItems=[{c:'#10b981',l:'≥100% (On Target)'},{c:'#f59e0b',l:'75–99% (Near)'},{c:'#ef4444',l:'<75% (Below)'}];
+    let lx=pad.l;
+    lgItems.forEach(({c,l})=>{ctx.fillStyle=c;ctx.fillRect(lx,legY-5,12,10);ctx.fillStyle='#475569';ctx.font=`10px 'Segoe UI',sans-serif`;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(l,lx+16,legY);lx+=ctx.measureText(l).width+38;});
+  };
+
+  // ── Per-chart individual redraw functions ──
+  const _sortAndDraw=(key,canvasId,seriesDef,title,actValFn)=>{
+    const sorted=sortRows(window._gphSorts[key],actValFn);
+    drawChart3D(canvasId,seriesDef,title,sorted);
+    ['orig','asc','desc'].forEach(m=>{
+      const btn=document.getElementById(`gphSort_${key}_${m}`);
+      if(!btn)return;
+      const on=window._gphSorts[key]===m;
+      btn.style.background=on?'#1d4ed8':'#fff';btn.style.color=on?'#fff':'#475569';
+      btn.style.borderColor=on?'#1d4ed8':'#cbd5e1';btn.style.fontWeight=on?'700':'500';
+    });
+  };
+  const _sortAndDrawAch=(key,canvasId,title,tgtFn,actFn)=>{
+    const sorted=sortRowsAch(window._gphSorts[key],tgtFn,actFn);
+    drawAchievement(canvasId,sorted,title,tgtFn,actFn);
+    ['orig','asc','desc'].forEach(m=>{
+      const btn=document.getElementById(`gphSort_${key}_${m}`);
+      if(!btn)return;
+      const on=window._gphSorts[key]===m;
+      btn.style.background=on?'#1d4ed8':'#fff';btn.style.color=on?'#fff':'#475569';
+      btn.style.borderColor=on?'#1d4ed8':'#cbd5e1';btn.style.fontWeight=on?'700':'500';
+    });
+  };
+
+  window._gphRedrawBk =()=>_sortAndDraw('bk','gphBkChart',[{label:'Booking Target',color:'#3b82f6',hollow:true,val:r=>r.bkTgt},{label:'Actual Booking',color:'#10b981',hollow:false,val:r=>r.bkAct}],'📦 Booking — Target vs Actual',r=>r.bkAct);
+  window._gphRedrawRt =()=>_sortAndDraw('rt','gphRtChart',[{label:'Retail Target',color:'#6366f1',hollow:true,val:r=>r.rtTgt},{label:'Actual Retail',color:'#f59e0b',hollow:false,val:r=>r.rtAct}],'🚗 Retail — Target vs Actual',r=>r.rtAct);
+  window._gphRedrawCv =()=>_sortAndDraw('cv','gphCvChart',[{label:'Retail Target (Coverage base)',color:'#6366f1',hollow:true,val:r=>r.rtTgt},{label:'Coverage Actual',color:'#ef4444',hollow:false,val:r=>r.cvAct}],'🛡️ Coverage — Target vs Actual',r=>r.cvAct);
+  window._gphRedrawBkA=()=>_sortAndDrawAch('bkA','gphBkAchChart','🎯 Booking Achievement %',r=>r.bkTgt,r=>r.bkAct);
+  window._gphRedrawRtA=()=>_sortAndDrawAch('rtA','gphRtAchChart','🎯 Retail Achievement %',r=>r.rtTgt,r=>r.rtAct);
+  window._gphRedrawCvA=()=>_sortAndDrawAch('cvA','gphCvAchChart','🎯 Coverage Achievement % (vs Retail Target)',r=>r.rtTgt,r=>r.cvAct);
+
+  window._gphRedraw=()=>{window._gphRedrawBk();window._gphRedrawRt();window._gphRedrawCv();window._gphRedrawBkA();window._gphRedrawRtA();window._gphRedrawCvA();};
+
+  // ── Summary totals ──
+  const tBkTgt=baseRows.reduce((s,r)=>s+r.bkTgt,0);
+  const tBkAct=baseRows.reduce((s,r)=>s+r.bkAct,0);
+  const tRtTgt=baseRows.reduce((s,r)=>s+r.rtTgt,0);
+  const tRtAct=baseRows.reduce((s,r)=>s+r.rtAct,0);
+  const tCvAct=baseRows.reduce((s,r)=>s+r.cvAct,0);
+  const pct=(a,t)=>t?Math.round(a/t*100)+'%':'—';
+  const achvColor=(a,t)=>{const p=t?a/t:0;return p>=1?'#059669':p>=0.75?'#d97706':'#dc2626';};
+
+  // Summary cards — light style
+  const cardS=`background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:14px 18px;flex:1;min-width:140px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.06);`;
+  const statLine=(label,val,col)=>`<div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;">${label}</div><div style="font-size:20px;font-weight:800;color:${col};margin:2px 0;">${val}</div>`;
+  const cards=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px;">
+    <div style="${cardS}">
+      ${statLine('Booking Target',tBkTgt,'#3b82f6')}
+      ${statLine('Actual',tBkAct,'#10b981')}
+      <div style="font-size:16px;font-weight:800;color:${achvColor(tBkAct,tBkTgt)};margin-top:4px;">${pct(tBkAct,tBkTgt)} achievement</div>
+    </div>
+    <div style="${cardS}">
+      ${statLine('Retail Target',tRtTgt,'#6366f1')}
+      ${statLine('Actual',tRtAct,'#f59e0b')}
+      <div style="font-size:16px;font-weight:800;color:${achvColor(tRtAct,tRtTgt)};margin-top:4px;">${pct(tRtAct,tRtTgt)} achievement</div>
+    </div>
+    <div style="${cardS}">
+      ${statLine('Coverage Base (Retail Tgt)',tRtTgt,'#6366f1')}
+      ${statLine('Coverage Actual',tCvAct,'#ef4444')}
+      <div style="font-size:16px;font-weight:800;color:${achvColor(tCvAct,tRtTgt)};margin-top:4px;">${pct(tCvAct,tRtTgt)} coverage</div>
+    </div>
+  </div>`;
+
+  // Per-chart sort bar builder
+  const S=window._gphSorts;
+  const mkSortBar=(key,redrawFn,sortLabel)=>{
+    const btn=(m,lbl)=>{const on=S[key]===m;
+      return`<button id="gphSort_${key}_${m}" onclick="window._gphSorts['${key}']='${m}';window.${redrawFn}()"
+        style="padding:4px 13px;font-size:10px;font-weight:${on?700:500};border-radius:16px;cursor:pointer;
+        border:1px solid ${on?'#1d4ed8':'#cbd5e1'};background:${on?'#1d4ed8':'#fff'};
+        color:${on?'#fff':'#475569'};transition:all .15s;">${lbl}</button>`;};
+    return`<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:10px;color:#64748b;font-weight:600;white-space:nowrap;">${sortLabel}:</span>
+      ${btn('orig','Original')}${btn('asc','↑ Ascending')}${btn('desc','↓ Descending')}
+    </div>`;
+  };
+
+  const chartBox=`background:#f1f5f9;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px;margin-bottom:18px;`;
+  const secHead=(t)=>`<div style="font-size:13px;font-weight:800;color:#1e293b;margin:24px 0 12px;padding-left:2px;border-left:4px solid #3b82f6;padding-left:10px;">${t}</div>`;
+
+  el.innerHTML=`
+  <div style="max-width:1100px;padding-bottom:20px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <h2 style="margin:0;font-size:18px;color:#0f172a;">📊 Target vs Actuals — Graph</h2>
+      <span style="font-size:11px;color:#64748b;">Data from Reports → R6. Open R6 to refresh actuals.</span>
+    </div>
+    ${cards}
+
+    ${secHead('Target vs Actual')}
+    <div style="${chartBox}">
+      ${mkSortBar('bk','_gphRedrawBk','Sort Booking by Actual')}
+      <canvas id="gphBkChart" style="width:100%;display:block;border-radius:8px;"></canvas>
+    </div>
+    <div style="${chartBox}">
+      ${mkSortBar('rt','_gphRedrawRt','Sort Retail by Actual')}
+      <canvas id="gphRtChart" style="width:100%;display:block;border-radius:8px;"></canvas>
+    </div>
+    <div style="${chartBox}">
+      ${mkSortBar('cv','_gphRedrawCv','Sort Coverage by Actual')}
+      <canvas id="gphCvChart" style="width:100%;display:block;border-radius:8px;"></canvas>
+    </div>
+
+    ${secHead('Achievement % per Location')}
+    <div style="${chartBox}">
+      ${mkSortBar('bkA','_gphRedrawBkA','Sort by Achievement')}
+      <canvas id="gphBkAchChart" style="width:100%;display:block;border-radius:8px;"></canvas>
+    </div>
+    <div style="${chartBox}">
+      ${mkSortBar('rtA','_gphRedrawRtA','Sort by Achievement')}
+      <canvas id="gphRtAchChart" style="width:100%;display:block;border-radius:8px;"></canvas>
+    </div>
+    <div style="${chartBox}">
+      ${mkSortBar('cvA','_gphRedrawCvA','Sort by Achievement')}
+      <canvas id="gphCvAchChart" style="width:100%;display:block;border-radius:8px;"></canvas>
+    </div>
+  </div>`;
+
+  requestAnimationFrame(()=>window._gphRedraw&&window._gphRedraw());
+}
 
 /* ══════════════════════════════════════════════════════════════
    ETBR Bar Chart (renders after DOM ready)
