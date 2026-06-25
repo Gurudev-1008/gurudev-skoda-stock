@@ -5086,15 +5086,24 @@ async function moveToRetailMaster(){
   const _invMonCol=(()=>{for(const k of['Invoice month','Invoice Month','INVOICE MONTH','InvoiceMonth']){const i=fce(rmH,k);if(i>=0)return i+1;}return -1;})();
 
   // Helper: write one cell and await GAS response
-  const _writeCell=(sheet,row,col,val)=>new Promise((res,rej)=>{
+  // Single cell write — 30s timeout
+  const _writeCellOnce=(sheet,row,col,val)=>new Promise((res,rej)=>{
     const cb=`__mrm_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const t=setTimeout(()=>{delete window[cb];rej(new Error('Timeout'));},20000);
+    const t=setTimeout(()=>{delete window[cb];rej(new Error('Timeout'));},30000);
     window[cb]=d=>{clearTimeout(t);delete window[cb];d&&d.success?res():rej(new Error(d&&d.error||'GAS error'));};
     const s=document.createElement('script');
     s.src=`${API}?action=updateCell&sheet=${encodeURIComponent(sheet)}&row=${row}&col=${col}&value=${encodeURIComponent(val)}&callback=${encodeURIComponent(cb)}`;
     s.onerror=()=>{clearTimeout(t);delete window[cb];s.remove();rej(new Error('Network error'));};
     s.onload=()=>s.remove();
     document.head.appendChild(s);
+  });
+  // Auto-retry once on Timeout/Network error, after a 2s pause
+  const _writeCell=(sheet,row,col,val)=>_writeCellOnce(sheet,row,col,val).catch(async err=>{
+    if(err.message==='Timeout'||err.message==='Network error'){
+      await new Promise(r=>setTimeout(r,2000));
+      return _writeCellOnce(sheet,row,col,val);
+    }
+    throw err;
   });
 
   // ── PHASE 1: Copy all rows to Retail_Master in parallel ──
@@ -5179,19 +5188,16 @@ async function moveToRetailMaster(){
   // Within each row, cells still fire in parallel (they all target the same row, no conflict).
   for(let ji=0;ji<jobsWithCells.length;ji++){
     const {src,sheetRow,sh,targetRow,cells}=jobsWithCells[ji];
-    _mrmOverlay(true,`Copying record ${ji+1} of ${jobsWithCells.length} to Retail Master…`);
-    // Write all cells for this row in parallel, but cap at 8 at a time to avoid GAS overload
-    const _runBatch=async(items)=>{
-      const out=[];
-      for(let bi=0;bi<items.length;bi+=8){
-        const slice=items.slice(bi,bi+8);
-        const bRes=await Promise.allSettled(slice.map(({col,val})=>_writeCell('Retail_Master',targetRow,col,val)));
-        out.push(...bRes);
-        if(bi+8<items.length)await new Promise(r=>setTimeout(r,150)); // brief pause between batches
-      }
-      return out;
-    };
-    const cellResults=await _runBatch(cells);
+    _mrmOverlay(true,`Copying record ${ji+1} of ${jobsWithCells.length} to Retail Master… (${cells.length} fields)`);
+    // Write cells one-by-one — avoids GAS quota errors; each call has auto-retry on timeout
+    const cellResults=[];
+    for(let ci=0;ci<cells.length;ci++){
+      const {col,val}=cells[ci];
+      _mrmOverlay(true,`Record ${ji+1}/${jobsWithCells.length} — field ${ci+1}/${cells.length}…`);
+      const r=await Promise.allSettled([_writeCell('Retail_Master',targetRow,col,val)]);
+      cellResults.push(...r);
+      if(ci<cells.length-1)await new Promise(r=>setTimeout(r,120)); // 120ms between cells
+    }
     const anyFailed=cellResults.some(r=>r.status==='rejected');
     if(anyFailed){
       const failMsg=cellResults.find(r=>r.status==='rejected')?.reason?.message||'Network error';
@@ -5201,8 +5207,8 @@ async function moveToRetailMaster(){
       const _retMIdx=sh.findIndex(h=>{const hl=h.toLowerCase().trim();return hl==='ret_master'||hl==='ret master'||hl==='retmaster';});
       if(_retMIdx>=0)flagQueue.push({src,sheetRow,retMIdx:_retMIdx,srcSheet:src===7?'Allotment':'AG/DM Allotment'});
     }
-    // Small pause between records to let GAS breathe
-    if(ji<jobsWithCells.length-1)await new Promise(r=>setTimeout(r,300));
+    // Pause between records to let GAS breathe
+    if(ji<jobsWithCells.length-1)await new Promise(r=>setTimeout(r,600));
   }
 
   // ── PHASE 2: Write "Yes" to Ret_Master in each source row (all copies done first) ──
