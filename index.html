@@ -1729,7 +1729,7 @@ function setupTab(){
   });
   // Excel export button — all users on Live RPO (2) & Allotment (7,8); Admin/L1/L1A on other tabs
   {
-    const canExp=curUser&&(curUser.isAdmin||curUser.level===1||curUser.level==='1'||curUser.level==='1A'||(curTab===12&&(curUser.level==='2F'||curUser.level==='3F')));
+    const canExp=curUser&&(curUser.isAdmin||curUser.level===1||curUser.level==='1'||curUser.level==='1A'||curUser.level===5||curUser.level==='5'||(curTab===12&&(curUser.level==='2F'||curUser.level==='3F')));
     const teb=document.getElementById('tabExportBtn');
     const showExp=[2,7,8].includes(curTab)?!!curUser:(canExp&&[0,1,10,12].includes(curTab));
     if(teb)teb.style.display=showExp?'inline-flex':'none';
