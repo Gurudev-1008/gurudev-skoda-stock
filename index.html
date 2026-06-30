@@ -5189,15 +5189,11 @@ async function moveToRetailMaster(){
   for(let ji=0;ji<jobsWithCells.length;ji++){
     const {src,sheetRow,sh,targetRow,cells}=jobsWithCells[ji];
     _mrmOverlay(true,`Copying record ${ji+1} of ${jobsWithCells.length} to Retail Master… (${cells.length} fields)`);
-    // Write cells one-by-one — avoids GAS quota errors; each call has auto-retry on timeout
-    const cellResults=[];
-    for(let ci=0;ci<cells.length;ci++){
-      const {col,val}=cells[ci];
-      _mrmOverlay(true,`Record ${ji+1}/${jobsWithCells.length} — field ${ci+1}/${cells.length}…`);
-      const r=await Promise.allSettled([_writeCell('Retail_Master',targetRow,col,val)]);
-      cellResults.push(...r);
-      if(ci<cells.length-1)await new Promise(r=>setTimeout(r,120)); // 120ms between cells
-    }
+    // Fire all cells for this record in parallel — records are sequential so no GAS overload.
+    // Each individual cell has auto-retry on timeout via _writeCell wrapper.
+    const cellResults=await Promise.allSettled(
+      cells.map(({col,val})=>_writeCell('Retail_Master',targetRow,col,val))
+    );
     const anyFailed=cellResults.some(r=>r.status==='rejected');
     if(anyFailed){
       const failMsg=cellResults.find(r=>r.status==='rejected')?.reason?.message||'Network error';
@@ -5207,8 +5203,8 @@ async function moveToRetailMaster(){
       const _retMIdx=sh.findIndex(h=>{const hl=h.toLowerCase().trim();return hl==='ret_master'||hl==='ret master'||hl==='retmaster';});
       if(_retMIdx>=0)flagQueue.push({src,sheetRow,retMIdx:_retMIdx,srcSheet:src===7?'Allotment':'AG/DM Allotment'});
     }
-    // Pause between records to let GAS breathe
-    if(ji<jobsWithCells.length-1)await new Promise(r=>setTimeout(r,600));
+    // Short pause between records to let GAS commit before next row starts
+    if(ji<jobsWithCells.length-1)await new Promise(r=>setTimeout(r,300));
   }
 
   // ── PHASE 2: Write "Yes" to Ret_Master in each source row (all copies done first) ──
