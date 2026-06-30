@@ -5008,8 +5008,16 @@ function _mrmOverlay(show,msg){
   if(show){
     if(ms)ms.textContent=msg||'Moving records…';
     ov.style.display='flex';
+    // Safety: Escape key force-closes overlay if it ever gets stuck
+    if(!window._mrmEscBound){
+      window._mrmEscBound=true;
+      document.addEventListener('keydown',function _mrmEsc(e){
+        if(e.key==='Escape'){_mrmOverlay(false);document.removeEventListener('keydown',_mrmEsc);window._mrmEscBound=false;}
+      });
+    }
   } else {
     ov.style.display='none';
+    window._mrmEscBound=false;
   }
 }
 async function moveToRetailMaster(){
@@ -5017,6 +5025,11 @@ async function moveToRetailMaster(){
   const btn=document.getElementById('mrmBtn');
   if(btn){btn.disabled=true;btn.textContent='⏳ Moving…';}
   _mrmOverlay(true,'Preparing to move records…');
+  try{ await _moveToRetailMasterInner(btn); }
+  catch(e){ console.error('MRM fatal error:',e); alert('Unexpected error during move: '+e.message+'\nPlease retry.'); }
+  finally{ _mrmOverlay(false); if(btn){btn.disabled=false;updateMRMBtn();} }
+}
+async function _moveToRetailMasterInner(btn){
 
   // Make sure Retail_Master is loaded
   if(!SD[14]||SD[14].length<2){
@@ -5235,7 +5248,7 @@ async function moveToRetailMaster(){
   window._srmActive=false;
   window._srmSelected=new Set();
 
-  _mrmOverlay(false);
+  // Overlay is closed by try-finally in moveToRetailMaster — don't call here
   if(errors.length){
     alert(`Moved ${movedCount} record(s) to Retail Master.\nErrors:\n${errors.join('\n')}`);
   } else {
