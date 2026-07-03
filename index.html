@@ -4355,6 +4355,7 @@ function renderLiveRPO(){
     {label:'MY',             keys:['MY']},
     {label:'VY',             keys:['VY','VIN Year']},
     {label:'Status',         keys:['Status','STATUS']},
+    {label:'Stock Status',   keys:['__STOCK_STATUS__']},   // computed via #VIN → Stock sheet lookup
     {label:'Corporate',      keys:['Corp','Corporate','CORP','CORPORATE']},
     {label:'Loyalty',        keys:['Loyalty','LOYALTY']},
     {label:'Exchange',       keys:['Exchange','EXCHANGE']},
@@ -4364,17 +4365,46 @@ function renderLiveRPO(){
   const NCOLS=COLS.length;
   if(!rows||rows.length<1){
     document.getElementById('tH').innerHTML='';
-    document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><strong>No data in "Live RPO"</strong></div></td></tr>`;
     document.getElementById('rInfo').textContent='';
+    // Auto-fetch if SD[2] is empty (GAS may have timed out on initial load)
+    if(!window._rpoLoading){
+      window._rpoLoading=true;
+      document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><div class="sp"></div><strong>Loading Live RPO data…</strong><p style="color:var(--text-muted);font-size:12px;margin-top:6px;">Fetching from sheet, please wait.</p></div></td></tr>`;
+      jFetch('Live RPO').then(j=>{
+        SD[2]=j&&j.length>=1?j:[];window._rpoLoading=false;
+        if(curTab===2)renderTable();
+      }).catch(()=>{
+        window._rpoLoading=false;
+        document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><strong>No data in "Live RPO"</strong><p style="color:var(--text-muted);font-size:12px;margin-top:4px;">Could not load data. Check sheet name is "Live RPO".</p><button onclick="window._rpoLoading=false;renderTable()" style="margin-top:10px;padding:6px 16px;background:var(--accent);color:var(--bg-deep);border:none;border-radius:6px;font-weight:700;cursor:pointer;">🔄 Retry</button></div></td></tr>`;
+      });
+    } else {
+      document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><div class="sp"></div><strong>Loading Live RPO data…</strong></div></td></tr>`;
+    }
     return;
   }
   let hi=0;
   for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')||r.includes('customer')||r.includes('booking')){hi=i;break;}}
   const h=rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+  // Build VehicleStatus lookup map from Stock sheet (SD[0]): VIN \u2192 "Vehicle Status" value
+  const vehicleStatusMap=(()=>{
+    const map={};
+    const st=SD[0];
+    if(!st||st.length<2)return map;
+    let shi=0;
+    for(let i=0;i<Math.min(3,st.length);i++){const rv=st[i].map(x=>String(x||'').toLowerCase()).join(' ');if(rv.includes('model')||rv.includes('vin')||rv.includes('status')){shi=i;break;}}
+    const sh=st[shi].map(x=>String(x||'').trim());
+    const sVinI=(()=>{for(const k of['VIN','VIN No','VIN NO','Vin No','VIN Number','Chassis','Chassis No']){const i=fc(sh,k);if(i>=0)return i;}return 18;})();
+    const sVsI=(()=>{for(const k of['Vehicle Status','VEHICLE STATUS','Veh Status','VEH STATUS','Veh. Status']){const i=fc(sh,k);if(i>=0)return i;}return -1;})();
+    if(sVsI<0)return map;
+    st.slice(shi+1).forEach(r=>{const vin=String(r[sVinI]||'').trim();const vs=String(r[sVsI]||'').trim();if(vin&&vs)map[vin]=vs;});
+    return map;
+  })();
+  // Find "#VIN" column in Live RPO sheet \u2014 used for Stock Status lookup
+  const rpoVinI=(()=>{for(const k of['#VIN','#Vin','# VIN','#vin','VIN#','Vin#']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
   // Track original row index for editing
   const bodyWithIdx=rows.slice(hi+1).map((r,j)=>({r,sheetRow:hi+2+j}));
   const idxs=COLS.map(d=>{for(const k of d.keys){const i=fc(h,k);if(i>=0)return i;}return -1;});
-  // After insertion: [0]=SLNo [1]=Branch [2]=Date [3]=CustName [4]=Mobile [5]=SC [6]=Model [7]=Variant [8]=Colour [9]=MY [10]=VY [11]=Status ...
+  // COLS order: [0]=SLNo [1]=Branch [2]=Date [3]=CustName [4]=Mobile [5]=SC [6]=Model [7]=Variant [8]=Colour [9]=MY [10]=VY [11]=Status [12]=StockStatus(computed) [13]=Corporate ...
   const cI=idxs[8],yI=idxs[10]; // Colour=8, VY=10
   const mI=idxs[6],vI=idxs[7],cnI=idxs[3],brI=idxs[1],scIdxRP=idxs[5],mobI=idxs[4];
   const snIdxRP=idxs[0]>=0?idxs[0]:3; // S No column (dynamic lookup, fallback col D)
@@ -4448,8 +4478,23 @@ function renderLiveRPO(){
       if(si===10&&v!=='—')return`<td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${vyColor(v)}22;color:${vyColor(v)};border:1px solid ${vyColor(v)}55;">${v}</span></td>`;
       // Status column — differential colour badge
       if(si===11){const sv=ci>=0?String(r[ci]||'').trim():'';if(sv&&sv!=='—'){const _sc=(s=>{s=s.toLowerCase();if(s==='retail'||s==='invoiced'||s==='sold'||s==='invoice done')return'#4ade80';if(s==='allotted'||s==='booking confirmed'||s==='booking')return'#60a5fa';if(s==='tentative'||s==='enquiry')return'#facc15';if(s==='cancelled'||s==='cancel'||s==='lost')return'#f87171';return'#94a3b8';})(sv);return`<td><span style="display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;background:${_sc}22;color:${_sc};border:1px solid ${_sc}55;">${sv}</span></td>`;}return`<td class="dim">—</td>`;}
-      // Corporate / Loyalty / Exchange — Yes/No editable dropdown
-      if(si===12||si===13||si===14)return`<td>${editRPOYN(ci>=0?r[ci]||'':'',sheetRow,ci)}</td>`;
+      // Stock Status — look up VIN from "#VIN" col in Live RPO → Vehicle Status in Stock sheet
+      if(si===12){
+        const rvin=rpoVinI>=0?String(r[rpoVinI]||'').trim():'';
+        if(!rvin)return`<td class="dim">—</td>`;
+        const vs=vehicleStatusMap[rvin]||'';
+        if(!vs)return`<td class="dim">—</td>`;
+        const _vsc=(s=>{s=s.toLowerCase();
+          if(s.includes('available')||s==='in stock'||s.includes('ready'))return'#4ade80';
+          if(s.includes('allot')||s.includes('booked'))return'#60a5fa';
+          if(s.includes('transit')||s.includes('yard')||s.includes('pending'))return'#facc15';
+          if(s.includes('retail')||s.includes('sold')||s.includes('invoice'))return'#a78bfa';
+          return'#94a3b8';
+        })(vs);
+        return`<td><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:${_vsc}22;color:${_vsc};border:1px solid ${_vsc}55;">${vs}</span></td>`;
+      }
+      // Corporate / Loyalty / Exchange — Yes/No editable dropdown (shifted +1 after Stock Status insertion)
+      if(si===13||si===14||si===15)return`<td>${editRPOYN(ci>=0?r[ci]||'':'',sheetRow,ci)}</td>`;
       if(si===NCOLS-1){// Booking Status — coloured badge
         if(v&&v!=='—'){const _bsc=(s=>{s=s.toLowerCase();if(s.includes('confirm')||s==='booked')return'#60a5fa';if(s.includes('cancel')||s.includes('lost'))return'#f87171';if(s.includes('tentative'))return'#facc15';if(s.includes('retail')||s.includes('deliver'))return'#4ade80';return'#94a3b8';})(v);return`<td><span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;background:${_bsc}22;color:${_bsc};border:1px solid ${_bsc}55;">${v}</span></td>`;}return`<td class="dim">—</td>`;}
       return`<td class="${v==='—'?'dim':''}">${v}</td>`;
