@@ -1210,8 +1210,17 @@ async function loadAll(){
   document.getElementById('tH').innerHTML='';
   document.getElementById('tB').innerHTML='<tr><td colspan="20"><div class="sb"><div class="sp"></div><strong>Loading data…</strong></div></td></tr>';
 
-  // Phase 1: Load core sheets (0-6) in parallel
-  await Promise.all(SHEETS.slice(0,7).map(async(sh,i)=>{
+  // Phase 1a: Load the 3 most critical sheets first (Stock, Live RPO, Users)
+  // Keeping this as a smaller batch avoids overwhelming GAS with 7 simultaneous requests
+  await Promise.all([0,2,4].map(async i=>{
+    const sh=SHEETS[i];
+    try{const j=await jFetch(sh);SD[i]=j.length>=1?j:[];}
+    catch{SD[i]=[];}
+  }));
+
+  // Phase 1b: Load remaining core sheets (Allocation, Product Spec, Ageing Stock, Demo Stock)
+  await Promise.all([1,3,5,6].map(async i=>{
+    const sh=SHEETS[i];
     try{const j=await jFetch(sh);SD[i]=j.length>=1?j:[];}
     catch{SD[i]=[];}
   }));
@@ -4747,8 +4756,21 @@ function renderAGDMAllotment(){
   const NCOLS=20;
   if(!rows||rows.length<1){
     document.getElementById('tH').innerHTML='';
-    document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><strong>No data in "AG/DM Allotment"</strong><p>Make sure the sheet tab is named exactly "AG/DM Allotment".</p></div></td></tr>`;
-    document.getElementById('rInfo').textContent='';return;
+    document.getElementById('rInfo').textContent='';
+    if(!window._agdmLoading){
+      window._agdmLoading=true;
+      document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><div class="sp"></div><strong>Loading AG/DM Allotment data…</strong><p style="color:var(--text-muted);font-size:12px;margin-top:6px;">Fetching from sheet, please wait.</p></div></td></tr>`;
+      jFetch('AG/DM Allotment').then(j=>{
+        SD[8]=j&&j.length>=1?j:[];window._agdmLoading=false;
+        if(curTab===8)renderTable();
+      }).catch(()=>{
+        window._agdmLoading=false;
+        document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><strong>No data in "AG/DM Allotment"</strong><p style="color:var(--text-muted);font-size:12px;margin-top:4px;">Make sure the sheet tab is named exactly "AG/DM Allotment".</p><button onclick="window._agdmLoading=false;renderTable()" style="margin-top:10px;padding:6px 16px;background:var(--accent);color:var(--bg-deep);border:none;border-radius:6px;font-weight:700;cursor:pointer;">🔄 Retry</button></div></td></tr>`;
+      });
+    } else {
+      document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><div class="sp"></div><strong>Loading AG/DM Allotment data…</strong></div></td></tr>`;
+    }
+    return;
   }
   let hi=0;
   for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('customer')||r.includes('branch')||r.includes('allotment')){hi=i;break;}}
@@ -7455,8 +7477,21 @@ function renderStock(){
   const NCOLS=COLS.length;
   if(!rows||rows.length<1){
     document.getElementById('tH').innerHTML='';
-    document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><strong>No data in "Stock"</strong></div></td></tr>`;
     document.getElementById('rInfo').textContent='';
+    // Auto-fetch if SD[0] is empty (GAS may have timed out during Phase 1 parallel load)
+    if(!window._stockLoading){
+      window._stockLoading=true;
+      document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><div class="sp"></div><strong>Loading Stock data…</strong><p style="color:var(--text-muted);font-size:12px;margin-top:6px;">Fetching from sheet, please wait.</p></div></td></tr>`;
+      jFetch('Stock').then(j=>{
+        SD[0]=j&&j.length>=1?j:[];window._stockLoading=false;
+        if(curTab===0)renderTable();
+      }).catch(()=>{
+        window._stockLoading=false;
+        document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><strong>Could not load Stock data</strong><p style="color:var(--text-muted);font-size:12px;margin-top:4px;">Check sheet name is exactly "Stock".</p><button onclick="window._stockLoading=false;renderTable()" style="margin-top:10px;padding:6px 16px;background:var(--accent);color:var(--bg-deep);border:none;border-radius:6px;font-weight:700;cursor:pointer;">🔄 Retry</button></div></td></tr>`;
+      });
+    } else {
+      document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS}"><div class="sb"><div class="sp"></div><strong>Loading Stock data…</strong></div></td></tr>`;
+    }
     return;
   }
   let hi=0;
@@ -7551,7 +7586,26 @@ function renderStock(){
 
 function renderStd(){
   const rows=SD[curTab];
-  if(!rows||rows.length<2){document.getElementById('tH').innerHTML='';document.getElementById('tB').innerHTML=`<tr><td colspan="20"><div class="sb"><strong>No data in "${SHEETS[curTab]}"</strong><p>Check sheet tab name.</p></div></td></tr>`;return;}
+  if(!rows||rows.length<2){
+    document.getElementById('tH').innerHTML='';
+    document.getElementById('rInfo')&&(document.getElementById('rInfo').textContent='');
+    const _shName=SHEETS[curTab]||'data';
+    const _ldKey=`_stdLoading_${curTab}`;
+    if(!window[_ldKey]){
+      window[_ldKey]=true;
+      document.getElementById('tB').innerHTML=`<tr><td colspan="20"><div class="sb"><div class="sp"></div><strong>Loading ${_shName} data…</strong><p style="color:var(--text-muted);font-size:12px;margin-top:6px;">Fetching from sheet, please wait.</p></div></td></tr>`;
+      jFetch(_shName).then(j=>{
+        SD[curTab]=j&&j.length>=1?j:[];window[_ldKey]=false;
+        if(curTab===curTab)renderTable();
+      }).catch(()=>{
+        window[_ldKey]=false;
+        document.getElementById('tB').innerHTML=`<tr><td colspan="20"><div class="sb"><strong>Could not load ${_shName} data</strong><p style="color:var(--text-muted);font-size:12px;margin-top:4px;">Check sheet name or network connection.</p><button onclick="window['${_ldKey}']=false;renderTable()" style="margin-top:10px;padding:6px 16px;background:var(--accent);color:var(--bg-deep);border:none;border-radius:6px;font-weight:700;cursor:pointer;">🔄 Retry</button></div></td></tr>`;
+      });
+    } else {
+      document.getElementById('tB').innerHTML=`<tr><td colspan="20"><div class="sb"><div class="sp"></div><strong>Loading ${_shName} data…</strong></div></td></tr>`;
+    }
+    return;
+  }
   let hi=0;for(let i=0;i<Math.min(3,rows.length);i++){const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')||r.includes('vin')||r.includes('#')||r.includes('customer')){hi=i;break;}}
   const h=rows[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim());
   const body=rows.slice(hi+1);
