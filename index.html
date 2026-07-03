@@ -1362,6 +1362,19 @@ function _saveRem(u,p){
   if(rem&&rem.checked){localStorage.setItem('grd_rem','1');localStorage.setItem('grd_u',u);localStorage.setItem('grd_p',p);}
   else{localStorage.removeItem('grd_rem');localStorage.removeItem('grd_u');localStorage.removeItem('grd_p');}
 }
+window._loginRetry=function(){
+  const u=document.getElementById('liU').value.trim();
+  const p=document.getElementById('liP').value.trim();
+  const e=document.getElementById('liE');
+  e.textContent='Retrying…';
+  _loadStaffList().then(()=>{
+    if(staffFailed){e.textContent='Still unable to reach server. Please check your internet connection.';return;}
+    _doStaffLogin(u,p,e);
+  });
+};
+function _showLoginRetry(e){
+  e.innerHTML='Server temporarily unavailable. <a href="#" onclick="event.preventDefault();window._loginRetry()" style="color:#1d4ed8;font-weight:700;text-decoration:underline;">Tap to retry</a>';
+}
 function doLogin(){
   const u=document.getElementById('liU').value.trim();
   const p=document.getElementById('liP').value.trim();
@@ -1370,21 +1383,25 @@ function doLogin(){
   if(!u||!p){e.textContent='Please enter username and password.';return;}
   // Admin — instant, no network needed
   if(u===ADMIN_USER&&p===ADMIN_PASS){_saveRem(u,p);loginOK({username:ADMIN_USER,name:'Admin',isAdmin:true});return;}
-  // Staff — check if list is ready
+  // Staff — check if list is ready; wait up to 35s (beyond jFetch 25s timeout)
   if(!staffReady){
-    e.textContent='Connecting… please wait and try again.';
-    // Keep checking every second until ready (max 20s)
-    let tries=0;
+    e.textContent='Connecting to server…';
+    let tries=0,dots=0;
     const check=setInterval(()=>{
-      tries++;
-      if(staffReady||tries>20){
+      tries++;dots=(dots%3)+1;
+      if(!staffReady){e.textContent='Connecting to server'+'…'.repeat(dots);}
+      if(staffReady||tries>35){
         clearInterval(check);
-        if(!staffReady){e.textContent='Connection failed. Please check internet and try again.';return;}
+        if(!staffReady||staffFailed){
+          _showLoginRetry(e);
+          return;
+        }
         _doStaffLogin(u,p,e);
       }
     },1000);
     return;
   }
+  if(staffFailed){_showLoginRetry(e);return;}
   _doStaffLogin(u,p,e);
 }
 
@@ -3860,10 +3877,18 @@ function buildVinModelMap(){
   const map={};
   const st=SD[0];
   if(!st||st.length<2)return map;
-  // VIN NO = Column S (index 18), Model = Column J (index 9)
-  st.slice(1).forEach(r=>{
-    const vin=String(r[18]||'').trim();
-    const model=String(r[9]||'').trim();
+  // Dynamic header detection — never rely on hardcoded column positions
+  let hi=0;
+  for(let i=0;i<Math.min(3,st.length);i++){
+    const r=st[i].map(x=>String(x||'').toLowerCase()).join(' ');
+    if(r.includes('model')&&(r.includes('vin')||r.includes('status')||r.includes('colour')||r.includes('color'))){hi=i;break;}
+  }
+  const h=st[hi].map(x=>String(x||'').trim());
+  const vinI=(()=>{for(const k of['VIN','VIN No','VIN NO','Vin No','VIN Number','Chassis','Chassis No']){const i=fc(h,k);if(i>=0)return i;}return 18;})();
+  const mdlI=(()=>{for(const k of['Model','MODEL']){const i=fc(h,k);if(i>=0)return i;}return 9;})();
+  st.slice(hi+1).forEach(r=>{
+    const vin=String(r[vinI]||'').trim();
+    const model=String(r[mdlI]||'').trim();
     if(vin&&model)map[vin]=model;
   });
   return map;
@@ -4525,6 +4550,8 @@ function renderAllotment(){
   // Build VIN→Model and VIN→{model,variant,colour} maps from Stock sheet
   const vinMap=buildVinModelMap();
   const vinDetailMap=buildVinDetailMap();
+  // Detect VIN column in Allotment sheet (falls back to col 0 if not found)
+  const vinI7=(()=>{for(const k of['VIN','VIN No','VIN NO','Vin No','Chassis No','Chassis','Chassis Number']){const i=fc(h,k);if(i>=0)return i;}return 0;})();
   // Build allowedMCs set from specRows for variant filter (same approach as renderStock)
   // allowedMCs7 = set of modelCode values that match selected model+variant in Product Spec
   // Track original row index for sheet updates
@@ -4550,7 +4577,7 @@ function renderAllotment(){
     if(fBranch&&brI>=0&&cleanVal(r[brI]).toUpperCase()!==fBranch)return false;
     if(fSC&&scI>=0&&cleanVal(r[scI])!==fSC)return false;
     if(fAllotStat&&String(r[asI]||'').trim()!==fAllotStat)return false;
-    const vin=String(r[0]||'').trim();
+    const vin=String(r[vinI7]||'').trim();
     const detail=vinDetailMap[vin]||{};
     if(fM&&(detail.model||vinMap[vin]||'')!==fM)return false;
     if(allowedMCs7){const mc=detail.modelCode||'';if(!mc||!allowedMCs7.has(mc))return false;}
@@ -4572,7 +4599,7 @@ function renderAllotment(){
     const ci=colMap[sCol];
     let av,bv;
     if(ci===-1){av=0;bv=0;}
-    else if(ci===-2){av=vinMap[String(a.r[0]||'').trim()]||'';bv=vinMap[String(b.r[0]||'').trim()]||'';}
+    else if(ci===-2){av=vinMap[String(a.r[vinI7]||'').trim()]||'';bv=vinMap[String(b.r[vinI7]||'').trim()]||'';}
     else if(ci===-3){av=mobileMap[String(a.r[cnI]||'').trim()]||'';bv=mobileMap[String(b.r[cnI]||'').trim()]||'';}
     else{av=a.r[ci]??'';bv=b.r[ci]??'';}
     const an=parseFloat(av),bn=parseFloat(bv);
@@ -4600,7 +4627,7 @@ function renderAllotment(){
     document.getElementById('tB').innerHTML=`<tr><td colspan="${NCOLS_A}"><div class="sb"><strong>No matches</strong><p>Try adjusting your filters.</p></div></td></tr>`;return;
   }
   document.getElementById('tB').innerHTML=filtered.map(({r,sheetRow},ri)=>{
-    const vin    =String(r[0]||'').trim();
+    const vin    =String(r[vinI7]||'').trim();
     const model  =vinMap[vin]||'—';
     const _br    =fmtCell(brI>=0?r[brI]:'')||'';
     const branch =(_br.startsWith('#')||!_br)?'—':_br;
@@ -7625,29 +7652,36 @@ async function changePw(){
 })();
 
 let staffReady=false;
-jFetch('Users').then(j=>{
-  if(Array.isArray(j)&&j.length>=2){
-    let hi=0;
-    for(let i=0;i<Math.min(3,j.length);i++){if(j[i].map(x=>String(x||'').toLowerCase()).join(' ').includes('username')){hi=i;break;}}
-    const uH=j[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim());
-    window._debugUH=uH; // debug: expose headers
-    const lI=fc(uH,'Level');
-    const brI_u=fc(uH,'Branch');
-    // Role col: exact-match first, then partial (min 2 chars), fallback to col E (index 4)
-    const roI_u=(()=>{let i=uH.findIndex(x=>x.trim().toLowerCase()==='role');if(i>=0)return i;i=uH.findIndex(x=>{const v=x.trim().toLowerCase();return v.length>=2&&v.includes('role');});return i;})();
-    const scNI_u=(()=>{for(const k of['Internal name','Internal Name','InternalName','SC Name','SCName']){const i=fc(uH,k);if(i>=0)return i;}return -1;})();
-    staffList=j.slice(hi+1).map(r=>({
-      name    :String(r[0]||'').trim(),
-      username:String(r[1]||'').trim(),
-      password:String(r[2]||'').trim(),
-      level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();if(_lv==='1A'||_lv==='2F'||_lv==='3F')return _lv;return parseInt(_lv)||4;})(),
-      branch  :String(brI_u>=0?r[brI_u]:'').trim().toUpperCase(),
-      role    :String(roI_u>=0?r[roI_u]:r[4]||'').trim(),         // col E fallback
-      scName  :String(scNI_u>=0?r[scNI_u]:'').trim()
-    })).filter(s=>s.username&&s.password);
-  }
-  staffReady=true;
-});
+let staffFailed=false; // true if fetch completed but returned no users (GAS down)
+function _loadStaffList(){
+  staffReady=false;staffFailed=false;
+  return jFetch('Users').then(j=>{
+    if(Array.isArray(j)&&j.length>=2){
+      let hi=0;
+      for(let i=0;i<Math.min(3,j.length);i++){if(j[i].map(x=>String(x||'').toLowerCase()).join(' ').includes('username')){hi=i;break;}}
+      const uH=j[hi].map(x=>String(x).replace(/^\uFEFF/,'').trim());
+      window._debugUH=uH;
+      const lI=fc(uH,'Level');
+      const brI_u=fc(uH,'Branch');
+      const roI_u=(()=>{let i=uH.findIndex(x=>x.trim().toLowerCase()==='role');if(i>=0)return i;i=uH.findIndex(x=>{const v=x.trim().toLowerCase();return v.length>=2&&v.includes('role');});return i;})();
+      const scNI_u=(()=>{for(const k of['Internal name','Internal Name','InternalName','SC Name','SCName']){const i=fc(uH,k);if(i>=0)return i;}return -1;})();
+      staffList=j.slice(hi+1).map(r=>({
+        name    :String(r[0]||'').trim(),
+        username:String(r[1]||'').trim(),
+        password:String(r[2]||'').trim(),
+        level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();if(_lv==='1A'||_lv==='2F'||_lv==='3F')return _lv;return parseInt(_lv)||4;})(),
+        branch  :String(brI_u>=0?r[brI_u]:'').trim().toUpperCase(),
+        role    :String(roI_u>=0?r[roI_u]:r[4]||'').trim(),
+        scName  :String(scNI_u>=0?r[scNI_u]:'').trim()
+      })).filter(s=>s.username&&s.password);
+      staffFailed=(staffList.length===0);
+    } else {
+      staffFailed=true; // GAS returned empty \u2014 server issue
+    }
+    staffReady=true;
+  }).catch(()=>{staffReady=true;staffFailed=true;});
+}
+_loadStaffList();
 
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('pgLogin').classList.contains('active'))doLogin();});
 
