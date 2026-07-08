@@ -1295,6 +1295,8 @@ function buildLookups(){
       role    :String(roI_u>=0?r[roI_u]:r[4]||'').trim(),         // col E fallback if header not matched
       scName  :String(scNI_u>=0?r[scNI_u]:'').trim()              // exact SC name as in sheet data
     })).filter(s=>s.username&&s.password);
+    // SD[4] loaded in Phase 1 — mark login ready immediately so users don't wait for _loadStaffList()
+    if(staffList.length){staffReady=true;staffFailed=false;_saveStaffCache();}
   }
 
   // Parse Product Spec (SD[3])
@@ -7785,7 +7787,8 @@ function _loadStaffCache(){
 }
 
 function _loadStaffList(){
-  staffReady=false;staffFailed=false;
+  // Only block login if we have no data yet — don't reset if buildLookups() already populated staffList
+  if(!staffList.length){staffReady=false;staffFailed=false;}
   return jFetch('Users').then(j=>{
     if(Array.isArray(j)&&j.length>=2){
       let hi=0;
@@ -7820,6 +7823,9 @@ function _loadStaffList(){
     staffReady=true;
   });
 }
+// Try cache immediately so login is available before GAS responds (or if SD[4] load is slow)
+if(!staffReady&&_loadStaffCache()){staffReady=true;staffFailed=false;console.log('[Login] Ready via cache');}
+// Background fetch — refreshes staffList + cache; won't block login if we already have data
 _loadStaffList();
 
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('pgLogin').classList.contains('active'))doLogin();});
