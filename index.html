@@ -1375,14 +1375,26 @@ window._loginRetry=function(){
   const u=document.getElementById('liU').value.trim();
   const p=document.getElementById('liP').value.trim();
   const e=document.getElementById('liE');
-  e.textContent='Retrying…';
+  let dots=0;
+  const tick=setInterval(()=>{dots=(dots%3)+1;e.textContent='Connecting'+'…'.repeat(dots);},600);
   _loadStaffList().then(()=>{
-    if(staffFailed){e.textContent='Still unable to reach server. Please check your internet connection.';return;}
+    clearInterval(tick);
+    if(staffFailed){
+      // Last resort: try expired cache too (ignore TTL)
+      try{
+        const raw=localStorage.getItem(_SC_KEY);
+        if(raw){const obj=JSON.parse(raw);if(obj&&obj.list&&obj.list.length){staffList=obj.list;staffFailed=false;}}
+      }catch(ex){}
+    }
+    if(staffFailed){_showLoginRetry(e,true);return;}
     _doStaffLogin(u,p,e);
   });
 };
-function _showLoginRetry(e){
-  e.innerHTML='Server temporarily unavailable. <a href="#" onclick="event.preventDefault();window._loginRetry()" style="color:#1d4ed8;font-weight:700;text-decoration:underline;">Tap to retry</a>';
+function _showLoginRetry(e,isSecondAttempt){
+  const msg=isSecondAttempt
+    ?'Still unavailable. Check your connection. '
+    :'Server temporarily unavailable. ';
+  e.innerHTML=msg+'<a href="#" onclick="event.preventDefault();window._loginRetry()" style="color:#1d4ed8;font-weight:700;text-decoration:underline;">Tap to retry</a>';
 }
 function doLogin(){
   const u=document.getElementById('liU').value.trim();
@@ -1394,21 +1406,22 @@ function doLogin(){
   if(u===ADMIN_USER&&p===ADMIN_PASS){_saveRem(u,p);loginOK({username:ADMIN_USER,name:'Admin',isAdmin:true});return;}
   // Staff — check if list is ready; wait up to 35s (beyond jFetch 25s timeout)
   if(!staffReady){
-    e.textContent='Connecting to server…';
-    let tries=0,dots=0;
-    const check=setInterval(()=>{
-      tries++;dots=(dots%3)+1;
-      if(!staffReady){e.textContent='Connecting to server'+'…'.repeat(dots);}
-      if(staffReady||tries>35){
-        clearInterval(check);
-        if(!staffReady||staffFailed){
-          _showLoginRetry(e);
-          return;
+    // While waiting, see if cache can serve immediately
+    if(_loadStaffCache()){staffReady=true;staffFailed=false;}
+    else{
+      e.textContent='Connecting to server…';
+      let tries=0,dots=0;
+      const check=setInterval(()=>{
+        tries++;dots=(dots%3)+1;
+        if(!staffReady){e.textContent='Connecting to server'+'…'.repeat(dots);}
+        if(staffReady||tries>35){
+          clearInterval(check);
+          if(!staffReady||staffFailed){_showLoginRetry(e);return;}
+          _doStaffLogin(u,p,e);
         }
-        _doStaffLogin(u,p,e);
-      }
-    },1000);
-    return;
+      },1000);
+      return;
+    }
   }
   if(staffFailed){_showLoginRetry(e);return;}
   _doStaffLogin(u,p,e);
@@ -7752,6 +7765,25 @@ async function changePw(){
 
 let staffReady=false;
 let staffFailed=false; // true if fetch completed but returned no users (GAS down)
+
+/* \u2500\u2500 Staff list localStorage cache (12-hour TTL) \u2500\u2500 */
+const _SC_KEY='grd_staff_cache';
+const _SC_TTL=12*60*60*1000; // 12 hours
+function _saveStaffCache(){
+  try{localStorage.setItem(_SC_KEY,JSON.stringify({ts:Date.now(),list:staffList}));}catch(e){}
+}
+function _loadStaffCache(){
+  try{
+    const raw=localStorage.getItem(_SC_KEY);
+    if(!raw)return false;
+    const obj=JSON.parse(raw);
+    if(!obj||!Array.isArray(obj.list)||!obj.list.length)return false;
+    if(Date.now()-obj.ts>_SC_TTL)return false; // expired
+    staffList=obj.list;
+    return true;
+  }catch(e){return false;}
+}
+
 function _loadStaffList(){
   staffReady=false;staffFailed=false;
   return jFetch('Users').then(j=>{
@@ -7774,11 +7806,19 @@ function _loadStaffList(){
         scName  :String(scNI_u>=0?r[scNI_u]:'').trim()
       })).filter(s=>s.username&&s.password);
       staffFailed=(staffList.length===0);
+      if(!staffFailed)_saveStaffCache(); // persist fresh list for offline fallback
     } else {
       staffFailed=true; // GAS returned empty \u2014 server issue
     }
+    // If GAS failed but we have a recent cached list, use it silently
+    if(staffFailed&&_loadStaffCache()){staffFailed=false;console.log('[Login] Using cached staff list');}
     staffReady=true;
-  }).catch(()=>{staffReady=true;staffFailed=true;});
+  }).catch(()=>{
+    // Network/timeout error \u2014 try cache before giving up
+    if(_loadStaffCache()){staffFailed=false;console.log('[Login] Using cached staff list (network error)');}
+    else{staffFailed=true;}
+    staffReady=true;
+  });
 }
 _loadStaffList();
 
