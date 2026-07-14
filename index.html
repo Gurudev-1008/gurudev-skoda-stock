@@ -1382,11 +1382,8 @@ window._loginRetry=function(){
   _loadStaffList().then(()=>{
     clearInterval(tick);
     if(staffFailed){
-      // Last resort: try expired cache too (ignore TTL)
-      try{
-        const raw=localStorage.getItem(_SC_KEY);
-        if(raw){const obj=JSON.parse(raw);if(obj&&obj.list&&obj.list.length){staffList=obj.list;staffFailed=false;}}
-      }catch(ex){}
+      // Last resort: try any cache ignoring TTL
+      if(_loadStaffCache(true)){staffFailed=false;}
     }
     if(staffFailed){_showLoginRetry(e,true);return;}
     _doStaffLogin(u,p,e);
@@ -1408,15 +1405,19 @@ function doLogin(){
   if(u===ADMIN_USER&&p===ADMIN_PASS){_saveRem(u,p);loginOK({username:ADMIN_USER,name:'Admin',isAdmin:true});return;}
   // Staff — check if list is ready; wait up to 35s (beyond jFetch 25s timeout)
   if(!staffReady){
-    // While waiting, see if cache can serve immediately
-    if(_loadStaffCache()){staffReady=true;staffFailed=false;}
+    // Try fresh cache, then expired cache — avoids waiting for GAS when any cache exists
+    if(_loadStaffCache(false)||_loadStaffCache(true)){staffReady=true;staffFailed=false;}
     else{
       e.textContent='Connecting to server…';
       let tries=0,dots=0;
       const check=setInterval(()=>{
         tries++;dots=(dots%3)+1;
+        // Also keep checking cache while waiting (another tab may have saved it)
+        if(!staffReady&&(_loadStaffCache(false)||_loadStaffCache(true))){
+          staffReady=true;staffFailed=false;
+        }
         if(!staffReady){e.textContent='Connecting to server'+'…'.repeat(dots);}
-        if(staffReady||tries>35){
+        if(staffReady||tries>25){   // 25s max — GAS jFetch is 15s+retry buffer
           clearInterval(check);
           if(!staffReady||staffFailed){_showLoginRetry(e);return;}
           _doStaffLogin(u,p,e);
@@ -1425,7 +1426,11 @@ function doLogin(){
       return;
     }
   }
-  if(staffFailed){_showLoginRetry(e);return;}
+  if(staffFailed){
+    // One last try with expired cache before showing error
+    if(_loadStaffCache(true)){staffFailed=false;}
+    else{_showLoginRetry(e);return;}
+  }
   _doStaffLogin(u,p,e);
 }
 
@@ -7770,17 +7775,18 @@ let staffFailed=false; // true if fetch completed but returned no users (GAS dow
 
 /* \u2500\u2500 Staff list localStorage cache (12-hour TTL) \u2500\u2500 */
 const _SC_KEY='grd_staff_cache';
-const _SC_TTL=12*60*60*1000; // 12 hours
+const _SC_TTL=48*60*60*1000; // 48 hours primary window; expired cache still used as last resort
 function _saveStaffCache(){
   try{localStorage.setItem(_SC_KEY,JSON.stringify({ts:Date.now(),list:staffList}));}catch(e){}
 }
-function _loadStaffCache(){
+// allowExpired=true → use even if older than 48h (last-resort when GAS is completely down)
+function _loadStaffCache(allowExpired){
   try{
     const raw=localStorage.getItem(_SC_KEY);
     if(!raw)return false;
     const obj=JSON.parse(raw);
     if(!obj||!Array.isArray(obj.list)||!obj.list.length)return false;
-    if(Date.now()-obj.ts>_SC_TTL)return false; // expired
+    if(!allowExpired&&Date.now()-obj.ts>_SC_TTL)return false;
     staffList=obj.list;
     return true;
   }catch(e){return false;}
@@ -7789,7 +7795,7 @@ function _loadStaffCache(){
 function _loadStaffList(){
   // Only block login if we have no data yet — don't reset if buildLookups() already populated staffList
   if(!staffList.length){staffReady=false;staffFailed=false;}
-  return jFetch('Users').then(j=>{
+  return jFetch('Users',15000).then(j=>{  // 15s timeout — fail fast, fall to cache sooner
     if(Array.isArray(j)&&j.length>=2){
       let hi=0;
       for(let i=0;i<Math.min(3,j.length);i++){if(j[i].map(x=>String(x||'').toLowerCase()).join(' ').includes('username')){hi=i;break;}}
@@ -7814,17 +7820,19 @@ function _loadStaffList(){
       staffFailed=true; // GAS returned empty \u2014 server issue
     }
     // If GAS failed but we have a recent cached list, use it silently
-    if(staffFailed&&_loadStaffCache()){staffFailed=false;console.log('[Login] Using cached staff list');}
+    if(staffFailed&&_loadStaffCache(true)){staffFailed=false;console.log('[Login] Using cached staff list');}
     staffReady=true;
   }).catch(()=>{
-    // Network/timeout error \u2014 try cache before giving up
-    if(_loadStaffCache()){staffFailed=false;console.log('[Login] Using cached staff list (network error)');}
+    // Network/timeout error \u2014 try cache (including expired) before giving up
+    if(_loadStaffCache(true)){staffFailed=false;console.log('[Login] Using cached staff list (network error)');}
     else{staffFailed=true;}
     staffReady=true;
   });
 }
-// Try cache immediately so login is available before GAS responds (or if SD[4] load is slow)
-if(!staffReady&&_loadStaffCache()){staffReady=true;staffFailed=false;console.log('[Login] Ready via cache');}
+// At startup: try fresh cache first, then expired cache \u2014 login is available instantly if any cache exists
+if(!staffReady&&(_loadStaffCache(false)||_loadStaffCache(true))){
+  staffReady=true;staffFailed=false;console.log('[Login] Ready via cache');
+}
 // Background fetch — refreshes staffList + cache; won't block login if we already have data
 _loadStaffList();
 
@@ -9217,6 +9225,103 @@ function renderReports(){
     const pivSC=buildPivot(rpoData,scGetter,rpoStatGetter,rpoFilterL3);
     const pivMd=buildPivot(rpoData,mdlGetter,rpoStatGetter,rpoFilterL3);
     html+=rCard('R1','Live RPO Status',pivotHTML(pivSC,'SC Name'),'SC-wise',pivotHTML(pivMd,'Model'),'Model-wise');
+  }
+
+  // ── REPORT 2B: Branch-wise Model Report (MTD) ────────────────────────────
+  {
+    if(window._rptBwmStat===undefined)window._rptBwmStat='';
+    const {h:rH2,hi:rHi2}=hdr(rpoData);
+    const _bwmDateI=(()=>{for(const k of['Booking Date','BOOKING DATE','Date','DATE']){const i=fc(rH2,k);if(i>=0)return i;}return-1;})();
+    const _bwmBrI=(()=>{for(const k of['Branch Name','BRANCH NAME','Branch','BRANCH']){const i=fc(rH2,k);if(i>=0)return i;}return-1;})();
+    const _bwmStI=(()=>{for(const k of['Status','STATUS']){const i=fc(rH2,k);if(i>=0)return i;}return-1;})();
+    const _bwmCnI=(()=>{for(const k of['Customer Name','CUSTOMER NAME','Cust Name']){const i=fc(rH2,k);if(i>=0)return i;}return-1;})();
+    const _bwmSnI=(()=>{for(const k of['S No','SNo','SL No','Sl No','SL NO','Sl.No']){const i=fc(rH2,k);if(i>=0)return i;}return-1;})();
+    // Date parser – serial number or formatted string
+    const _bwmParseD=v=>{if(!v)return null;const s=String(v).trim();const n=parseFloat(s);if(!isNaN(n)&&n>40000&&n<60000)return new Date(Math.round((n-25569)*86400*1000));const dmy=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);if(dmy){const r=new Date(+dmy[3],+dmy[2]-1,+dmy[1]);return isNaN(r.getTime())?null:r;}const iso=s.match(/^(\d{4})-(\d{2})-(\d{2})/);if(iso)return new Date(+iso[1],+iso[2]-1,+iso[3]);const d=new Date(s);return isNaN(d.getTime())?null:d;};
+    // Collect all statuses from full data (ignore month) for the dropdown
+    const _bwmAllStats=[...new Set(rpoData.slice(rHi2+1).map(r=>_bwmStI>=0?String(r[_bwmStI]||'').trim():'').filter(Boolean))].sort();
+    // Filter rows to selected month + status
+    const _bwmBody=rpoData.slice(rHi2+1).filter(r=>{
+      if(!r.some(c=>String(c||'').trim()))return false;
+      if(_bwmCnI>=0&&!String(r[_bwmCnI]||'').trim())return false;
+      if(_bwmSnI>=0&&String(r[_bwmSnI]||'').trim().toUpperCase().startsWith('CF'))return false;
+      if(isL3&&uBranch&&_bwmBrI>=0&&String(r[_bwmBrI]||'').trim().toUpperCase()!==uBranch)return false;
+      if(_bwmDateI>=0){const d=_bwmParseD(r[_bwmDateI]);if(!d||d.getFullYear()!==_RY||d.getMonth()!==_RM)return false;}
+      if(window._rptBwmStat&&_bwmStI>=0&&String(r[_bwmStI]||'').trim()!==window._rptBwmStat)return false;
+      return true;
+    });
+    // Build branch × model pivot
+    const _bwmMap={};const _bwmMdlSet=new Set();
+    _bwmBody.forEach(r=>{
+      const br=(_bwmBrI>=0?String(r[_bwmBrI]||'').trim():'')||'Unknown';
+      const md=mdlGetter(r,rH2)||'Unknown';
+      if(!_bwmMap[br])_bwmMap[br]={};
+      _bwmMap[br][md]=(_bwmMap[br][md]||0)+1;
+      if(md!=='Unknown')_bwmMdlSet.add(md);
+    });
+    const _bwmModels=[..._bwmMdlSet].sort();
+    const _bwmBranches=Object.keys(_bwmMap).filter(b=>b!=='Unknown').sort();
+    if(_bwmMap['Unknown'])_bwmBranches.push('Unknown');
+    // Column totals & grand total
+    const _bwmMdlTot={};let _bwmGrand=0;
+    _bwmBranches.forEach(br=>{
+      const bTot=Object.values(_bwmMap[br]).reduce((s,v)=>s+v,0);
+      _bwmGrand+=bTot;
+      _bwmModels.forEach(md=>{_bwmMdlTot[md]=(_bwmMdlTot[md]||0)+(_bwmMap[br][md]||0);});
+    });
+    // Color thresholds for penetration %
+    const _bwmPctClr=p=>p>=40?'#4ade80':p>=20?'#fbbf24':'#94a3b8';
+    const _bwmThS='padding:6px 10px;font-size:10px;font-family:var(--font-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--bg-surface);border-bottom:2px solid var(--border);white-space:nowrap;text-align:center;';
+    const _bwmTdS='padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);';
+    // Table or empty-state
+    const _bwmTbl=!_bwmBranches.length
+      ?`<div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px;">No Live RPO bookings found for <strong>${_MFULL[_RM]} ${_RY}</strong>${window._rptBwmStat?' — Status: "'+window._rptBwmStat+'"':''}</div>`
+      :`<div style="overflow-x:auto;">
+        <table style="border-collapse:collapse;width:100%;min-width:500px;font-size:12px;">
+          <thead>
+            <tr>
+              <th style="${_bwmThS}text-align:left;min-width:120px;">Branch</th>
+              ${_bwmModels.map(md=>`<th colspan="2" style="${_bwmThS}border-left:1px solid var(--border);padding:6px 16px;">${md}</th>`).join('')}
+              <th style="${_bwmThS}color:var(--text-primary);border-left:2px solid var(--border);">Total</th>
+            </tr>
+            <tr>
+              <th style="${_bwmThS}border-top:1px solid var(--border);text-align:left;color:var(--text-dim);">—</th>
+              ${_bwmModels.map(()=>`<th style="${_bwmThS}font-size:9px;border-top:1px solid var(--border);border-left:1px solid var(--border);">Count</th><th style="${_bwmThS}font-size:9px;color:var(--accent);border-top:1px solid var(--border);">Pene%</th>`).join('')}
+              <th style="${_bwmThS}border-top:1px solid var(--border);border-left:2px solid var(--border);color:var(--text-dim);">—</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${_bwmBranches.map((br,ri)=>{
+              const brData=_bwmMap[br];
+              const brTot=Object.values(brData).reduce((s,v)=>s+v,0);
+              return`<tr style="${ri%2?'background:rgba(255,255,255,.025);':''}">
+                <td style="${_bwmTdS}text-align:left;font-weight:600;color:var(--text-primary);white-space:nowrap;">${br}</td>
+                ${_bwmModels.map(md=>{
+                  const cnt=brData[md]||0;
+                  const pct=brTot>0?+((cnt/brTot)*100).toFixed(1):0;
+                  return`<td style="${_bwmTdS}border-left:1px solid var(--border);">${cnt?`<span style="font-weight:700;color:var(--text-primary);">${cnt}</span>`:'<span style="color:var(--text-dim);">—</span>'}</td><td style="${_bwmTdS}">${cnt?`<span style="font-size:11px;font-weight:700;color:${_bwmPctClr(pct)};">${pct}%</span>`:'<span style="color:var(--text-dim);">—</span>'}</td>`;
+                }).join('')}
+                <td style="${_bwmTdS}font-weight:700;color:var(--text-primary);border-left:2px solid var(--border);">${brTot}</td>
+              </tr>`;
+            }).join('')}
+            <tr style="border-top:2px solid var(--border-strong);">
+              <td style="padding:6px 10px;font-weight:700;color:var(--accent);font-family:var(--font-d);font-size:12px;letter-spacing:.04em;text-align:left;">TOTAL</td>
+              ${_bwmModels.map(md=>{
+                const mTot=_bwmMdlTot[md]||0;
+                const mPct=_bwmGrand>0?+((mTot/_bwmGrand)*100).toFixed(1):0;
+                return`<td style="padding:6px 10px;text-align:center;font-weight:700;color:var(--text-primary);border-left:1px solid var(--border);">${mTot||'—'}</td><td style="padding:6px 10px;text-align:center;font-weight:700;color:${_bwmPctClr(mPct)};">${mTot?mPct+'%':'—'}</td>`;
+              }).join('')}
+              <td style="padding:6px 10px;text-align:center;font-weight:700;color:var(--accent);border-left:2px solid var(--border);">${_bwmGrand||'—'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`;
+    // Status dropdown + record count header bar
+    const _bwmSel='background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;';
+    const _bwmOpts='<option value="">All Status</option>'+_bwmAllStats.map(s=>`<option value="${s}"${s===window._rptBwmStat?' selected':''}>${s}</option>`).join('');
+    const _bwmNum=isAdmin||isL1||isL2?'R2B':'R1B';
+    html+=rCard(_bwmNum,`MTD Booking Summary <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:6px;">(Live RPO · ${_MFULL[_RM]})</span>`,
+      `<div><div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="font-size:12px;font-weight:700;color:var(--text-muted);">Status:</span><select style="${_bwmSel}" onchange="window._rptBwmStat=this.value;renderReports()">${_bwmOpts}</select><span style="font-size:11px;color:var(--text-dim);margin-left:4px;">${_bwmBody.length} records — ${_MFULL[_RM]} ${_RY}${window._rptBwmStat?' ('+window._rptBwmStat+')':''}</span></div>${_bwmTbl}</div>`);
   }
 
   // ── REPORT 3: New Car Allotment Status ───────────
