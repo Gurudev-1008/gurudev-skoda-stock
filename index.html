@@ -9569,6 +9569,10 @@ function renderReports(){
     const pivSC=buildPivot(rpoData,scGetter,rpoStatGetter,rpoFilterL3);
     const pivMd=buildPivot(rpoData,mdlGetter,rpoStatGetter,rpoFilterL3);
     html+=rCard('R1','Live RPO Status',pivotHTML(pivSC,'SC Name'),'SC-wise',pivotHTML(pivMd,'Model'),'Model-wise');
+  } else if(isL3M){
+    const pivBr=buildPivot(rpoData,brGetter,rpoStatGetter,rpoFilterL3);
+    const pivMd=buildPivot(rpoData,mdlGetter,rpoStatGetter,rpoFilterL3);
+    html+=rCard('R1','Live RPO Status',pivotHTML(pivBr,'Branch'),'Branch-wise',pivotHTML(pivMd,'Model'),'Model-wise');
   }
 
   // ── REPORT 2B: Branch-wise Model Report (MTD) ────────────────────────────
@@ -9677,6 +9681,10 @@ function renderReports(){
     const pivSC=buildPivot(allotData,scGetter,allotStatGetter,allotFilterL3);
     const pivMd=buildPivot(allotData,mdlGetter,allotStatGetter,allotFilterL3);
     html+=rCard('R2','New Car Allotment Status',pivotHTML(pivSC,'SC Name'),'SC-wise',pivotHTML(pivMd,'Model'),'Model-wise');
+  } else if(isL3M){
+    const pivBr=buildPivot(allotData,brGetter,allotStatGetter,allotFilterL3);
+    const pivMd=buildPivot(allotData,mdlGetter,allotStatGetter,allotFilterL3);
+    html+=rCard('R2','New Car Allotment Status',pivotHTML(pivBr,'Branch'),'Branch-wise',pivotHTML(pivMd,'Model'),'Model-wise');
   }
 
   // ── REPORT 4: Ageing & Demo Allotment Status ─────
@@ -9688,6 +9696,10 @@ function renderReports(){
     const pivSC=buildPivot(agdmData,scGetter,agdmStatGetter,l3F||undefined);
     const pivMd=buildPivot(agdmData,mdlGetter,agdmStatGetter,l3F||undefined);
     html+=rCard('R3','Ageing & Demo Allotment Status',pivotHTML(pivSC,'SC Name'),'SC-wise',pivotHTML(pivMd,'Model'),'Model-wise');
+  } else if(isL3M){
+    const pivBr=buildPivot(agdmData,brGetter,agdmStatGetter,l3F||undefined);
+    const pivMd=buildPivot(agdmData,mdlGetter,agdmStatGetter,l3F||undefined);
+    html+=rCard('R3','Ageing & Demo Allotment Status',pivotHTML(pivBr,'Branch'),'Branch-wise',pivotHTML(pivMd,'Model'),'Model-wise');
   }
 
   // ── REPORT 5: ETBR ───────────────────────────────
@@ -10188,12 +10200,12 @@ function renderReports(){
   };
 
   // ── REPORT 5: ETBR ──────────────────────────────────
-  const r5num=isL3?'R4':'R5';
+  const r5num=(isL3||isL3M)?'R4':'R5';
   const etbrHtml=isL3?buildETBR_L3():buildETBR_Branch();
   html+=rCard(r5num,'ETBR (Overall)',etbrHtml);
 
   // ── REPORT 5b: ETBR Source-wise (4 sub-tabs, 13 cols) ─
-  const r5bnum=isL3?'R5':'R5b';
+  const r5bnum=(isL3||isL3M)?'R5':'R5b';
   let _srcWise='';
   try{_srcWise=(()=>{
     // ── Data ─────────────────────────────────────────
