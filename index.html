@@ -1328,7 +1328,7 @@ function buildLookups(){
       name    :String(r[0]||'').trim(),
       username:String(r[1]||'').trim(),
       password:String(r[2]||'').trim(),
-      level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();if(_lv==='1A'||_lv==='2F'||_lv==='3F'||_lv==='3M')return _lv;return parseInt(_lv)||4;})(),  // preserve string levels like 1A/2F/3F/3M
+      level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();const _lvN=_lv.toUpperCase().replace(/\s+/g,'');if(_lvN==='1A'||_lvN==='2F'||_lvN==='3F'||_lvN==='3M')return _lvN;return parseInt(_lv)||4;})(),  // preserve string levels like 1A/2F/3F/3M — case/space-tolerant so "3m"/" 3M " etc. still resolve correctly
       branch  :String(brI_u>=0?r[brI_u]:'').trim().toUpperCase(), // branch for Level 3 pre-fill; comma-separated list for Level 3M
       role    :String(roI_u>=0?r[roI_u]:r[4]||'').trim(),         // col E fallback if header not matched
       scName  :String(scNI_u>=0?r[scNI_u]:'').trim()              // exact SC name as in sheet data
@@ -7882,7 +7882,7 @@ function _loadStaffList(){
         name    :String(r[0]||'').trim(),
         username:String(r[1]||'').trim(),
         password:String(r[2]||'').trim(),
-        level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();if(_lv==='1A'||_lv==='2F'||_lv==='3F'||_lv==='3M')return _lv;return parseInt(_lv)||4;})(),
+        level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();const _lvN=_lv.toUpperCase().replace(/\s+/g,'');if(_lvN==='1A'||_lvN==='2F'||_lvN==='3F'||_lvN==='3M')return _lvN;return parseInt(_lv)||4;})(),
         branch  :String(brI_u>=0?r[brI_u]:'').trim().toUpperCase(), // comma-separated list for Level 3M
         role    :String(roI_u>=0?r[roI_u]:r[4]||'').trim(),
         scName  :String(scNI_u>=0?r[scNI_u]:'').trim()
