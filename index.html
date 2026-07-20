@@ -1187,9 +1187,14 @@ function fce(h,k){const nm=s=>String(s||'').replace(/^\uFEFF/,'').trim().toLower
    curUser.branch holds either a single branch (Level 3/3F) or a comma-separated
    list of branches (Level 3M). These helpers make both cases work identically. */
 // Returns this user's allowed branches as an uppercase, trimmed array.
+// IMPORTANT: only Levels 3, 3F and 3M are branch-scoped. Other levels (1, 1A, 2, 2F, 4, 5,
+// admin) may still have a Branch cell filled in the Users sheet for unrelated/informational
+// reasons — that must NOT be treated as a security restriction, or those users lose all data.
 function userBranches(u){
   u=u||curUser;
-  if(!u||!u.branch)return[];
+  if(!u||u.isAdmin||!u.branch)return[];
+  const lvl=u.level;
+  if(!(lvl===3||lvl==='3F'||lvl==='3M'))return[];
   return String(u.branch).split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
 }
 // True if branchVal is one this user may see. No branch set on the user = unrestricted.
