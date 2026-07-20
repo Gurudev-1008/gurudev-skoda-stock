@@ -466,6 +466,8 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
   <div class="sub-tabs" id="subTabsTools" style="display:none">
     <button class="sub-tab" onclick="goTab(17)" id="t17">🔍 Compare</button>
     <button class="sub-tab" onclick="goTab(18)" id="t18">📊 Graph</button>
+    <button class="sub-tab" onclick="goTab(19)" id="t19">💰 Stock Value</button>
+    <button class="sub-tab" onclick="goTab(20)" id="t20">📈 Booking Trend Chart</button>
   </div>
       <div class="fsbs">Select a model to view availability</div>
     </div>
@@ -886,6 +888,16 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
   <div id="gphContent"></div>
 </div>
 
+<!-- STOCK VALUE AREA (Tools → Stock Value sub-tab) -->
+<div id="svArea" style="display:none;overflow:auto;max-height:calc(100vh - 115px);padding:0 0 40px;">
+  <div id="svContent"><div class="sb"><div class="sp"></div><strong>Loading stock value…</strong></div></div>
+</div>
+
+<!-- BOOKING TREND CHART AREA (Tools → Booking Trend Chart sub-tab) -->
+<div id="btcArea" style="display:none;overflow:auto;max-height:calc(100vh - 115px);padding:0 0 40px;">
+  <div id="btcContent"></div>
+</div>
+
 <!-- LEVEL-3 LOGIN WARNING MODAL -->
 <div class="l3w-overlay" id="l3wOverlay">
   <div class="l3w-box">
@@ -1038,7 +1050,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
 <script>
 /* ═══ CONFIG ═══ */
 const API   = 'https://script.google.com/macros/s/AKfycbyOD9UX2Ztba-JriJzk3dylhLm03WLPFk2c5LLEQ8Z8O1_CipAxO6mWe71WkuW5Wv2m/exec';
-const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users','Agein_Stock','Demo_stock','Allotment','AG/DM Allotment','De-Allot_Master','Leads','QL Sheet','TD Sheet','Target Sheet','Retail_Master','Tab Access','ROI','App_Settings'];
+const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users','Agein_Stock','Demo_stock','Allotment','AG/DM Allotment','De-Allot_Master','Leads','QL Sheet','TD Sheet','Target Sheet','Retail_Master','Tab Access','ROI','App_Settings','Exshowroom Price'];
 // SD indices: 0=Stock,1=Alloc,2=LiveRPO,3=ProdSpec,4=Users,5=AgeinStock,6=DemoStock,
 //             7=Allotment,8=AG/DM Allot,9=DeAllot,10=Leads,11=QL,12=TD,13=TargetSheet,
 //             14=Retail_Master,15=Tab Access,16=ROI,17=App_Settings
@@ -1046,23 +1058,27 @@ const ADMIN_USER='admin', ADMIN_PASS='gurudev1008';
 const SC={model:'Model',modelCode:'Model Code',colour:'Color',year:'VY',status:'STATUS'};
 const PC={model:'Model',variant:'Variant',modelCode:'Model code'};
 const YARDS=['chennai','trichy','vellore'];
+// Full Branch filter option list — matches the static #fBranch HTML; used to reset the
+// dropdown on every login (a prior 3M session in the same tab may have narrowed it).
+const FULL_BRANCH_OPTS='<option value="">All Branches</option><option>TEYNAMPET</option><option>AMBATTUR</option><option>ANNA NAGAR</option><option>PORUR</option><option>TRICHY</option><option>TANJORE</option><option>VELLORE</option><option>CORPORATE TEAM</option>';
 const CY=String(new Date().getFullYear());
 // Level-based tab access — tab indices each level can see
 // Tabs: 0=Stock,1=Allocation,2=LiveRPO,3=FreeStock,4=Manage,5=Ageing,6=Demo,7=Allotment,8=AG/DM Allotment,9=Reports,10=De-allotted
 const LEVEL_TABS={
-  1:  [0,1,2,3,5,6,7,8,9,10,11,12,17,18],        // All tabs except Manage, Analytics, Stock Planning (Admin only) + Tools
-  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,17,18],      // Same as L1 + Tools
+  1:  [0,1,2,3,5,6,7,8,9,10,11,12,17,18,19,20],        // All tabs except Manage, Analytics, Stock Planning (Admin only) + Tools
+  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,17,18,19,20],      // Same as L1 + Tools
   2:  [2,3,5,6,7,8,9,10,11],                  // No Stock/Allocation/Manage — no Retail Finance
   '2F':[2,3,5,6,7,8,9,10,11,12],              // Same as L2 + Retail Finance (Retail + ROI sub-tabs only, no Allotment)
   3:  [2,3,5,6,7,8,9,10,11],                  // Same as L2 — branch pre-filled, no Retail Finance, no Stock Planning
   '3F':[2,3,5,6,7,8,9,10,11,12],              // Same as L3 + Retail Finance (Retail + ROI sub-tabs only), branch pre-filled
+  '3M':[2,3,5,6,7,8,9,10,11],                 // Same tabs as L3 — locked to a set of branches instead of one
   4:  [2,3,5,6,11],                            // Live RPO + Free Stock + VNA (SC-filtered)
   5:  [0,12]                                   // Stock + Retail Finance (Retail + Payout Master + Finance Report, no Allotment view)
 };
 
 const FREE_TABS=[3,5,6]; // sub-tabs under "Free Stock" parent
 const ALLOT_TABS=[7,8];  // sub-tabs under "Allotment" parent (tab 12 is now a standalone main tab)
-const TOOLS_TABS=[17,18]; // sub-tabs under "Tools" parent — 17=Compare, 18=Graph
+const TOOLS_TABS=[17,18,19,20]; // sub-tabs under "Tools" parent — 17=Compare, 18=Graph, 19=Stock Value, 20=Booking Trend Chart
 
 // All accepted name aliases per tab index — any one of these may appear in the "Tab Name"
 // column of the "Tab Access" Google Sheet.
@@ -1084,7 +1100,9 @@ const TAB_NAMES_ALT={
   12:['Retail Finance'],
   13:['Analytics','Analytics Dashboard'],
   17:['Compare','Tools Compare','Vehicle Compare'],
-  18:['Graph','Tools Graph','Target Graph']
+  18:['Graph','Tools Graph','Target Graph'],
+  19:['Stock Value','Stock Value Exshowroom','Exshowroom Stock Value'],
+  20:['Booking Trend Chart','Booking Trend','Tools Booking Trend']
 };
 
 // Returns a Set of lowercase tab names that have "No" permission in SD[15] (Tab Access sheet)
@@ -1165,6 +1183,22 @@ function hue(n){if(!n)return'#556';const l=n.toLowerCase();for(const[k,v]of Obje
 function fc(h,n){const nm=s=>String(s||'').replace(/^\uFEFF/,'').trim().toLowerCase();const nv=nm(n);let i=h.findIndex(x=>nm(x)===nv);if(i>=0)return i;return h.findIndex(x=>nm(x).includes(nv)||nv.includes(nm(x)));}
 function fce(h,k){const nm=s=>String(s||'').replace(/^\uFEFF/,'').trim().toLowerCase();const nv=nm(k);return h.findIndex(x=>nm(x)===nv);}
 
+/* \u2550\u2550\u2550 MULTI-BRANCH ACCESS (Level 3M) \u2550\u2550\u2550
+   curUser.branch holds either a single branch (Level 3/3F) or a comma-separated
+   list of branches (Level 3M). These helpers make both cases work identically. */
+// Returns this user's allowed branches as an uppercase, trimmed array.
+function userBranches(u){
+  u=u||curUser;
+  if(!u||!u.branch)return[];
+  return String(u.branch).split(',').map(s=>s.trim().toUpperCase()).filter(Boolean);
+}
+// True if branchVal is one this user may see. No branch set on the user = unrestricted.
+function branchAllowed(branchVal,u){
+  const list=userBranches(u);
+  if(!list.length)return true;
+  return list.includes(String(branchVal||'').trim().toUpperCase());
+}
+
 
 /* ── fixFrozenCols: correct sticky left positions based on actual rendered widths ──
    Called after table HTML is written to DOM. Reads offsetWidth of first 3 th cells
@@ -1242,6 +1276,9 @@ async function loadAll(){
     else if(curTab===12&&(_p2Loaded.has(7)||_p2Loaded.has(14)||_p2Loaded.has(16))){try{renderTable();}catch(e){console.error(e);}}
     else if(curTab===13&&_p2Loaded.has(14)){try{renderAnalytics();}catch(e){console.error(e);}}
     else if(curTab===14&&_p2Loaded.has(14)){try{renderStockPlanning();}catch(e){console.error(e);}}
+    // Reports tab depends on many Phase-2 sheets (Leads, QL, TD, Target Sheet, etc.) —
+    // re-render as each one lands so R-cards (e.g. R6 Target vs Actual) don't stay blank.
+    else if(curTab===9){try{renderReports();}catch(e){console.error(e);}}
   };
   // Fetch Lease sheet column A in background for Bank Name dropdown
   jFetch('Lease').then(rows=>{
@@ -1260,6 +1297,7 @@ async function loadAll(){
     if(curTab===7||curTab===8||curTab===10||curTab===12){try{renderTable();}catch(e){console.error(e);}}
     if(curTab===13){try{renderAnalytics();}catch(e){console.error(e);}}
     if(curTab===14){try{renderStockPlanning();}catch(e){console.error(e);}}
+    if(curTab===9){try{renderReports();}catch(e){console.error(e);}}
     checkLevel3Warning(); // Allotment data now ready — show alert for Level 3 users on first load
   });
 }
@@ -1290,8 +1328,8 @@ function buildLookups(){
       name    :String(r[0]||'').trim(),
       username:String(r[1]||'').trim(),
       password:String(r[2]||'').trim(),
-      level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();if(_lv==='1A'||_lv==='2F'||_lv==='3F')return _lv;return parseInt(_lv)||4;})(),  // preserve string levels like 1A/2F/3F
-      branch  :String(brI_u>=0?r[brI_u]:'').trim().toUpperCase(), // branch for Level 3 pre-fill
+      level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();if(_lv==='1A'||_lv==='2F'||_lv==='3F'||_lv==='3M')return _lv;return parseInt(_lv)||4;})(),  // preserve string levels like 1A/2F/3F/3M
+      branch  :String(brI_u>=0?r[brI_u]:'').trim().toUpperCase(), // branch for Level 3 pre-fill; comma-separated list for Level 3M
       role    :String(roI_u>=0?r[roI_u]:r[4]||'').trim(),         // col E fallback if header not matched
       scName  :String(scNI_u>=0?r[scNI_u]:'').trim()              // exact SC name as in sheet data
     })).filter(s=>s.username&&s.password);
@@ -1565,10 +1603,31 @@ function loginOK(user){
   document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('active'));
   document.getElementById('pgApp').classList.add('active');
   document.getElementById('tB').innerHTML='<tr><td colspan="20"><div class="sb"><div class="sp"></div><strong>Loading data…</strong></div></td></tr>';
+  // Reset Branch filter to the full option list on every login — a previous session in this
+  // same tab (e.g. a 3M test user) may have narrowed it down; must not leak into the next login.
+  {
+    const brEl=document.getElementById('fBranch');
+    if(brEl){
+      brEl.innerHTML=FULL_BRANCH_OPTS;
+      brEl.disabled=false;
+      brEl.title='';
+    }
+  }
   // Level 3, 3F & 4: pre-fill and lock branch filter immediately on login
   if(!user.isAdmin&&(user.level===3||user.level==='3F'||user.level===4)&&user.branch){
     const brEl=document.getElementById('fBranch');
     if(brEl){brEl.value=user.branch;brEl.disabled=true;brEl.title='Branch is fixed for your access level';}
+  }
+  // Level 3M: restrict the Branch filter's option list to just this user's assigned branches
+  // (dropdown stays enabled — the actual data is already hard-restricted regardless of dropdown value)
+  if(!user.isAdmin&&user.level==='3M'&&user.branch){
+    const brEl=document.getElementById('fBranch');
+    if(brEl){
+      const myBranches=userBranches(user);
+      brEl.innerHTML='<option value="">All Branches</option>'+myBranches.map(b=>`<option>${b}</option>`).join('');
+      brEl.disabled=false;
+      brEl.title='';
+    }
   }
   // Level 4 SC: pre-lock SC Name filter to their own name
   if(isL4SC&&user.name){
@@ -1646,12 +1705,12 @@ function updateParentTabs(){
   // Update sub-tab button active states
   [3,5,6].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===curTab);});
   [7,8,12].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===curTab);});
-  [17].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===curTab);});
+  [17,20].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===curTab);});
 }
 // Returns the set of allowed tab indices for the current user
 function getAllowedTabs(u){
   u=u||curUser;
-  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18];
+  if(u.isAdmin)return[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,17,18,19,20];
   let tabs=[...(LEVEL_TABS[u.level]||[3,5,6])];
   // Level 4: Live RPO (tab 2) only if Role is explicitly "SC" in staff sheet
   if(u.level===4&&String(u.role||'').trim().toUpperCase()!=='SC'){
@@ -1671,7 +1730,7 @@ function goTab(i){
   if(!allowed.includes(i))return;
   curTab=i;isFree=(i===3);sCol=-1;sAsc=true;
   // Regular (non-sub-tab) main bar buttons
-  [0,1,2,4,9,10,11,12,13,14,15,17].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===i);});
+  [0,1,2,4,9,10,11,12,13,14,15,17,19,20].forEach(j=>{const el=document.getElementById('t'+j);if(el)el.classList.toggle('active',j===i);});
   updateParentTabs();
   clearF(false);
   document.getElementById('tH').innerHTML='';
@@ -1689,7 +1748,9 @@ function setupTab(){
   const isLU=(curTab===15);
   const isCmp=(curTab===17);
   const isGph=(curTab===18);
-  const isSpecial=isM||isRep||isVNA||isAna||isSP||isLU||isCmp||isGph;
+  const isSV =(curTab===19);
+  const isBTC=(curTab===20);
+  const isSpecial=isM||isRep||isVNA||isAna||isSP||isLU||isCmp||isGph||isSV||isBTC;
   document.getElementById('toolBar').style.display=isSpecial?'none':'flex';
   document.getElementById('tblArea').style.display=isSpecial?'none':'block';
   document.getElementById('repArea').style.display=isRep?'block':'none';
@@ -1700,6 +1761,8 @@ function setupTab(){
   document.getElementById('luArea').style.display=isLU?'block':'none';
   document.getElementById('cmpArea').style.display=isCmp?'block':'none';
   document.getElementById('gphArea').style.display=isGph?'block':'none';
+  document.getElementById('svArea').style.display=isSV?'block':'none';
+  document.getElementById('btcArea').style.display=isBTC?'block':'none';
   // ── Tab Access permission check (non-admin only) ──────────────────────────
   if(isTabUnderMaintenance(curTab)){showMaintenanceMsgForTab();return;}
   // ─────────────────────────────────────────────────────────────────────────
@@ -1710,6 +1773,8 @@ function setupTab(){
   if(isLU){renderLiveUsers();return;}
   if(isCmp){renderCompare();return;}
   if(isGph){renderGraphTab();return;}
+  if(isSV){renderStockValue();return;}
+  if(isBTC){renderBookingTrend();return;}
   document.getElementById('searchWrap').style.display=(isFree||isCustom)?'none':'';
   // For custom tabs show only Model filter; hide Variant, Colour, VIN Year
   ['fVar','fCol','fYr'].forEach(id=>{
@@ -4451,6 +4516,7 @@ function renderLiveRPO(){
   const fYr=document.getElementById('fYr').value;
   const bkStIdx=idxs[NCOLS-1]; // last col = Booking Status
   const fBkStat=(document.getElementById('fBkStat')||{}).value||'';
+  const _rpoBranches=userBranches(); // hard security scope — restricts even when fBranch (dropdown) is left on "All Branches"
   // Populate Booking Status filter dropdown
   {const bkSel=document.getElementById('fBkStat');if(bkSel){const cur=bkSel.value;const vals=[...new Set(bodyWithIdx.map(({r})=>bkStIdx>=0?String(r[bkStIdx]||'').trim():'').filter(x=>x&&!x.startsWith('#')))].sort();bkSel.innerHTML='<option value="">All Booking Status</option>';vals.forEach(x=>bkSel.add(new Option(x,x)));if(vals.includes(cur))bkSel.value=cur;}}
   let filtered=bodyWithIdx.filter(({r})=>{
@@ -4458,6 +4524,7 @@ function renderLiveRPO(){
     if(sno.toUpperCase().startsWith('CF'))return false;
     if(cnI>=0&&!String(r[cnI]||'').trim())return false;
     if(fBranch&&brI>=0&&String(r[brI]||'').trim().toUpperCase()!==fBranch.toUpperCase())return false;
+    if(_rpoBranches.length&&brI>=0&&!_rpoBranches.includes(String(r[brI]||'').trim().toUpperCase()))return false; // hard security scope (L3/3F/3M)
     // SC filter: Level 4 — use Internal name (exact) → dropdown value → username-prefix match
     if(isL4u&&scIdxRP>=0){
       const dataSC=String(r[scIdxRP]||'').trim();
@@ -4632,6 +4699,7 @@ function renderAllotment(){
   const bodyWithIdx=rows.slice(hi+1).map((r,j)=>({r,sheetRow:hi+2+j}));
   // Filters
   const fBranch   =document.getElementById('fBranch').value.toUpperCase();
+  const _lrBranches=userBranches(); // hard security scope — restricts even when fBranch (dropdown) is left on "All Branches"
   const fSC       =document.getElementById('fSC').value;
   const fAllotStat=document.getElementById('fAllotStat').value;
   const fM        =document.getElementById('fMod').value;
@@ -4649,6 +4717,7 @@ function renderAllotment(){
     if(sno.toUpperCase().startsWith('CF'))return false;
     if(cnI>=0&&!String(r[cnI]||'').trim())return false; // skip empty customer rows
     if(fBranch&&brI>=0&&cleanVal(r[brI]).toUpperCase()!==fBranch)return false;
+    if(_lrBranches.length&&brI>=0&&!_lrBranches.includes(cleanVal(r[brI]).toUpperCase()))return false; // hard security scope (L3/3F/3M)
     if(fSC&&scI>=0&&cleanVal(r[scI])!==fSC)return false;
     if(fAllotStat&&String(r[asI]||'').trim()!==fAllotStat)return false;
     const vin=String(r[vinI7]||'').trim();
@@ -4819,6 +4888,7 @@ function renderAGDMAllotment(){
   const vinDetailMap=buildVinDetailMap();
   const bodyWithIdx=rows.slice(hi+1).map((r,j)=>({r,sheetRow:hi+2+j}));
   const fBranch   =document.getElementById('fBranch').value.toUpperCase();
+  const _alBranches=userBranches(); // hard security scope — restricts even when fBranch (dropdown) is left on "All Branches"
   const fSC       =document.getElementById('fSC').value;
   const fAllotStat=document.getElementById('fAllotStat').value;
   const fM        =document.getElementById('fMod').value;
@@ -4833,6 +4903,7 @@ function renderAGDMAllotment(){
     if(sno.toUpperCase().startsWith('CF'))return false;
     if(cnI>=0&&!String(r[cnI]||'').trim())return false;
     if(fBranch&&brI>=0&&cleanVal(r[brI]).toUpperCase()!==fBranch)return false;
+    if(_alBranches.length&&brI>=0&&!_alBranches.includes(cleanVal(r[brI]).toUpperCase()))return false; // hard security scope (L3/3F/3M)
     if(fSC&&scI>=0&&cleanVal(r[scI])!==fSC)return false;
     if(fAllotStat&&String(r[asI]||'').trim()!==fAllotStat)return false;
     if(fM){const rowM=(mI>=0?String(r[mI]||'').trim():'')||vinMap[String(r[0]||'').trim()]||'';if(rowM!==fM)return false;}
@@ -4965,6 +5036,7 @@ function renderDeallotted(){
   const mobileMap=buildMobileMap();
   const bodyWithIdx=rows.slice(hi+1).map((r,j)=>({r,sheetRow:hi+2+j}));
   const fBranch=document.getElementById('fBranch').value.toUpperCase();
+  const _daBranches=userBranches(); // hard security scope — restricts even when fBranch (dropdown) is left on "All Branches"
   const fSC    =document.getElementById('fSC').value;
   const fM10   =document.getElementById('fMod').value;
   const fVar10 =document.getElementById('fVar').value;
@@ -4982,6 +5054,7 @@ function renderDeallotted(){
     if(sno.toUpperCase().startsWith('CF'))return false;
     if(cnI>=0&&!String(r[cnI]||'').trim())return false;
     if(fBranch&&brI>=0&&cleanVal(r[brI]).toUpperCase()!==fBranch)return false;
+    if(_daBranches.length&&brI>=0&&!_daBranches.includes(cleanVal(r[brI]).toUpperCase()))return false; // hard security scope (L3/3F/3M)
     if(fSC&&scI>=0&&cleanVal(r[scI])!==fSC)return false;
     const vin10=String(r[0]||'').trim();
     const detail10=vinDetailMap10[vin10]||{};
@@ -6950,9 +7023,9 @@ function renderStockPlanning(){
   if(window._spVariant===undefined)window._spVariant='';
   // _spMExp / _spVExp declared above function
 
-  const isL3=curUser&&!curUser.isAdmin&&(String(curUser.level)==='3'||String(curUser.level)==='3F');
-  const uBranch=isL3&&curUser.branch?curUser.branch.toUpperCase():'';
-  const brFilter=uBranch||(window._spBranch||'').toUpperCase();
+  const isL3=curUser&&!curUser.isAdmin&&(String(curUser.level)==='3'||String(curUser.level)==='3F'||String(curUser.level)==='3M');
+  const uBranches=isL3?userBranches():[];
+  const brFilter=uBranches.length===1?uBranches[0]:(window._spBranch||'').toUpperCase();
 
   const stockData=SD[0]||[];
   const rpoData  =SD[2]||[];
@@ -7809,8 +7882,8 @@ function _loadStaffList(){
         name    :String(r[0]||'').trim(),
         username:String(r[1]||'').trim(),
         password:String(r[2]||'').trim(),
-        level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();if(_lv==='1A'||_lv==='2F'||_lv==='3F')return _lv;return parseInt(_lv)||4;})(),
-        branch  :String(brI_u>=0?r[brI_u]:'').trim().toUpperCase(),
+        level   :(()=>{const _lv=String(lI>=0?r[lI]:r[3]||'').trim();if(_lv==='1A'||_lv==='2F'||_lv==='3F'||_lv==='3M')return _lv;return parseInt(_lv)||4;})(),
+        branch  :String(brI_u>=0?r[brI_u]:'').trim().toUpperCase(), // comma-separated list for Level 3M
         role    :String(roI_u>=0?r[roI_u]:r[4]||'').trim(),
         scName  :String(scNI_u>=0?r[scNI_u]:'').trim()
       })).filter(s=>s.username&&s.password);
@@ -7920,7 +7993,7 @@ function checkLevel3Warning(){
   if(_l3wShown)return;
   if(!curUser||curUser.isAdmin)return;
   const _l3lvl=curUser.level;
-  const _isL3a=_l3lvl===3||_l3lvl==='3F';
+  const _isL3a=_l3lvl===3||_l3lvl==='3F'||_l3lvl==='3M';
   const _isL4SC=_l3lvl===4;
   if(!_isL3a&&!_isL4SC)return;
   const rows=SD[7]; // New Car Allotment sheet
@@ -7938,7 +8011,7 @@ function checkLevel3Warning(){
   const brI =(()=>{const v=fc(h,'Branch Name');return v>=0?v:fc(h,'Branch');})();
   const asI =(()=>{for(const k of['Allotment Status','ALLOTMENT STATUS','Allot Status','AllotmentStatus']){const i=fc(h,k);if(i>=0)return i;}return 24;})(); // Allotment Status (dynamic, fallback index 24)
   const vinMap=buildVinModelMap();
-  const userBranch=(curUser.branch||'').trim().toUpperCase();
+  const uBranchList=userBranches();
   const userSCName=(curUser.scName||curUser.name||'').trim().toLowerCase();
   const alerts=rows.slice(hi+1).map(r=>{
     // Skip CF rows (S No starts with CF)
@@ -7948,7 +8021,7 @@ function checkLevel3Warning(){
     if(cnI>=0&&!String(r[cnI]||'').trim())return null;
     // Level 3/3F: filter by branch; Level 4 SC: filter by SC name
     if(_isL3a){
-      if(brI>=0&&userBranch){const b=String(r[brI]||'').trim().toUpperCase();if(b!==userBranch)return null;}
+      if(brI>=0&&uBranchList.length){const b=String(r[brI]||'').trim().toUpperCase();if(!uBranchList.includes(b))return null;}
     } else if(_isL4SC){
       if(userSCName&&scI>=0){const sc=String(r[scI]||'').trim().toLowerCase();if(sc!==userSCName)return null;}
     }
@@ -8193,6 +8266,275 @@ function _downloadCSV(csv,filename){
   a.href=url;a.download=filename.replace(/[<>:"/\\|?*]/g,'_')+'.csv';
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   TOOLS → STOCK VALUE (tab 19)
+   Shows Model → Variant → Colour drill-down with count and
+   stock value (units × ex-showroom price from Exshowroom Price sheet)
+   Filters: Stock Location, Stock Status
+   ══════════════════════════════════════════════════════════════ */
+window._svMExp      = window._svMExp      || new Set();
+window._svVExp      = window._svVExp      || new Set();
+window._svLoc       = window._svLoc       || '';
+window._svStat      = window._svStat      || '';
+window._svExData    = window._svExData    || [];   // always [] by default — never blocks render
+window._svExLoaded  = window._svExLoaded  || false;
+window._svExLoading = window._svExLoading || false;
+
+function _svLoadPrices(){
+  if(window._svExLoading)return;
+  window._svExLoading=true;
+  jFetch('Exshowroom Price',15000).then(function(j){
+    window._svExData=(j&&j.length>=1)?j:[];
+    window._svExLoaded=true;
+    window._svExLoading=false;
+    if(curTab===19)renderStockValue();
+  }).catch(function(){
+    window._svExLoaded=true;
+    window._svExLoading=false;
+  });
+}
+
+function renderStockValue(){
+  const el=document.getElementById('svContent');
+  if(!el)return;
+
+  // Fire background price-fetch once (does NOT block rendering)
+  if(!window._svExLoaded&&!window._svExLoading)_svLoadPrices();
+
+  const stockData=SD[0]||[];
+  if(stockData.length<2){
+    el.innerHTML='<div class="sb"><div class="sp"></div><strong>Loading stock data…</strong></div>';
+    if(!window._svStLoading){
+      window._svStLoading=true;
+      jFetch('Stock').then(j=>{SD[0]=j&&j.length>=1?j:[];window._svStLoading=false;if(curTab===19)renderStockValue();}).catch(()=>{window._svStLoading=false;});
+    }
+    return;
+  }
+
+  const nrm=s=>String(s||'').replace(/^﻿/,'').trim().toLowerCase().replace(/\s+/g,' ');
+  const fmtCur=n=>{
+    if(!n||isNaN(n))return'—';
+    if(n>=10000000)return'₹'+(n/10000000).toFixed(2)+' Cr';
+    if(n>=100000)return'₹'+(n/100000).toFixed(2)+' L';
+    return'₹'+Math.round(n).toLocaleString('en-IN');
+  };
+  const mcClKey=(mc,cl)=>nrm(mc)+'|||'+nrm(cl);
+
+  // ── Parse Exshowroom Price sheet → price maps ──
+  const exData=window._svExData||[];
+  const mcPriceMap={},varPriceMap={},mdlPriceMap={};
+  if(exData.length>=2){
+    let epHi=0;
+    for(let i=0;i<Math.min(3,exData.length);i++){const r=exData[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('price')||r.includes('model')){epHi=i;break;}}
+    const epH=exData[epHi].map(x=>String(x||'').replace(/^﻿/,'').trim());
+    const epMcI=(()=>{for(const k of['Model Code','MODEL CODE','Model code','MC','ModelCode']){const i=fc(epH,k);if(i>=0)return i;}return-1;})();
+    const epVaI=(()=>{for(const k of['MODEL & VARIANT','Model & Variant','Variant','VARIANT','Model Variant','Model&Variant']){const i=fc(epH,k);if(i>=0)return i;}return-1;})();
+    const epMdI=(()=>{for(const k of['Model','MODEL','Car Model']){const i=fc(epH,k);if(i>=0)return i;}return-1;})();
+    const epPrI=(()=>{for(const k of['Ex Showroom Price','Exshowroom Price','EX SHOWROOM','Ex-Showroom','Ex Showroom','Price','PRICE']){const i=fc(epH,k);if(i>=0)return i;}return-1;})();
+    if(epPrI>=0){
+      exData.slice(epHi+1).forEach(r=>{
+        const ps=String(r[epPrI]||'').replace(/[₹,\s]/g,'');
+        const pr=parseFloat(ps);
+        if(isNaN(pr)||pr<=0)return;
+        if(epMcI>=0){const mc=String(r[epMcI]||'').trim();if(mc)mcPriceMap[mc]=pr;}
+        if(epVaI>=0){const va=String(r[epVaI]||'').trim();if(va)varPriceMap[nrm(va)]=pr;}
+        if(epMdI>=0){const md=String(r[epMdI]||'').trim();if(md&&!mdlPriceMap[nrm(md)])mdlPriceMap[nrm(md)]=pr;}
+      });
+    }
+  }
+  const getPrice=(mc,vaName,mdlName)=>{
+    if(mc&&mcPriceMap[mc])return mcPriceMap[mc];
+    if(vaName&&varPriceMap[nrm(vaName)])return varPriceMap[nrm(vaName)];
+    if(mdlName&&mdlPriceMap[nrm(mdlName)])return mdlPriceMap[nrm(mdlName)];
+    return null;
+  };
+
+  // ── Parse Stock header ──
+  let stHi=0;
+  for(let i=0;i<Math.min(3,stockData.length);i++){const r=stockData[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')&&(r.includes('status')||r.includes('vy'))){stHi=i;break;}}
+  const stH=stockData[stHi].map(x=>String(x||'').replace(/^﻿/,'').trim());
+  const stMCI=fc(stH,SC.modelCode);
+  const stClI=(()=>{for(const k of['Color','Colour','COLOR','COLOUR']){const i=fc(stH,k);if(i>=0)return i;}return-1;})();
+  const stStI=fc(stH,SC.status);
+  const stBrI=(()=>{let i=fc(stH,'Branch Name');if(i>=0)return i;return fc(stH,'Branch');})();
+  const stLoI=(()=>{for(const k of['YARD','Yard','Location','Stock Location']){const i=fc(stH,k);if(i>=0)return i;}return-1;})();
+
+  // Collect all unique locations and statuses for filter dropdowns
+  const stBody=stockData.slice(stHi+1).filter(r=>Array.isArray(r)&&r.some(c=>String(c||'').trim()));
+  const allLocs=[...new Set(stBody.map(r=>stLoI>=0?String(r[stLoI]||'').trim():'').filter(Boolean))].sort();
+  const allStats=[...new Set(stBody.map(r=>stStI>=0?String(r[stStI]||'').trim():'').filter(x=>x&&!x.startsWith('#')))].sort();
+
+  const svLoc=window._svLoc||'';
+  const svStat=window._svStat||'';
+  const uBranches=userBranches();
+
+  // ── Count stock per (ModelCode, Colour), applying filters ──
+  const stockCntMap={};
+  stBody.forEach(r=>{
+    if(svLoc&&stLoI>=0&&String(r[stLoI]||'').trim()!==svLoc)return;
+    if(svStat&&stStI>=0&&String(r[stStI]||'').trim()!==svStat)return;
+    if(uBranches.length&&stBrI>=0&&!uBranches.includes(String(r[stBrI]||'').trim().toUpperCase()))return;
+    const mc=stMCI>=0?String(r[stMCI]||'').trim():'';
+    const cl=stClI>=0?String(r[stClI]||'').trim():'';
+    if(!mc)return;
+    const k=mcClKey(mc,cl);
+    stockCntMap[k]=(stockCntMap[k]||0)+1;
+  });
+
+  // ── Build hierarchy from specRows (Product Spec) ──
+  const hierarchy={},varMC={};
+  specRows.forEach(s=>{
+    if(!s.model||!s.variant)return;
+    if(!hierarchy[s.model])hierarchy[s.model]={};
+    if(!hierarchy[s.model][s.variant])hierarchy[s.model][s.variant]=[];
+    if(s.colour&&!hierarchy[s.model][s.variant].includes(s.colour))
+      hierarchy[s.model][s.variant].push(s.colour);
+    if(s.modelCode)varMC[s.model+'|||'+s.variant]=s.modelCode;
+  });
+
+  // ── Build table rows ──
+  const TH_S='padding:6px 10px;font-size:10px;font-family:var(--font-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--bg-surface);border:1px solid var(--border);white-space:nowrap;text-align:center;';
+  const TD_C=(v,sx='')=>`<td style="padding:5px 10px;text-align:center;border:1px solid var(--border);font-size:11px;${sx}">${v}</td>`;
+  const TD_L=(v,sx='')=>`<td style="padding:5px 10px;border:1px solid var(--border);font-size:11px;${sx}">${v}</td>`;
+
+  let tHTML='';
+  let grandCount=0,grandValue=0;
+  const noPriceMdls=new Set();
+  const noPriceData=Object.keys(mcPriceMap).length===0&&Object.keys(varPriceMap).length===0;
+
+  Object.keys(hierarchy).sort().forEach(model=>{
+    const variants=hierarchy[model];
+    const mExp=window._svMExp.has(model);
+    const mEsc=model.replace(/'/g,"\\'");
+
+    // Model aggregate
+    let mCount=0,mValue=0,mHasPrice=false;
+    Object.keys(variants).forEach(va=>{
+      const mc=varMC[model+'|||'+va]||'';
+      const price=getPrice(mc,va,model);
+      const cols=variants[va];
+      (cols.length?cols:['']).forEach(cl=>{
+        const cnt=stockCntMap[mcClKey(mc,cl)]||0;
+        mCount+=cnt;
+        if(price!==null){mValue+=cnt*price;mHasPrice=true;}
+      });
+    });
+
+    if(mCount===0)return; // skip models with zero stock under current filters
+    if(!mHasPrice)noPriceMdls.add(model);
+    grandCount+=mCount;
+    grandValue+=mValue;
+
+    const mValStr=mHasPrice&&mValue>0?`<strong>${fmtCur(mValue)}</strong>`:`<span style="color:#f59e0b;font-size:10px;">Price N/A</span>`;
+
+    tHTML+=`<tr style="background:var(--bg-alt);cursor:pointer" onclick="window._svMExp.has('${mEsc}')?window._svMExp.delete('${mEsc}'):window._svMExp.add('${mEsc}');renderStockValue()">
+      <td colspan="2" style="padding:7px 10px;font-weight:700;color:var(--accent);border:1px solid var(--border);font-size:12px">
+        <span style="font-size:10px;margin-right:6px;opacity:.7">${mExp?'▼':'▶'}</span>${model}
+        <span style="font-weight:400;color:var(--text-muted);font-size:10px;margin-left:8px">Units: ${mCount}</span>
+      </td>
+      ${TD_C('<strong>'+mCount+'</strong>')}
+      ${TD_C(mValStr,'color:#3b82f6')}
+    </tr>`;
+
+    if(!mExp)return;
+
+    // Variant rows
+    Object.keys(variants).sort().forEach(va=>{
+      const cols=variants[va];
+      const vKey=model+'|||'+va;
+      const vEsc=vKey.replace(/'/g,"\\'");
+      const vExp=window._svVExp.has(vKey);
+      const mc=varMC[vKey]||'';
+      const price=getPrice(mc,va,model);
+
+      let vCount=0;
+      (cols.length?cols:['']).forEach(cl=>{vCount+=stockCntMap[mcClKey(mc,cl)]||0;});
+      if(vCount===0)return;
+
+      const vValue=price!==null?vCount*price:null;
+      const vValStr=vValue!==null?fmtCur(vValue):`<span style="color:#f59e0b;font-size:10px;">Price N/A</span>`;
+      const prStr=price!==null?`<span style="color:var(--text-muted);">₹${price.toLocaleString('en-IN')}</span>`:`<span style="color:#f59e0b;">—</span>`;
+
+      tHTML+=`<tr style="background:var(--bg-surface);cursor:${cols.length>0?'pointer':'default'}" onclick="${cols.length>0?"window._svVExp.has('"+vEsc+"')?window._svVExp.delete('"+vEsc+"'):window._svVExp.add('"+vEsc+"');renderStockValue()":''}">
+        ${TD_L(`<span style="margin-left:18px;font-size:10px;margin-right:5px;opacity:.6">${cols.length>0?(vExp?'▼':'▶'):'·'}</span>${va}`,'font-weight:600;color:var(--text)')}
+        ${TD_C(prStr)}
+        ${TD_C('<span style="font-weight:600">'+vCount+'</span>')}
+        ${TD_C(vValStr,'color:#3b82f6')}
+      </tr>`;
+
+      if(!vExp||cols.length===0)return;
+
+      // Colour rows
+      [...cols].sort().forEach(cl=>{
+        const k=mcClKey(mc,cl);
+        const cCnt=stockCntMap[k]||0;
+        if(cCnt===0)return;
+        const cVal=price!==null?cCnt*price:null;
+        tHTML+=`<tr style="background:var(--bg-deep,var(--bg-surface))">
+          ${TD_L(`<span style="margin-left:36px;width:8px;height:8px;border-radius:50%;display:inline-block;background:${hue(cl)};margin-right:6px;vertical-align:middle"></span><span style="font-size:11px;color:var(--text-muted)">${cl||'No colour'}</span>`,'padding-left:44px')}
+          ${TD_C('<span style="color:var(--text-dim);font-size:10px">—</span>')}
+          ${TD_C(cCnt,'color:var(--text-muted)')}
+          ${TD_C(cVal!==null?`<span style="color:#60a5fa">${fmtCur(cVal)}</span>`:'—')}
+        </tr>`;
+      });
+    });
+  });
+
+  // ── Filter dropdowns ──
+  const _selSt='background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;';
+  const locOpts='<option value="">All Locations</option>'+allLocs.map(l=>`<option value="${l}"${l===svLoc?' selected':''}>${l}</option>`).join('');
+  const statOpts='<option value="">All Status</option>'+allStats.map(s=>`<option value="${s}"${s===svStat?' selected':''}>${s}</option>`).join('');
+
+  // No-price warning / retry button
+  const _svRetryBtn=`<button onclick="window._svExLoaded=false;window._svExLoading=false;_svLoadPrices();setTimeout(renderStockValue,500)" style="margin-left:10px;padding:3px 10px;font-size:11px;font-weight:700;border-radius:6px;cursor:pointer;background:none;border:1px solid #f59e0b;color:#f59e0b;">↺ Retry</button>`;
+  const noPriceWarn=noPriceMdls.size>0
+    ?`<div style="margin-top:10px;padding:8px 12px;background:#f59e0b18;border:1px solid #f59e0b55;border-radius:8px;font-size:11px;color:#f59e0b;">⚠ Price not found for: <strong>${[...noPriceMdls].join(', ')}</strong> — verify the <em>Exshowroom Price</em> sheet has matching Model Code / Variant names${_svRetryBtn}</div>`
+    : noPriceData
+      ?`<div style="margin-top:10px;padding:8px 12px;background:#ef444418;border:1px solid #ef444455;border-radius:8px;font-size:11px;color:#f87171;">⚠ <strong>Exshowroom Price sheet not found or empty.</strong> Please create a sheet named <em>Exshowroom Price</em> in the Google Sheet with columns: <em>Model Code</em>, <em>Variant</em>, <em>Ex Showroom Price</em>${_svRetryBtn}</div>`
+      :'';
+
+  el.innerHTML=`<div class="ap" style="padding:20px 24px 30px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+      <h2 style="margin:0;font-size:16px;font-weight:800;">💰 Stock Value (Ex-showroom Based)</h2>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:700;color:var(--text-muted);">Location:</span>
+        <select style="${_selSt}" onchange="window._svLoc=this.value;renderStockValue()">${locOpts}</select>
+        <span style="font-size:12px;font-weight:700;color:var(--text-muted);">Status:</span>
+        <select style="${_selSt}" onchange="window._svStat=this.value;renderStockValue()">${statOpts}</select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:10px 20px;text-align:center;flex:1;min-width:110px;">
+        <div style="font-size:22px;font-weight:800;color:var(--text)">${grandCount.toLocaleString('en-IN')}</div>
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;">Total Units${svStat?' · '+svStat:''}</div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:10px 20px;text-align:center;flex:1;min-width:130px;">
+        <div style="font-size:22px;font-weight:800;color:#3b82f6">${grandValue>0?fmtCur(grandValue):(noPriceData?'No price data':'—')}</div>
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;">Total Stock Value</div>
+      </div>
+      ${svLoc?`<div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:10px 20px;text-align:center;flex:1;min-width:110px;"><div style="font-size:14px;font-weight:800;color:#22c55e">${svLoc}</div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;">Location</div></div>`:''}
+    </div>
+    ${noPriceWarn}
+    <div style="overflow:auto;max-height:calc(100vh - 320px);border:1px solid var(--border);border-radius:8px;margin-top:14px;">
+      <table style="border-collapse:collapse;width:100%;font-size:12px;min-width:520px;">
+        <thead>
+          <tr>
+            <th style="${TH_S}text-align:left;min-width:200px;">Model / Variant</th>
+            <th style="${TH_S}min-width:140px;">Ex-Showroom Price</th>
+            <th style="${TH_S}min-width:80px;">Units</th>
+            <th style="${TH_S}min-width:140px;">Stock Value</th>
+          </tr>
+        </thead>
+        <tbody>${tHTML||`<tr><td colspan="4" style="padding:40px;text-align:center;color:var(--text-dim);">No stock found for the selected filters.</td></tr>`}</tbody>
+      </table>
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text-dim);">
+      Click a <strong>Model</strong> row to expand variants &nbsp;·&nbsp; Click a <strong>Variant</strong> row to drill into colours &nbsp;·&nbsp;
+      <strong>Stock Value</strong> = Units × Ex-showroom Price &nbsp;·&nbsp; Prices sourced from <em>Exshowroom Price</em> sheet
+    </div>
+  </div>`;
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -8851,7 +9193,9 @@ function renderReports(){
   const isL1     =lvl===1||lvl==='1A';
   const isL2     =lvl===2||lvl==='2F';
   const isL3     =(lvl===3||lvl==='3F');
+  const isL3M    =(lvl==='3M'); // multi-branch — same security scope as isL3, but reports use the Branch-wise (non-SC) layout
   const uBranch  =(curUser&&curUser.branch)?curUser.branch.trim().toUpperCase():'';
+  const uBranches=userBranches(); // hard security scope — 1 branch for L3/3F, several for 3M, [] = unrestricted
   const vinMap   =buildVinModelMap();
   const varMdlMap=buildVariantModelMap();
 
@@ -9021,10 +9365,10 @@ function renderReports(){
     return i>=0?String(r[i]||'').trim():'';
   };
 
-  // L3 branch filter
-  const l3F=isL3&&uBranch?(r,h)=>{
+  // L3/3F/3M branch filter (single branch or a set of branches)
+  const l3F=(isL3||isL3M)&&uBranches.length?(r,h)=>{
     const i=fc(h,'Branch Name')>=0?fc(h,'Branch Name'):fc(h,'Branch');
-    return i<0||String(r[i]||'').trim().toUpperCase()===uBranch;
+    return i<0||uBranches.includes(String(r[i]||'').trim().toUpperCase());
   }:null;
 
   // Stock status getter
@@ -9245,7 +9589,7 @@ function renderReports(){
       if(!r.some(c=>String(c||'').trim()))return false;
       if(_bwmCnI>=0&&!String(r[_bwmCnI]||'').trim())return false;
       if(_bwmSnI>=0&&String(r[_bwmSnI]||'').trim().toUpperCase().startsWith('CF'))return false;
-      if(isL3&&uBranch&&_bwmBrI>=0&&String(r[_bwmBrI]||'').trim().toUpperCase()!==uBranch)return false;
+      if((isL3||isL3M)&&uBranches.length&&_bwmBrI>=0&&!uBranches.includes(String(r[_bwmBrI]||'').trim().toUpperCase()))return false;
       if(_bwmDateI>=0){const d=_bwmParseD(r[_bwmDateI]);if(!d||d.getFullYear()!==_RY||d.getMonth()!==_RM)return false;}
       if(window._rptBwmStat&&_bwmStI>=0&&String(r[_bwmStI]||'').trim()!==window._rptBwmStat)return false;
       return true;
@@ -9514,13 +9858,13 @@ function renderReports(){
     const aHi=hdr(allotData).hi;
     allotData.slice(aHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
-      if(uBranch&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&b!==uBranch)return;}
+      if(uBranches.length&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
       const sc=scI_a>=0?String(r[scI_a]||'').trim():'';if(sc)addSC(sc,true);
     });
     const rHi=hdr(rpoData).hi;
     rpoData.slice(rHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
-      if(uBranch&&brI_r>=0){const b=String(r[brI_r]||'').trim().toUpperCase();if(b&&b!==uBranch)return;}
+      if(uBranches.length&&brI_r>=0){const b=String(r[brI_r]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
       const sc=scI_r>=0?String(r[scI_r]||'').trim():'';if(sc)addSC(sc,true);
     });
 
@@ -9621,7 +9965,7 @@ function renderReports(){
       const scanRpo=(skipDate)=>{rpoData.slice(rHi2+1).forEach(r=>{
         if(!r.some(c=>String(c||'').trim()))return;
         if(rSNI2>=0&&String(r[rSNI2]||'').trim().toUpperCase().startsWith('CF'))return;
-        if(uBranch&&rBrI2>=0){const b=String(r[rBrI2]||'').trim().toUpperCase();if(b&&b!==uBranch)return;}
+        if(uBranches.length&&rBrI2>=0){const b=String(r[rBrI2]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
         if(!skipDate&&rDI2>=0){const d=_parseSD(r[rDI2]);if(!d)return;anyRpoDate=true;if(d.getFullYear()!==_curY||d.getMonth()!==_curM)return;}
         const sc2=rSCI2>=0?String(r[rSCI2]||'').trim():'';
         if(sc2)m[sc2]=(m[sc2]||0)+1;
@@ -9693,7 +10037,7 @@ function renderReports(){
     const retailMap={};
     allotData.slice(aHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
-      if(uBranch&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&b!==uBranch)return;}
+      if(uBranches.length&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
       const st=String(r[stI_a]||'').trim().toLowerCase();
       if(st.includes('retail')||st.includes('invoic')){
         const sc=scI_a>=0?String(r[scI_a]||'').trim():'';
@@ -9708,7 +10052,7 @@ function renderReports(){
     allotData.slice(aHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
       const sno_a=String(r[1]||'').trim();if(sno_a.toUpperCase().startsWith('CF'))return;
-      if(uBranch&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&b!==uBranch)return;}
+      if(uBranches.length&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
       if(btI_a_L3>=0){const bt_a=String(r[btI_a_L3]||'').trim().toLowerCase();if(bt_a.includes('ageing')||bt_a.includes('aging')||bt_a.includes('demo'))return;}
       const sc=scI_a>=0?String(r[scI_a]||'').trim():'';
       if(sc)newCarMap[sc]=(newCarMap[sc]||0)+1;
@@ -9726,7 +10070,7 @@ function renderReports(){
     agdmData.slice(gHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
       const sno_g=String(r[1]||'').trim();if(sno_g.toUpperCase().startsWith('CF'))return;
-      if(uBranch&&brI_g>=0){const b=String(r[brI_g]||'').trim().toUpperCase();if(b&&b!==uBranch)return;}
+      if(uBranches.length&&brI_g>=0){const b=String(r[brI_g]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
       const sc=scI_g>=0?String(r[scI_g]||'').trim():'';if(!sc)return;
       const bt=btI_g>=0?String(r[btI_g]||'').trim().toLowerCase():'';
       if(bt.includes('ageing')||bt.includes('aging'))ageingMap[sc]=(ageingMap[sc]||0)+1;
@@ -9936,7 +10280,7 @@ function renderReports(){
       return zohoMapSW[sw]||n;
     };
 
-    const brF=isL3?uBranch:null;
+    const brF=(isL3||isL3M)&&uBranches.length>0; // true = restricted to uBranches (L3/3F = 1 branch, 3M = several)
 
     // ── Core counter ─────────────────────────────────
     // srcCols   – look for source filter column; null = no source filter
@@ -9975,12 +10319,12 @@ function renderReports(){
       // Fallback owner column (for non-L3 when Branch col absent from Leads/TD)
       const owI=(useOwnerMap&&!isL3&&gI_direct<0)?cI(h,scCN):-1;
 
-      // When L3 and no Branch col in data, resolve SC→branch via ownerToBr for filtering
-      const scFallbackI=(isL3&&brF&&bFI<0)?cI(h,scCN):-1;
+      // When branch-scoped (L3/3F/3M) and no Branch col in data, resolve SC→branch via ownerToBr for filtering
+      const scFallbackI=((isL3||isL3M)&&brF&&bFI<0)?cI(h,scCN):-1;
       // Normalise branch string: uppercase, strip spaces/underscores/hyphens for loose comparison
       const normBr=s=>s.toUpperCase().replace(/[\s_\-\.]/g,'');
-      const brFN=normBr(brF||'');
-      const brMatch=(b)=>b===brF||normBr(b)===brFN;
+      const brFNSet=new Set(uBranches.map(normBr));
+      const brMatch=(b)=>uBranches.includes(b)||brFNSet.has(normBr(b));
       const rowPassesBranch=(r)=>{
         if(!brF)return true;
         if(bFI>=0){const b=String(r[bFI]||'').trim().toUpperCase();return b&&brMatch(b);}
@@ -10089,7 +10433,7 @@ function renderReports(){
         const rBrI=brF?cI(rH,brCN):-1;
         RD.slice(rHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(rBrI>=0&&brF){const b=String(r[rBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          if(rBrI>=0&&brF){const b=String(r[rBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
           const sv=String(r[rSrcI]||'').trim().toLowerCase();
           if(!matchFn(sv))return;
           const cust=rCustI>=0?String(r[rCustI]||'').trim().toUpperCase():'';
@@ -10114,7 +10458,7 @@ function renderReports(){
         const aBrI=brF?cI(aH,brCN):-1;
         AD.slice(aHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
           if(!inSrcCust(r,aH))return;
           if(aStI>=0){const st=String(r[aStI]||'').trim().toLowerCase();if(!st.match(/retail|invoic/))return;}
           const grp=aGI>=0?toIntSW(String(r[aGI]||'').trim()):'';
@@ -10135,7 +10479,7 @@ function renderReports(){
         const aDtI=cI(aH,bkgDateCols);
         AD.slice(aHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
           if(!inSrcCust(r,aH))return;
           if(aSnI>=0&&String(r[aSnI]||'').trim().toUpperCase().startsWith('CF'))return;
           if(aBtI>=0){const bt=String(r[aBtI]||'').trim().toLowerCase();if(bt.includes('ageing')||bt.includes('aging')||bt.includes('demo'))return;}
@@ -10157,7 +10501,7 @@ function renderReports(){
         const gDtI=cI(gH,bkgDateCols);
         GD.slice(gHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
           if(!inSrcCust(r,gH))return;
           if(gBtI>=0){const bt=String(r[gBtI]||'').trim().toLowerCase();if(!bt.match(/ageing|aging/))return;}
           if(gDtI>=0){if(!isCurMon(r[gDtI]))return;}
@@ -10178,7 +10522,7 @@ function renderReports(){
         const gDtI=cI(gH,bkgDateCols);
         GD.slice(gHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&b!==brF)return;}
+          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
           if(!inSrcCust(r,gH))return;
           if(gBtI>=0){const bt=String(r[gBtI]||'').trim().toLowerCase();if(!bt.includes('demo'))return;}
           if(gDtI>=0){if(!isCurMon(r[gDtI]))return;}
@@ -10298,7 +10642,7 @@ function renderReports(){
           if(!r.some(c=>String(c||'').trim()))return;
           if(String(r[1]||'').trim().toUpperCase().startsWith('CF'))return;
           if(cnI2>=0&&!String(r[cnI2]||'').trim())return;
-          if(isL3&&uBranch&&brI2>=0&&String(r[brI2]||'').trim().toUpperCase()!==uBranch)return;
+          if((isL3||isL3M)&&uBranches.length&&brI2>=0&&!uBranches.includes(String(r[brI2]||'').trim().toUpperCase()))return;
           const br=brI2>=0?String(r[brI2]||'').trim():'Unknown';
           if(!br)return;
           if(!brMap[br])brMap[br]={retail:0,retailYes:0,coverage:0,coverageYes:0};
@@ -10323,7 +10667,7 @@ function renderReports(){
           body.forEach(r=>{
             if(!r.some(c=>String(c||'').trim()))return;
             if(cnI2>=0&&!String(r[cnI2]||'').trim())return;
-            if(isL3&&uBranch&&brI2>=0&&String(r[brI2]||'').trim().toUpperCase()!==uBranch)return;
+            if((isL3||isL3M)&&uBranches.length&&brI2>=0&&!uBranches.includes(String(r[brI2]||'').trim().toUpperCase()))return;
             const br=brI2>=0?String(r[brI2]||'').trim():'Unknown';if(!br)return;
             const st=String(r[stI2]||'').trim().toLowerCase();
             const isInvoiced=st.includes('invoic')||st.includes('retail');
@@ -10453,7 +10797,10 @@ function buildETBR_Branch(){
   }
   // Sort branches alphabetically; CORPORATE TEAM always last
   const _sortBr=arr=>[...arr].sort((a,b)=>{const aC=a.toUpperCase().includes('CORPORATE'),bC=b.toUpperCase().includes('CORPORATE');if(aC&&!bC)return 1;if(!aC&&bC)return-1;return a.localeCompare(b);});
-  const branches=_sortBr(branchSet);
+  // Multi-branch (3M) users only ever see their assigned branches here — this is the
+  // real security boundary for the Branch-wise ETBR view (Level 1/2/2F/3M/admin all land here).
+  const _ubBranch=userBranches();
+  const branches=_sortBr(branchSet).filter(b=>!_ubBranch.length||_ubBranch.includes(b));
   if(!branches.length)return`<div style="padding:18px;text-align:center;color:var(--text-dim);">No branch data in Allotment sheet.</div>`;
 
   // ── Zoho-name approach for Enquiry + TD (aggregated to branch level) ──
@@ -10681,9 +11028,11 @@ function buildVNASummary(){
 
   // ── User access level ──
   const _vnaLvl=curUser?curUser.level:4;
-  const _vnaIsL3=(_vnaLvl===3||_vnaLvl==='3F')&&curUser&&curUser.branch;
+  const _vnaBranches=userBranches(); // [] = unrestricted; 1 = Level 3/3F; 2+ = Level 3M
+  const _vnaIsL3=(_vnaLvl===3||_vnaLvl==='3F')&&_vnaBranches.length>0;
+  const _vnaIsRestricted=_vnaBranches.length>0; // hard security scope — L3/3F/3M
   const _vnaIsL4=(_vnaLvl===4||_vnaLvl==='4');
-  const _vnaBranch=curUser&&curUser.branch?curUser.branch.trim().toUpperCase():'';
+  const _vnaBranch=_vnaBranches[0]||'';
 
   // ── Collect branches (from RPO) for the Branch filter dropdown ──
   const allBranches=new Set();
@@ -10692,7 +11041,7 @@ function buildVNASummary(){
     const br=rpoBrI>=0?String(r[rpoBrI]||'').trim().toUpperCase():'';
     if(br)allBranches.add(br);
   });
-  const brList=_vnaIsL3?['All',_vnaBranch]:['All',...[...allBranches].sort()];
+  const brList=_vnaIsRestricted?['All',..._vnaBranches]:['All',...[...allBranches].sort()];
 
   // ── Model/Variant dropdowns from specRows (Product Spec) ──
   const allModels=[...new Set(specRows.map(r=>r.model).filter(Boolean))].sort();
@@ -10729,6 +11078,7 @@ function buildVNASummary(){
       const st=rpoStI>=0?String(r[rpoStI]||'').trim().toUpperCase():'';
       if(st!=='VNA')return;
       const br=rpoBrI>=0?String(r[rpoBrI]||'').trim().toUpperCase():'';
+      if(_vnaBranches.length&&!_vnaBranches.includes(br))return; // hard security scope, applies even when filterBr='All'
       if(filterBr&&filterBr.toUpperCase()!=='ALL'&&br!==filterBr.toUpperCase())return;
       const va=normVar(rpoVaI>=0?String(r[rpoVaI]||''):'');
       const cl=rpoClI>=0?String(r[rpoClI]||'').trim():'';
@@ -10756,6 +11106,7 @@ function buildVNASummary(){
         const sno=String(r2[1]||'').trim();
         if(sno.toUpperCase().startsWith('CF'))return;
         if(vaIA<0||!String(r2[vaIA]||'').trim())return;
+        if(_vnaBranches.length&&brIA>=0&&!_vnaBranches.includes(String(r2[brIA]||'').trim().toUpperCase()))return; // hard security scope
         if(filterBr&&filterBr.toUpperCase()!=='ALL'&&brIA>=0){
           const b=String(r2[brIA]||'').trim().toUpperCase();
           if(b!==filterBr.toUpperCase())return;
@@ -10881,7 +11232,7 @@ function buildVNASummary(){
 
   setTimeout(()=>{
     const body=document.getElementById(`${uid}_body`);
-    if(body)body.innerHTML=doRender(_vnaIsL3?_vnaBranch:'ALL','All','All');
+    if(body)body.innerHTML=doRender('ALL','All','All'); // hard security scope inside doRender() already restricts to allowed branches
   },0);
 
   return filterSel;
@@ -10915,6 +11266,8 @@ window.vnaModelChange=function(uid){
 function buildTargetVsActual(){
   const lvl=curUser?curUser.level:4;
   const isL3=(lvl===3||lvl==='3'||lvl==='3F');
+  const isL3M=(lvl==='3M');
+  const uBranches=userBranches(); // hard security scope — [] = unrestricted
   const rowLabel=isL3?'SC Name':'Branch';
 
   // ── Actuals come from ETBR cache ──
@@ -11032,8 +11385,11 @@ function buildTargetVsActual(){
   const _etbrPart=etbrKeys.filter(k=>k!=='__BRANCH__'&&k).map(k=>{seenKeys.add(norm(k));return makeRow(k);});
   // SC-mode: tgtMap is used ONLY for target-value lookup via findTgt(), NOT as a source of SC names.
   // Admin/branch-mode: also append Target Sheet rows not already in ETBR (newly added branches etc.).
+  // Branch-scoped users (3M) must NOT get extra branches leaked in here — restrict to uBranches.
+  // tgtMap keys are already norm()-ed (see tgtMap.set(norm(key),...) above), so normalise the same way.
+  const _tgtBrAllowSet=uBranches.length?new Set(uBranches.map(norm)):null;
   const _tgtPart=_isScMode?[]:
-    [...tgtMap.keys()].filter(nk=>!seenKeys.has(nk)).map(nk=>{
+    [...tgtMap.keys()].filter(nk=>!seenKeys.has(nk)).filter(nk=>!_tgtBrAllowSet||_tgtBrAllowSet.has(nk)).map(nk=>{
       const tgt=tgtMap.get(nk)||{bkTgt:0,rtTgt:0};
       const displayKey=tgt.origKey||nk;
       const {booking:bkAct=0,retail:rtAct=0,coverage:cvAct=0}=etbrCache[nk]||{};
@@ -11641,6 +11997,195 @@ function renderGraphTab(){
 
   requestAnimationFrame(()=>window._gphRedraw&&window._gphRedraw());
 }
+
+/* ══════════════════════════════════════════════════════════════
+   Tools → Booking Trend Chart tab
+   Monthly booking volume trend, parsed from Live RPO (SD[2])
+   "Booking Date" column. Optional branch filter + month-range.
+══════════════════════════════════════════════════════════════ */
+function renderBookingTrend(){
+  const el=document.getElementById('btcContent');
+  if(!el)return;
+
+  const rows=SD[2]||[];
+  if(!rows.length){
+    el.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text-muted);">
+      <div style="font-size:32px;margin-bottom:10px;">📈</div>
+      <strong style="color:var(--text-primary);">No Live RPO data available yet.</strong>
+      <p style="font-size:12px;margin-top:6px;">Please open the <strong>Live RPO</strong> tab first so data is loaded, then come back here.</p>
+    </div>`;
+    return;
+  }
+
+  // ── Header row detection (same convention as renderLiveRPO) ──
+  let hi=0;
+  for(let i=0;i<Math.min(3,rows.length);i++){
+    if(!Array.isArray(rows[i]))continue;
+    const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');
+    if(r.includes('model')||r.includes('customer')||r.includes('booking')){hi=i;break;}
+  }
+  const h=rows[hi].map(x=>String(x||'').replace(/^﻿/,'').trim());
+  const dI=(()=>{for(const k of['Booking Date','BOOKING DATE','Date','DATE']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
+  const brI=(()=>{for(const k of['Branch Name','Branch','BRANCH']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
+  if(dI<0){
+    el.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text-muted);">Could not find a "Booking Date" column in Live RPO data.</div>`;
+    return;
+  }
+
+  // ── Flexible date parser (handles sheet serials, dd/mm/yyyy, yyyy-mm-dd, dd-Mon-yyyy) ──
+  const pD=v=>{
+    if(!v)return null;
+    const s=String(v).trim(); if(!s)return null;
+    const n=parseFloat(s);
+    if(!isNaN(n)&&n>40000&&n<60000)return new Date(Math.round((n-25569)*86400*1000));
+    const m1=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m1)return new Date(+m1[3],+m1[2]-1,+m1[1]);
+    const m2=s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m2)return new Date(+m2[1],+m2[2]-1,+m2[3]);
+    const MNS=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const m3=s.match(/^(\d{1,2})[-\s]([A-Za-z]{3,})[-\s](\d{4})$/);
+    if(m3){const mi=MNS.indexOf(m3[2].toLowerCase().slice(0,3));if(mi>=0)return new Date(+m3[3],mi,+m3[1]);}
+    const d=new Date(s);return isNaN(d.getTime())?null:d;
+  };
+
+  const BRANCHES=['All Branches','TEYNAMPET','AMBATTUR','ANNA NAGAR','PORUR','TRICHY','TANJORE','VELLORE'];
+  const selBranch=window._btcBranch||'All Branches';
+  const selMonths=window._btcMonths||12;
+
+  const parsed=[];
+  rows.slice(hi+1).forEach(r=>{
+    if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+    const d=pD(r[dI]);
+    if(!d||isNaN(d.getTime()))return;
+    parsed.push({d,br:brI>=0?String(r[brI]||'').trim().toUpperCase():''});
+  });
+
+  // ── Build month buckets for the selected range, ending this month ──
+  const now=new Date();
+  const monthKeys=[];
+  for(let i=selMonths-1;i>=0;i--){
+    const dt=new Date(now.getFullYear(),now.getMonth()-i,1);
+    monthKeys.push(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`);
+  }
+  const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const counts=Object.fromEntries(monthKeys.map(k=>[k,0]));
+  parsed.forEach(p=>{
+    if(selBranch!=='All Branches'&&p.br!==selBranch.toUpperCase())return;
+    const k=`${p.d.getFullYear()}-${String(p.d.getMonth()+1).padStart(2,'0')}`;
+    if(k in counts)counts[k]++;
+  });
+  const labels=monthKeys.map(k=>{const[y,m]=k.split('-');return`${MNAMES[+m-1]} '${y.slice(2)}`;});
+  const values=monthKeys.map(k=>counts[k]);
+  const total=values.reduce((a,b)=>a+b,0);
+  const peakIdx=values.indexOf(Math.max(...values));
+  const avg=(total/selMonths).toFixed(1);
+
+  const branchOpts=BRANCHES.map(b=>`<option value="${b}" ${b===selBranch?'selected':''}>${b}</option>`).join('');
+  const monthOpts=[6,12,24].map(m=>`<option value="${m}" ${m===selMonths?'selected':''}>Last ${m} months</option>`).join('');
+
+  el.innerHTML=`
+    <div style="padding:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:18px;">
+        <div>
+          <div style="font-size:15px;font-weight:700;color:var(--text-primary);letter-spacing:.02em;">📈 Booking Trend Chart</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Monthly booking volume — Live RPO, grouped by Booking Date</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <select id="btcBranchSel" onchange="window._btcBranch=this.value;renderBookingTrend();"
+            style="padding:6px 10px;font-size:11px;border-radius:6px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);">${branchOpts}</select>
+          <select id="btcMonthsSel" onchange="window._btcMonths=+this.value;renderBookingTrend();"
+            style="padding:6px 10px;font-size:11px;border-radius:6px;background:var(--bg-surface);color:var(--text-primary);border:1px solid var(--border);">${monthOpts}</select>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;">
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;min-width:140px;">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;">Total Bookings</div>
+          <div style="font-size:22px;font-weight:700;color:var(--accent);margin-top:4px;">${total}</div>
+        </div>
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;min-width:170px;">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;">Peak Month</div>
+          <div style="font-size:16px;font-weight:700;color:var(--text-primary);margin-top:4px;">${values[peakIdx]?labels[peakIdx]+' ('+values[peakIdx]+')':'—'}</div>
+        </div>
+        <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:10px;padding:12px 18px;min-width:140px;">
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;">Avg / Month</div>
+          <div style="font-size:22px;font-weight:700;color:var(--text-primary);margin-top:4px;">${avg}</div>
+        </div>
+      </div>
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:18px 14px 10px;">
+        <canvas id="btcCanvas" data-chartdata='${JSON.stringify({labels,values}).replace(/'/g,'&#39;')}' style="width:100%;display:block;"></canvas>
+      </div>
+      ${!parsed.length?'<div style="margin-top:14px;font-size:11px;color:var(--text-muted);">No valid booking dates were found in the Live RPO data.</div>':''}
+    </div>`;
+
+  requestAnimationFrame(drawBookingTrendChart);
+}
+
+// Draws the booking-trend line chart on a plain <canvas> (no external chart library)
+function drawBookingTrendChart(){
+  const canvas=document.getElementById('btcCanvas');
+  if(!canvas)return;
+  let data={};
+  try{data=JSON.parse(canvas.dataset.chartdata||'{}');}catch(e){data={};}
+  const labels=data.labels||[],values=data.values||[];
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width=canvas.offsetWidth||600,H=canvas.height=280;
+  ctx.clearRect(0,0,W,H);
+  if(!values.length)return;
+  const maxV=Math.max(...values,1);
+  const pad={l:36,r:16,t:20,b:34};
+  const chartW=W-pad.l-pad.r,chartH=H-pad.t-pad.b;
+  const n=values.length;
+  const stepX=n>1?chartW/(n-1):0;
+  const yFor=v=>pad.t+chartH-(v/maxV)*chartH;
+  const xFor=i=>pad.l+i*stepX;
+
+  // gridlines + y-axis labels
+  ctx.strokeStyle='rgba(76,175,110,0.12)';ctx.lineWidth=1;
+  ctx.fillStyle='#7dab8a';ctx.font='9px monospace';ctx.textAlign='right';
+  const ySteps=4;
+  for(let s=0;s<=ySteps;s++){
+    const v=Math.round((maxV/ySteps)*s);
+    const y=yFor(v);
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(W-pad.r,y);ctx.stroke();
+    ctx.fillText(String(v),pad.l-6,y+3);
+  }
+
+  // area fill under the line
+  ctx.beginPath();
+  ctx.moveTo(xFor(0),yFor(values[0]));
+  values.forEach((v,i)=>ctx.lineTo(xFor(i),yFor(v)));
+  ctx.lineTo(xFor(n-1),pad.t+chartH);
+  ctx.lineTo(xFor(0),pad.t+chartH);
+  ctx.closePath();
+  ctx.fillStyle='rgba(76,175,110,0.15)';
+  ctx.fill();
+
+  // trend line
+  ctx.beginPath();
+  values.forEach((v,i)=>{const x=xFor(i),y=yFor(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.strokeStyle='#4caf6e';ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.stroke();
+
+  // points + value labels
+  values.forEach((v,i)=>{
+    const x=xFor(i),y=yFor(v);
+    ctx.beginPath();ctx.arc(x,y,3.5,0,Math.PI*2);
+    ctx.fillStyle='#4caf6e';ctx.fill();
+    ctx.strokeStyle='#0a1f0e';ctx.lineWidth=1.5;ctx.stroke();
+    if(v>0){
+      ctx.fillStyle='#e6f4ea';ctx.font='9px monospace';ctx.textAlign='center';
+      ctx.fillText(String(v),x,y-8);
+    }
+  });
+
+  // x-axis month labels (thin out if too many to avoid crowding)
+  ctx.fillStyle='#7dab8a';ctx.font='9px monospace';ctx.textAlign='center';
+  const labelEvery=Math.max(1,Math.ceil(labels.length/12));
+  labels.forEach((l,i)=>{
+    if(i%labelEvery!==0&&i!==labels.length-1)return;
+    ctx.fillText(l,xFor(i),H-8);
+  });
+}
+window.addEventListener('resize',()=>{if(curTab===20)drawBookingTrendChart();});
 
 /* ══════════════════════════════════════════════════════════════
    ETBR Bar Chart (renders after DOM ready)
