@@ -11504,7 +11504,14 @@ function buildTargetVsActual(scDrillFn){
   // ── Parse Target Sheet ──
   const targetData=SD[13]||[];
   // Build a lookup: normalize name → {bkTgt, rtTgt}
-  const tgtMap=new Map();// normalised key → {bkTgt, rtTgt}
+  const tgtMap=new Map();// normalised key → {bkTgt, rtTgt} — Branch-mode (or SC-mode for genuine L3)
+  // SC-keyed target map — ALWAYS built from the per-SC target columns regardless of isL3/isL3M.
+  // Needed because for 3M (Branch-mode), tgtMap above is keyed by BRANCH name using the branch-level
+  // target columns; looking up an individual SC name against that branch-keyed map was matching via
+  // the substring fallback below (e.g. "CRHead Teynampet".includes("teynampet")), which incorrectly
+  // dumped the whole branch's target onto the CRHead row and left every real SC blank. tgtMapSC fixes
+  // this for the Branch → SC-wise drill-down by keying on SC Name with the SC-level columns instead.
+  const tgtMapSC=new Map();
   if(targetData&&targetData.length>1){
     function hdrT(data){
       let hi=0;
@@ -11526,6 +11533,9 @@ function buildTargetVsActual(scDrillFn){
     const rtI_t=isL3
       ? (fcT('New & Ageing Car Retail')>=0?fcT('New & Ageing Car Retail'):fcT('Retail'))
       : (fcT('New Car')>=0?fcT('New Car'):(fcT('New & Ageing Car Retail')>=0?fcT('New & Ageing Car Retail'):fcT('Retail')));
+    // SC-level columns — always resolved the same way (used by tgtMapSC below, independent of isL3).
+    const bkI_tSC=fcT('Booking')>=0?fcT('Booking'):fcT('Booking Target');
+    const rtI_tSC=fcT('New & Ageing Car Retail')>=0?fcT('New & Ageing Car Retail'):fcT('Retail');
     const keyIdx=isL3?scI_t:brI_t;
     const norm=s=>String(s||'').trim().toLowerCase().replace(/[\s_]+/g,' ');
     const normBrT=s=>String(s||'').toUpperCase().replace(/[\s_\-\.]/g,'');
@@ -11546,29 +11556,43 @@ function buildTargetVsActual(scDrillFn){
     })():null;
     targetData.slice(tHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
+      // ── Branch-mode (or genuine-L3 SC-mode) map — unchanged behavior ──
       const key=keyIdx>=0?String(r[keyIdx]||'').trim():'';
-      if(!key)return;
-      // L3 filter: only include SCs that belong to this branch
-      if(isL3){
-        if(_etbrSCSet){
-          // Primary: match against ETBR's branch-filtered SC list (most reliable)
-          if(!_etbrSCSet.has(norm(key)))return;
-        } else if(brI_t>=0&&curUser&&curUser.branch){
-          // Fallback 1: use Branch column in Target Sheet (if available)
-          const rowBr=normBrT(String(r[brI_t]||'').trim());
-          const userBr=normBrT(curUser.branch);
-          if(rowBr&&rowBr!==userBr)return;
-        } else if(_brSfxCheck){
-          // Fallback 2: filter by SC name suffix matching branch name (e.g. "ARAVIND_TEY" for Teynampet)
-          if(!_brSfxCheck(key))return;
-        } else {
-          // No filter available — skip all SC rows to avoid showing all-branch data
-          return;
+      if(key){
+        let include=true;
+        // L3 filter: only include SCs that belong to this branch
+        if(isL3){
+          if(_etbrSCSet){
+            // Primary: match against ETBR's branch-filtered SC list (most reliable)
+            if(!_etbrSCSet.has(norm(key)))include=false;
+          } else if(brI_t>=0&&curUser&&curUser.branch){
+            // Fallback 1: use Branch column in Target Sheet (if available)
+            const rowBr=normBrT(String(r[brI_t]||'').trim());
+            const userBr=normBrT(curUser.branch);
+            if(rowBr&&rowBr!==userBr)include=false;
+          } else if(_brSfxCheck){
+            // Fallback 2: filter by SC name suffix matching branch name (e.g. "ARAVIND_TEY" for Teynampet)
+            if(!_brSfxCheck(key))include=false;
+          } else {
+            // No filter available — skip all SC rows to avoid showing all-branch data
+            include=false;
+          }
+        }
+        if(include){
+          const bkTgt=parseFloat(String(r[bkI_t>=0?bkI_t:0]||'').replace(/,/g,''))||0;
+          const rtTgt=parseFloat(String(r[rtI_t>=0?rtI_t:0]||'').replace(/,/g,''))||0;
+          tgtMap.set(norm(key),{bkTgt,rtTgt,origKey:key}); // also store original name for display
         }
       }
-      const bkTgt=parseFloat(String(r[bkI_t>=0?bkI_t:0]||'').replace(/,/g,''))||0;
-      const rtTgt=parseFloat(String(r[rtI_t>=0?rtI_t:0]||'').replace(/,/g,''))||0;
-      tgtMap.set(norm(key),{bkTgt,rtTgt,origKey:key}); // also store original name for display
+      // ── SC-keyed map — always populated, independent of branch/SC mode ──
+      if(scI_t>=0){
+        const scKey=String(r[scI_t]||'').trim();
+        if(scKey){
+          const bkTgtSC=parseFloat(String(r[bkI_tSC>=0?bkI_tSC:0]||'').replace(/,/g,''))||0;
+          const rtTgtSC=parseFloat(String(r[rtI_tSC>=0?rtI_tSC:0]||'').replace(/,/g,''))||0;
+          tgtMapSC.set(norm(scKey),{bkTgt:bkTgtSC,rtTgt:rtTgtSC,origKey:scKey});
+        }
+      }
     });
   }
 
@@ -11580,6 +11604,16 @@ function buildTargetVsActual(scDrillFn){
     if(tgtMap.has(nk))return tgtMap.get(nk);
     // partial match: check if any tgtMap key contains the etbr key or vice versa
     for(const [tk,tv] of tgtMap){
+      if(tk.includes(nk)||nk.includes(tk))return tv;
+    }
+    return{bkTgt:0,rtTgt:0};
+  };
+  // SC-keyed lookup — used by the Branch → SC-wise drill-down (see canDrill below) so individual
+  // SCs get their own per-SC target instead of accidentally matching the branch-level target.
+  const findTgtSC=key=>{
+    const nk=norm(key);
+    if(tgtMapSC.has(nk))return tgtMapSC.get(nk);
+    for(const [tk,tv] of tgtMapSC){
       if(tk.includes(nk)||nk.includes(tk))return tv;
     }
     return{bkTgt:0,rtTgt:0};
@@ -11656,8 +11690,8 @@ function buildTargetVsActual(scDrillFn){
   // ── Branch → SC-wise drill-down (3M users only, Branch-mode rows) ──────────────
   // Calls scDrillFn(branchName) — buildETBR_L3 with a branchOverride — which synchronously
   // refreshes window.__etbrLastCall with that branch's SC-wise actuals (without touching the
-  // main window.__etbrActuals cache this whole report already read from). We then re-use the
-  // same tgtMap/findTgt/pctBar/tdS/thS helpers to build three mini SC-wise tables.
+  // main window.__etbrActuals cache this whole report already read from). Target lookups use
+  // findTgtSC (SC-keyed), NOT findTgt (which is branch-keyed here) — see tgtMapSC above.
   const canDrill=!!scDrillFn&&!isL3;
   const _tvaSubCache={};
   const _tvaBuildScRows=branchKey=>{
@@ -11667,7 +11701,7 @@ function buildTargetVsActual(scDrillFn){
     const scKeys=(lc.scList&&lc.scList.length)?lc.scList:Object.keys(scActuals);
     if(!scKeys.length)return`<div style="padding:10px;color:var(--text-dim);font-size:11px;">No SC data for this branch.</div>`;
     const scTargets=scKeys.map(sc=>{
-      const {bkTgt,rtTgt}=findTgt(sc);
+      const {bkTgt,rtTgt}=findTgtSC(sc);
       const {booking:bkAct=0,retail:rtAct=0,coverage:cvAct=0}=scActuals[sc]||{};
       return{key:sc,bkTgt,rtTgt,bkAct,rtAct,cvAct};
     }).filter(t=>t.bkTgt||t.rtTgt||t.bkAct||t.rtAct||t.cvAct).sort((a,b)=>a.key.localeCompare(b.key));
