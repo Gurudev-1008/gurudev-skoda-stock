@@ -9267,12 +9267,15 @@ function renderReports(){
   }
 
   // ── Render pivot table ─────────────────────────────
-  function pivotHTML({cols,rowKeys,pivot,totals},rowLabel){
+  // drillFn, if provided, is (rowKey)=>innerHtml — renders each row clickable, expanding a
+  // nested sub-table beneath it (used for the Branch → SC-wise drill-down on 3M reports).
+  function pivotHTML({cols,rowKeys,pivot,totals},rowLabel,drillFn){
     if(!rowKeys.length)return`<div style="padding:16px 0;color:var(--text-dim);font-size:13px;">No data available.</div>`;
     const allCols=cols.length?cols:['—'];
     const th =(t,align='center',extra='')=>`<th style="padding:7px 10px;font-size:10px;font-family:var(--font-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--bg-surface);border-bottom:2px solid var(--border);white-space:nowrap;text-align:${align};${extra}">${t}</th>`;
     const tdN=(v,c)=>`<td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);">${v?`<span style="font-weight:700;color:${c||sColor('')};">${v}</span>`:`<span style="color:var(--text-dim);">—</span>`}</td>`;
     const grandTotal=allCols.reduce((s,c)=>s+(totals[c]||0),0);
+    const pvId=drillFn?`pv${++_rid}_${Math.random().toString(36).slice(2,7)}`:null;
     return`<div style="overflow-x:auto;">
       <table style="border-collapse:collapse;width:100%;min-width:400px;font-size:12px;">
         <thead><tr>
@@ -9283,10 +9286,26 @@ function renderReports(){
         <tbody>
           ${rowKeys.map((rk,ri)=>{
             const rowTotal=allCols.reduce((s,c)=>s+(pivot[rk]?.[c]||0),0);
-            return`<tr style="${ri%2?'background:rgba(255,255,255,.02);':''}">
-              <td style="padding:6px 10px;font-size:12px;font-weight:600;color:var(--text-primary);border-bottom:1px solid var(--border);white-space:nowrap;">${rk}</td>
+            const rowStyle=ri%2?'background:rgba(255,255,255,.02);':'';
+            if(!drillFn){
+              return`<tr style="${rowStyle}">
+                <td style="padding:6px 10px;font-size:12px;font-weight:600;color:var(--text-primary);border-bottom:1px solid var(--border);white-space:nowrap;">${rk}</td>
+                ${allCols.map(c=>tdN(pivot[rk]?.[c]||0,sColor(c))).join('')}
+                <td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-primary);">${rowTotal||'—'}</td>
+              </tr>`;
+            }
+            return`<tr data-pvrow="${pvId}" data-pvi="${ri}" onclick="window.__pvToggle('${pvId}',${ri})" style="cursor:pointer;${rowStyle}" title="Click to drill into SC-wise breakdown">
+              <td style="padding:6px 10px;font-size:12px;font-weight:600;color:var(--text-primary);border-bottom:1px solid var(--border);white-space:nowrap;">
+                <span data-pvarrow="${pvId}-${ri}" style="margin-right:5px;font-size:10px;display:inline-block;transition:transform .2s;">▶</span>${rk}
+              </td>
               ${allCols.map(c=>tdN(pivot[rk]?.[c]||0,sColor(c))).join('')}
               <td style="padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);font-weight:700;color:var(--text-primary);">${rowTotal||'—'}</td>
+            </tr>
+            <tr data-pvsub="${pvId}" data-pvi="${ri}" style="display:none;">
+              <td colspan="${allCols.length+2}" style="padding:8px 10px 12px 26px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);">
+                <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">SC-wise — ${rk}</div>
+                ${drillFn(rk)}
+              </td>
             </tr>`;
           }).join('')}
           <tr style="border-top:2px solid var(--border-strong);">
@@ -9297,6 +9316,18 @@ function renderReports(){
         </tbody>
       </table>
     </div>`;
+  }
+  // One-time global handler for pivotHTML's Branch → SC-wise drill-down rows.
+  if(!window.__pvToggle){
+    window.__pvToggle=(id,i)=>{
+      const sub=document.querySelector(`[data-pvsub="${id}"][data-pvi="${i}"]`);
+      const arrow=document.querySelector(`[data-pvarrow="${id}-${i}"]`);
+      const main=document.querySelector(`[data-pvrow="${id}"][data-pvi="${i}"]`);
+      const isOpen=main&&main.dataset.open==='1';
+      if(sub)sub.style.display=isOpen?'none':'table-row';
+      if(arrow)arrow.style.transform=isOpen?'':'rotate(90deg)';
+      if(main)main.dataset.open=isOpen?'':'1';
+    };
   }
 
   // ── Report card with optional A/B toggle ──────────
@@ -9403,6 +9434,17 @@ function renderReports(){
     return cnI<0||!!String(r[cnI]||'').trim();
   };
   const allotFilterL3=(r,h)=>allotFilter(r,h)&&(!l3F||l3F(r,h));
+
+  // Branch → SC-wise drill-down (3M/multi-branch reports only) — given a data source, its
+  // status getter and base filter, returns a fn(branchName)=>pivotHTML restricted to that branch.
+  const branchDrillFn=(data,statGetter,baseFilter)=>(branchName)=>{
+    const target=String(branchName||'').trim().toUpperCase();
+    const brFilter=(r,h)=>{
+      if(baseFilter&&!baseFilter(r,h))return false;
+      return brGetter(r,h).trim().toUpperCase()===target;
+    };
+    return pivotHTML(buildPivot(data,scGetter,statGetter,brFilter),'SC Name');
+  };
 
   // ══ Month picker — persists across re-renders ═════
   const _now0=new Date();
@@ -9577,7 +9619,7 @@ function renderReports(){
   } else if(isL3M){
     const pivBr=buildPivot(rpoData,brGetter,rpoStatGetter,rpoFilterL3);
     const pivMd=buildPivot(rpoData,mdlGetter,rpoStatGetter,rpoFilterL3);
-    html+=rCard('R1','Live RPO Status',pivotHTML(pivBr,'Branch'),'Branch-wise',pivotHTML(pivMd,'Model'),'Model-wise');
+    html+=rCard('R1','Live RPO Status',pivotHTML(pivBr,'Branch',branchDrillFn(rpoData,rpoStatGetter,rpoFilterL3)),'Branch-wise',pivotHTML(pivMd,'Model'),'Model-wise');
   }
 
   // ── REPORT 2B: Branch-wise Model Report (MTD) ────────────────────────────
@@ -9626,14 +9668,21 @@ function renderReports(){
     const _bwmPctClr=p=>p>=40?'#4ade80':p>=20?'#fbbf24':'#94a3b8';
     const _bwmThS='padding:6px 10px;font-size:10px;font-family:var(--font-d);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);background:var(--bg-surface);border-bottom:2px solid var(--border);white-space:nowrap;text-align:center;';
     const _bwmTdS='padding:6px 10px;text-align:center;border-bottom:1px solid var(--border);';
-    // Table or empty-state
-    const _bwmTbl=!_bwmBranches.length
-      ?`<div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px;">No Live RPO bookings found for <strong>${_MFULL[_RM]} ${_RY}</strong>${window._rptBwmStat?' — Status: "'+window._rptBwmStat+'"':''}</div>`
-      :`<div style="overflow-x:auto;">
+    // Reusable table renderer — used for both the top-level Branch table and (for 3M users)
+    // the nested SC-wise drill-down table shown when a branch row is clicked.
+    const _bwmRenderTable=(map,rowKeys,rowLabelTxt,drillFn)=>{
+      if(!rowKeys.length)return`<div style="padding:16px;text-align:center;color:var(--text-dim);font-size:12px;">No data available.</div>`;
+      const mTot={};let grand=0;
+      rowKeys.forEach(rk=>{
+        grand+=Object.values(map[rk]).reduce((s,v)=>s+v,0);
+        _bwmModels.forEach(md=>{mTot[md]=(mTot[md]||0)+(map[rk][md]||0);});
+      });
+      const pvId=drillFn?`bwm${++_rid}_${Math.random().toString(36).slice(2,7)}`:null;
+      return`<div style="overflow-x:auto;">
         <table style="border-collapse:collapse;width:100%;min-width:500px;font-size:12px;">
           <thead>
             <tr>
-              <th style="${_bwmThS}text-align:left;min-width:120px;">Branch</th>
+              <th style="${_bwmThS}text-align:left;min-width:120px;">${rowLabelTxt}</th>
               ${_bwmModels.map(md=>`<th colspan="2" style="${_bwmThS}border-left:1px solid var(--border);padding:6px 16px;">${md}</th>`).join('')}
               <th style="${_bwmThS}color:var(--text-primary);border-left:2px solid var(--border);">Total</th>
             </tr>
@@ -9644,31 +9693,65 @@ function renderReports(){
             </tr>
           </thead>
           <tbody>
-            ${_bwmBranches.map((br,ri)=>{
-              const brData=_bwmMap[br];
-              const brTot=Object.values(brData).reduce((s,v)=>s+v,0);
-              return`<tr style="${ri%2?'background:rgba(255,255,255,.025);':''}">
-                <td style="${_bwmTdS}text-align:left;font-weight:600;color:var(--text-primary);white-space:nowrap;">${br}</td>
-                ${_bwmModels.map(md=>{
-                  const cnt=brData[md]||0;
-                  const pct=brTot>0?+((cnt/brTot)*100).toFixed(1):0;
-                  return`<td style="${_bwmTdS}border-left:1px solid var(--border);">${cnt?`<span style="font-weight:700;color:var(--text-primary);">${cnt}</span>`:'<span style="color:var(--text-dim);">—</span>'}</td><td style="${_bwmTdS}">${cnt?`<span style="font-size:11px;font-weight:700;color:${_bwmPctClr(pct)};">${pct}%</span>`:'<span style="color:var(--text-dim);">—</span>'}</td>`;
-                }).join('')}
-                <td style="${_bwmTdS}font-weight:700;color:var(--text-primary);border-left:2px solid var(--border);">${brTot}</td>
+            ${rowKeys.map((rk,ri)=>{
+              const rkData=map[rk];
+              const rkTot=Object.values(rkData).reduce((s,v)=>s+v,0);
+              const rowStyle=ri%2?'background:rgba(255,255,255,.025);':'';
+              const cellsHtml=`${_bwmModels.map(md=>{
+                const cnt=rkData[md]||0;
+                const pct=rkTot>0?+((cnt/rkTot)*100).toFixed(1):0;
+                return`<td style="${_bwmTdS}border-left:1px solid var(--border);">${cnt?`<span style="font-weight:700;color:var(--text-primary);">${cnt}</span>`:'<span style="color:var(--text-dim);">—</span>'}</td><td style="${_bwmTdS}">${cnt?`<span style="font-size:11px;font-weight:700;color:${_bwmPctClr(pct)};">${pct}%</span>`:'<span style="color:var(--text-dim);">—</span>'}</td>`;
+              }).join('')}<td style="${_bwmTdS}font-weight:700;color:var(--text-primary);border-left:2px solid var(--border);">${rkTot}</td>`;
+              if(!drillFn){
+                return`<tr style="${rowStyle}">
+                  <td style="${_bwmTdS}text-align:left;font-weight:600;color:var(--text-primary);white-space:nowrap;">${rk}</td>
+                  ${cellsHtml}
+                </tr>`;
+              }
+              return`<tr data-pvrow="${pvId}" data-pvi="${ri}" onclick="window.__pvToggle('${pvId}',${ri})" style="cursor:pointer;${rowStyle}" title="Click to drill into SC-wise breakdown">
+                <td style="${_bwmTdS}text-align:left;font-weight:600;color:var(--text-primary);white-space:nowrap;">
+                  <span data-pvarrow="${pvId}-${ri}" style="margin-right:5px;font-size:10px;display:inline-block;transition:transform .2s;">▶</span>${rk}
+                </td>
+                ${cellsHtml}
+              </tr>
+              <tr data-pvsub="${pvId}" data-pvi="${ri}" style="display:none;">
+                <td colspan="${_bwmModels.length*2+2}" style="padding:8px 10px 12px 26px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);">
+                  <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">SC-wise — ${rk}</div>
+                  ${drillFn(rk)}
+                </td>
               </tr>`;
             }).join('')}
             <tr style="border-top:2px solid var(--border-strong);">
               <td style="padding:6px 10px;font-weight:700;color:var(--accent);font-family:var(--font-d);font-size:12px;letter-spacing:.04em;text-align:left;">TOTAL</td>
               ${_bwmModels.map(md=>{
-                const mTot=_bwmMdlTot[md]||0;
-                const mPct=_bwmGrand>0?+((mTot/_bwmGrand)*100).toFixed(1):0;
-                return`<td style="padding:6px 10px;text-align:center;font-weight:700;color:var(--text-primary);border-left:1px solid var(--border);">${mTot||'—'}</td><td style="padding:6px 10px;text-align:center;font-weight:700;color:${_bwmPctClr(mPct)};">${mTot?mPct+'%':'—'}</td>`;
+                const mTot2=mTot[md]||0;
+                const mPct=grand>0?+((mTot2/grand)*100).toFixed(1):0;
+                return`<td style="padding:6px 10px;text-align:center;font-weight:700;color:var(--text-primary);border-left:1px solid var(--border);">${mTot2||'—'}</td><td style="padding:6px 10px;text-align:center;font-weight:700;color:${_bwmPctClr(mPct)};">${mTot2?mPct+'%':'—'}</td>`;
               }).join('')}
-              <td style="padding:6px 10px;text-align:center;font-weight:700;color:var(--accent);border-left:2px solid var(--border);">${_bwmGrand||'—'}</td>
+              <td style="padding:6px 10px;text-align:center;font-weight:700;color:var(--accent);border-left:2px solid var(--border);">${grand||'—'}</td>
             </tr>
           </tbody>
         </table>
       </div>`;
+    };
+    // Branch → SC-wise drill-down data source (3M users only)
+    const _bwmScDrill=branchName=>{
+      const target=String(branchName||'').trim().toUpperCase();
+      const scMap={};
+      _bwmBody.forEach(r=>{
+        const br=(_bwmBrI>=0?String(r[_bwmBrI]||'').trim():'')||'Unknown';
+        if(br.toUpperCase()!==target)return;
+        const sc=scGetter(r,rH2)||'Unknown';
+        const md=mdlGetter(r,rH2)||'Unknown';
+        if(!scMap[sc])scMap[sc]={};
+        scMap[sc][md]=(scMap[sc][md]||0)+1;
+      });
+      return _bwmRenderTable(scMap,Object.keys(scMap).sort(),'SC Name');
+    };
+    // Table or empty-state
+    const _bwmTbl=!_bwmBranches.length
+      ?`<div style="padding:24px;text-align:center;color:var(--text-dim);font-size:13px;">No Live RPO bookings found for <strong>${_MFULL[_RM]} ${_RY}</strong>${window._rptBwmStat?' — Status: "'+window._rptBwmStat+'"':''}</div>`
+      :_bwmRenderTable(_bwmMap,_bwmBranches,'Branch',isL3M?_bwmScDrill:null);
     // Status dropdown + record count header bar
     const _bwmSel='background:var(--bg-surface);border:1px solid var(--border);color:var(--text-primary);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;';
     const _bwmOpts='<option value="">All Status</option>'+_bwmAllStats.map(s=>`<option value="${s}"${s===window._rptBwmStat?' selected':''}>${s}</option>`).join('');
@@ -9689,7 +9772,7 @@ function renderReports(){
   } else if(isL3M){
     const pivBr=buildPivot(allotData,brGetter,allotStatGetter,allotFilterL3);
     const pivMd=buildPivot(allotData,mdlGetter,allotStatGetter,allotFilterL3);
-    html+=rCard('R2','New Car Allotment Status',pivotHTML(pivBr,'Branch'),'Branch-wise',pivotHTML(pivMd,'Model'),'Model-wise');
+    html+=rCard('R2','New Car Allotment Status',pivotHTML(pivBr,'Branch',branchDrillFn(allotData,allotStatGetter,allotFilterL3)),'Branch-wise',pivotHTML(pivMd,'Model'),'Model-wise');
   }
 
   // ── REPORT 4: Ageing & Demo Allotment Status ─────
@@ -9704,11 +9787,16 @@ function renderReports(){
   } else if(isL3M){
     const pivBr=buildPivot(agdmData,brGetter,agdmStatGetter,l3F||undefined);
     const pivMd=buildPivot(agdmData,mdlGetter,agdmStatGetter,l3F||undefined);
-    html+=rCard('R3','Ageing & Demo Allotment Status',pivotHTML(pivBr,'Branch'),'Branch-wise',pivotHTML(pivMd,'Model'),'Model-wise');
+    html+=rCard('R3','Ageing & Demo Allotment Status',pivotHTML(pivBr,'Branch',branchDrillFn(agdmData,agdmStatGetter,l3F||undefined)),'Branch-wise',pivotHTML(pivMd,'Model'),'Model-wise');
   }
 
   // ── REPORT 5: ETBR ───────────────────────────────
-  const buildETBR_L3=()=>{
+  // branchOverride: when set (a single branch name), scopes this SC-wise build to just that
+  // branch — used for the Branch → SC-wise drill-down on 3M's ETBR (Overall) card. Normal
+  // (no-arg) calls keep using the logged-in user's own branch scope (uBranch/uBranches) as before.
+  const buildETBR_L3=(branchOverride)=>{
+    const _uBranch=branchOverride?String(branchOverride).trim().toUpperCase():uBranch;
+    const _uBranches=branchOverride?[String(branchOverride).trim().toUpperCase()]:uBranches;
     // ── Zoho Name maps from Users sheet (SD[4]) ──
     // zohoMap: zoho_lower → internal_name  (backward-compat toInt)
     // scZohoNames: internal_name → Set(zoho_lower)  (direct count lookup)
@@ -9875,13 +9963,13 @@ function renderReports(){
     const aHi=hdr(allotData).hi;
     allotData.slice(aHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
-      if(uBranches.length&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+      if(_uBranches.length&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
       const sc=scI_a>=0?String(r[scI_a]||'').trim():'';if(sc)addSC(sc,true);
     });
     const rHi=hdr(rpoData).hi;
     rpoData.slice(rHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
-      if(uBranches.length&&brI_r>=0){const b=String(r[brI_r]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+      if(_uBranches.length&&brI_r>=0){const b=String(r[brI_r]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
       const sc=scI_r>=0?String(r[scI_r]||'').trim():'';if(sc)addSC(sc,true);
     });
 
@@ -9961,9 +10049,9 @@ function renderReports(){
       return out;
     };
     const curDate={y:_curY,m:_curM};
-    const rawLeads  =rawOwnerCount(SD[10]||[],['Lead Owner','LeadOwner','Owner','Salesperson','SC Name'],uBranch,null);
-    const rawQLAll  =rawOwnerCount(SD[11]||[],['Qualified Leads Owner','QL Owner','Owner','Salesperson','SC Name'],uBranch,null);
-    const rawTD     =rawOwnerCount(SD[12]||[],['Test Drive Owner','TD Owner','Activity Owner','Owner','Salesperson','SC Name'],uBranch,null,['Lead Source (Lead)','Lead Source','LeadSource'],['Lead Source (Qualified)']);
+    const rawLeads  =rawOwnerCount(SD[10]||[],['Lead Owner','LeadOwner','Owner','Salesperson','SC Name'],_uBranch,null);
+    const rawQLAll  =rawOwnerCount(SD[11]||[],['Qualified Leads Owner','QL Owner','Owner','Salesperson','SC Name'],_uBranch,null);
+    const rawTD     =rawOwnerCount(SD[12]||[],['Test Drive Owner','TD Owner','Activity Owner','Owner','Salesperson','SC Name'],_uBranch,null,['Lead Source (Lead)','Lead Source','LeadSource'],['Lead Source (Qualified)']);
     const leadsCount  =zohoToSC(rawLeads);
     const qlAllCount  =zohoToSC(rawQLAll);
     const tdCount     =zohoToSC(rawTD);
@@ -9982,7 +10070,7 @@ function renderReports(){
       const scanRpo=(skipDate)=>{rpoData.slice(rHi2+1).forEach(r=>{
         if(!r.some(c=>String(c||'').trim()))return;
         if(rSNI2>=0&&String(r[rSNI2]||'').trim().toUpperCase().startsWith('CF'))return;
-        if(uBranches.length&&rBrI2>=0){const b=String(r[rBrI2]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+        if(_uBranches.length&&rBrI2>=0){const b=String(r[rBrI2]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
         if(!skipDate&&rDI2>=0){const d=_parseSD(r[rDI2]);if(!d)return;anyRpoDate=true;if(d.getFullYear()!==_curY||d.getMonth()!==_curM)return;}
         const sc2=rSCI2>=0?String(r[rSCI2]||'').trim():'';
         if(sc2)m[sc2]=(m[sc2]||0)+1;
@@ -9997,8 +10085,8 @@ function renderReports(){
     // isBranchSC checks the SC name's branch suffix against the logged-in user's branch:
     //   - Exact: "ARAVIND_TEYNAMPET" → last token "teynampet" === brSfx ✓
     //   - Abbreviation: "Kaviyarasan_Tey" → "tey" is prefix of "teynampet" ✓
-    if(uBranch){
-      const brSfx=uBranch.toLowerCase();        // e.g. "teynampet"
+    if(_uBranch){
+      const brSfx=_uBranch.toLowerCase();        // e.g. "teynampet"
       const brParts=brSfx.split(/\s+/);         // e.g. ["teynampet"]
       const brN=brParts.length;
       const isBranchSC=k=>{
@@ -10054,7 +10142,7 @@ function renderReports(){
     const retailMap={};
     allotData.slice(aHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
-      if(uBranches.length&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+      if(_uBranches.length&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
       const st=String(r[stI_a]||'').trim().toLowerCase();
       if(st.includes('retail')||st.includes('invoic')){
         const sc=scI_a>=0?String(r[scI_a]||'').trim():'';
@@ -10069,7 +10157,7 @@ function renderReports(){
     allotData.slice(aHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
       const sno_a=String(r[1]||'').trim();if(sno_a.toUpperCase().startsWith('CF'))return;
-      if(uBranches.length&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+      if(_uBranches.length&&brI_a>=0){const b=String(r[brI_a]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
       if(btI_a_L3>=0){const bt_a=String(r[btI_a_L3]||'').trim().toLowerCase();if(bt_a.includes('ageing')||bt_a.includes('aging')||bt_a.includes('demo'))return;}
       const sc=scI_a>=0?String(r[scI_a]||'').trim():'';
       if(sc)newCarMap[sc]=(newCarMap[sc]||0)+1;
@@ -10087,7 +10175,7 @@ function renderReports(){
     agdmData.slice(gHi+1).forEach(r=>{
       if(!r.some(c=>String(c||'').trim()))return;
       const sno_g=String(r[1]||'').trim();if(sno_g.toUpperCase().startsWith('CF'))return;
-      if(uBranches.length&&brI_g>=0){const b=String(r[brI_g]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+      if(_uBranches.length&&brI_g>=0){const b=String(r[brI_g]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
       const sc=scI_g>=0?String(r[scI_g]||'').trim():'';if(!sc)return;
       const bt=btI_g>=0?String(r[btI_g]||'').trim().toLowerCase():'';
       if(bt.includes('ageing')||bt.includes('aging'))ageingMap[sc]=(ageingMap[sc]||0)+1;
@@ -10166,23 +10254,33 @@ function renderReports(){
       ${cTd(tNC||'—','#fb923c')}${cTd(tAg||'—','#fbbf24')}${cTd(tDm||'—','#f472b6')}
     </tr>`);
 
-    // Cache actuals for Target vs Actual report (keyed by SC name) — reset each run
-    window.__etbrActuals={};
-    window.__etbrActualsBranch=uBranch||'';
-    window.__etbrSCList=[...scList]; // branch-filtered SC list for Target vs Actual filter
-    const _covTypesL3=getCoverageTypes();
-    scList.forEach(sc=>{
-      const isCR=isCRHead(sc);
-      const r2=getCI(retailMap,sc);
-      const nc2=_covTypesL3.newCar?getCI(newCarMap,sc):0;
-      const ag2=_covTypesL3.ageingCar?getCI(ageingMap,sc):0;
-      const dm2=_covTypesL3.demoCar?getCI(demoMap,sc):0;
-      window.__etbrActuals[sc]={
-        booking: isCR?0:getCI(rpoBookingBySC,sc),
-        retail:  r2,
-        coverage: nc2+ag2+dm2
-      };
-    });
+    // Compute actuals (keyed by SC name) — always computed, but only mirrored into the main
+    // window.__etbrActuals cache for genuine top-level (no-arg) calls, so drill-down calls
+    // (branchOverride set) never clobber the real Target vs Actual cache. window.__etbrLastCall
+    // is always refreshed though, so a synchronous caller (Target vs Actuals' drill-down) can
+    // read this call's result right after invoking buildETBR_L3(branchName) for a drill row.
+    {
+      const _actualsOut={};
+      const _covTypesL3=getCoverageTypes();
+      scList.forEach(sc=>{
+        const isCR=isCRHead(sc);
+        const r2=getCI(retailMap,sc);
+        const nc2=_covTypesL3.newCar?getCI(newCarMap,sc):0;
+        const ag2=_covTypesL3.ageingCar?getCI(ageingMap,sc):0;
+        const dm2=_covTypesL3.demoCar?getCI(demoMap,sc):0;
+        _actualsOut[sc]={
+          booking: isCR?0:getCI(rpoBookingBySC,sc),
+          retail:  r2,
+          coverage: nc2+ag2+dm2
+        };
+      });
+      if(!branchOverride){
+        window.__etbrActuals=_actualsOut;
+        window.__etbrActualsBranch=_uBranch||'';
+        window.__etbrSCList=[...scList]; // branch-filtered SC list for Target vs Actual filter
+      }
+      window.__etbrLastCall={actuals:_actualsOut,scList:[...scList]};
+    }
 
     return`<div style="overflow-x:auto;"><table style="border-collapse:collapse;width:100%;table-layout:auto;font-size:11px;">
       <thead><tr>
@@ -10206,13 +10304,15 @@ function renderReports(){
 
   // ── REPORT 5: ETBR ──────────────────────────────────
   const r5num=(isL3||isL3M)?'R4':'R5';
-  const etbrHtml=isL3?buildETBR_L3():buildETBR_Branch();
+  const etbrHtml=isL3?buildETBR_L3():buildETBR_Branch(isL3M?buildETBR_L3:null);
   html+=rCard(r5num,'ETBR (Overall)',etbrHtml);
 
   // ── REPORT 5b: ETBR Source-wise (4 sub-tabs, 13 cols) ─
   const r5bnum=(isL3||isL3M)?'R5':'R5b';
-  let _srcWise='';
-  try{_srcWise=(()=>{
+  // branchOverride: when set, scopes this whole Source-Wise build (all cnt()/buildTab() calls)
+  // to a single branch AND switches grouping to SC-wise — used for the Branch → SC-wise
+  // drill-down row click on 3M's Branch-wise view. No-arg calls behave exactly as before.
+  const buildSrcWiseAll=(branchOverride)=>{
     // ── Data ─────────────────────────────────────────
     const LD=SD[10]||[],QLD=SD[11]||[],TDD=SD[12]||[],AD=SD[7]||[],GD=SD[8]||[],RD=SD[2]||[];
     if(LD.length<2&&QLD.length<2&&TDD.length<2&&AD.length<2)
@@ -10297,7 +10397,9 @@ function renderReports(){
       return zohoMapSW[sw]||n;
     };
 
-    const brF=(isL3||isL3M)&&uBranches.length>0; // true = restricted to uBranches (L3/3F = 1 branch, 3M = several)
+    const _scMode=isL3||(branchOverride!=null); // true = group by SC (genuine L3, or a 3M drill-down into one branch)
+    const _uBranches=branchOverride!=null?[String(branchOverride).trim().toUpperCase()]:uBranches;
+    const brF=(_scMode||isL3M)&&_uBranches.length>0; // true = restricted to _uBranches
 
     // ── Core counter ─────────────────────────────────
     // srcCols   – look for source filter column; null = no source filter
@@ -10323,7 +10425,7 @@ function renderReports(){
       }
 
       // Determine group column strategy
-      let gI_direct=isL3?cI(h,scCN):cI(h,brCN);
+      let gI_direct=_scMode?cI(h,scCN):cI(h,brCN);
       // Validate: make sure the detected column header actually looks like an SC/Branch name col.
       // The 'SE' fallback in scCN can match via substring (e.g. 'base' contains 'se'), picking
       // up price/amount columns. Reject gI_direct if the column header doesn't contain any
@@ -10334,14 +10436,14 @@ function renderReports(){
         if(!validHdrKws.some(kw=>colHdr.includes(kw)))gI_direct=-1; // reject bad column
       }
       // Fallback owner column (for non-L3 when Branch col absent from Leads/TD)
-      const owI=(useOwnerMap&&!isL3&&gI_direct<0)?cI(h,scCN):-1;
+      const owI=(useOwnerMap&&!_scMode&&gI_direct<0)?cI(h,scCN):-1;
 
       // When branch-scoped (L3/3F/3M) and no Branch col in data, resolve SC→branch via ownerToBr for filtering
-      const scFallbackI=((isL3||isL3M)&&brF&&bFI<0)?cI(h,scCN):-1;
+      const scFallbackI=((_scMode||isL3M)&&brF&&bFI<0)?cI(h,scCN):-1;
       // Normalise branch string: uppercase, strip spaces/underscores/hyphens for loose comparison
       const normBr=s=>s.toUpperCase().replace(/[\s_\-\.]/g,'');
-      const brFNSet=new Set(uBranches.map(normBr));
-      const brMatch=(b)=>uBranches.includes(b)||brFNSet.has(normBr(b));
+      const brFNSet=new Set(_uBranches.map(normBr));
+      const brMatch=(b)=>_uBranches.includes(b)||brFNSet.has(normBr(b));
       const rowPassesBranch=(r)=>{
         if(!brF)return true;
         if(bFI>=0){const b=String(r[bFI]||'').trim().toUpperCase();return b&&brMatch(b);}
@@ -10450,7 +10552,7 @@ function renderReports(){
         const rBrI=brF?cI(rH,brCN):-1;
         RD.slice(rHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(rBrI>=0&&brF){const b=String(r[rBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+          if(rBrI>=0&&brF){const b=String(r[rBrI]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
           const sv=String(r[rSrcI]||'').trim().toLowerCase();
           if(!matchFn(sv))return;
           const cust=rCustI>=0?String(r[rCustI]||'').trim().toUpperCase():'';
@@ -10470,12 +10572,12 @@ function renderReports(){
         const out={};
         if(!AD||AD.length<2)return out;
         const{h:aH,hi:aHi}=gHI(AD);
-        const aGI=isL3?cI(aH,scCN):cI(aH,brCN);
+        const aGI=_scMode?cI(aH,scCN):cI(aH,brCN);
         const aStI=cI(aH,['Allotment Status','AllotmentStatus','Status','Retail Status','Booking Status']);
         const aBrI=brF?cI(aH,brCN):-1;
         AD.slice(aHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
           if(!inSrcCust(r,aH))return;
           if(aStI>=0){const st=String(r[aStI]||'').trim().toLowerCase();if(!st.match(/retail|invoic/))return;}
           const grp=aGI>=0?toIntSW(String(r[aGI]||'').trim()):'';
@@ -10489,14 +10591,14 @@ function renderReports(){
         const out={};
         if(!AD||AD.length<2)return out;
         const{h:aH,hi:aHi}=gHI(AD);
-        const aGI=isL3?cI(aH,scCN):cI(aH,brCN);
+        const aGI=_scMode?cI(aH,scCN):cI(aH,brCN);
         const aBrI=brF?cI(aH,brCN):-1;
         const aSnI=cI(aH,['S No','SNo','Sl No','SL No','Serial No','S.No']);
         const aBtI=cI(aH,['Booking Type','BookingType','Type']);
         const aDtI=cI(aH,bkgDateCols);
         AD.slice(aHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+          if(aBrI>=0&&brF){const b=String(r[aBrI]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
           if(!inSrcCust(r,aH))return;
           if(aSnI>=0&&String(r[aSnI]||'').trim().toUpperCase().startsWith('CF'))return;
           if(aBtI>=0){const bt=String(r[aBtI]||'').trim().toLowerCase();if(bt.includes('ageing')||bt.includes('aging')||bt.includes('demo'))return;}
@@ -10512,13 +10614,13 @@ function renderReports(){
         const out={};
         if(!GD||GD.length<2)return out;
         const{h:gH,hi:gHi}=gHI(GD);
-        const gGI=isL3?cI(gH,scCN):cI(gH,brCN);
+        const gGI=_scMode?cI(gH,scCN):cI(gH,brCN);
         const gBrI=brF?cI(gH,brCN):-1;
         const gBtI=cI(gH,['Booking Type','BookingType','Type']);
         const gDtI=cI(gH,bkgDateCols);
         GD.slice(gHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
           if(!inSrcCust(r,gH))return;
           if(gBtI>=0){const bt=String(r[gBtI]||'').trim().toLowerCase();if(!bt.match(/ageing|aging/))return;}
           if(gDtI>=0){if(!isCurMon(r[gDtI]))return;}
@@ -10533,13 +10635,13 @@ function renderReports(){
         const out={};
         if(!GD||GD.length<2)return out;
         const{h:gH,hi:gHi}=gHI(GD);
-        const gGI=isL3?cI(gH,scCN):cI(gH,brCN);
+        const gGI=_scMode?cI(gH,scCN):cI(gH,brCN);
         const gBrI=brF?cI(gH,brCN):-1;
         const gBtI=cI(gH,['Booking Type','BookingType','Type']);
         const gDtI=cI(gH,bkgDateCols);
         GD.slice(gHi+1).forEach(r=>{
           if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
-          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&!uBranches.includes(b))return;}
+          if(gBrI>=0&&brF){const b=String(r[gBrI]||'').trim().toUpperCase();if(b&&!_uBranches.includes(b))return;}
           if(!inSrcCust(r,gH))return;
           if(gBtI>=0){const bt=String(r[gBtI]||'').trim().toLowerCase();if(!bt.includes('demo'))return;}
           if(gDtI>=0){if(!isCurMon(r[gDtI]))return;}
@@ -10555,19 +10657,38 @@ function renderReports(){
       if(!kList.length)return`<div style="padding:14px;color:var(--text-dim);font-size:12px;">No records found for this source type.</div>`;
 
       let tE=0,tTD=0,tB=0,tR=0,tNC=0,tAg=0,tDm=0;
-      const rowLabel=isL3?'SC Name':'Branch';
+      const rowLabel=_scMode?'SC Name':'Branch';
+      // Branch → SC-wise drill-down: only offered on the top-level Branch-wise view for 3M users
+      // (never on an already-drilled SC-wise sub-view, and never on genuine single-branch L3).
+      const canDrill=isL3M&&!_scMode&&branchOverride==null;
+      const _swPvId=canDrill?`srcw_${Date.now()}_${Math.random().toString(36).slice(2,7)}`:null;
       const bodyRows=kList.map((k,i)=>{
         const e=enqM[k]||0,td=tdM[k]||0,b=bkgM[k]||0,r=retM[k]||0;
         const nc=ncM[k]||0,ag=agM[k]||0,dm=dmM[k]||0;
         if(!e&&!td&&!b&&!r&&!nc&&!ag&&!dm)return null;
         tE+=e;tTD+=td;tB+=b;tR+=r;tNC+=nc;tAg+=ag;tDm+=dm;
-        return`<tr style="${i%2?'background:rgba(255,255,255,.02);':''}">
-          ${cTdL(k)}
-          ${cTd(e,'#60a5fa')}${cTd(td,'#a78bfa')}${cTdBar(pct(td,e),'#a78bfa')}
+        const rowStyle=i%2?'background:rgba(255,255,255,.02);':'';
+        const restCells=`${cTd(e,'#60a5fa')}${cTd(td,'#a78bfa')}${cTdBar(pct(td,e),'#a78bfa')}
           ${cTd(b,'#34d399')}${cTdBar(pct(b,e),'#34d399')}
           ${cTd(r,'#4caf6e')}${cTdBar(pct(r,e),'#4caf6e')}
           ${cTdBar(pct(b,td),'#a78bfa')}${cTdBar(pct(r,b),'#34d399')}
-          ${cTd(nc,'#fb923c')}${cTd(ag,'#fbbf24')}${cTd(dm,'#f472b6')}
+          ${cTd(nc,'#fb923c')}${cTd(ag,'#fbbf24')}${cTd(dm,'#f472b6')}`;
+        if(!canDrill){
+          return`<tr style="${rowStyle}">${cTdL(k)}${restCells}</tr>`;
+        }
+        let subHtml='';
+        try{subHtml=buildSrcWiseAll(k);}catch(e){subHtml=`<div style="padding:10px;color:#f66;font-size:11px;">Drill-down error: ${e.message}</div>`;}
+        return`<tr data-pvrow="${_swPvId}" data-pvi="${i}" onclick="window.__pvToggle('${_swPvId}',${i})" style="cursor:pointer;${rowStyle}" title="Click to drill into SC-wise breakdown">
+          <td style="padding:4px 5px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-primary);white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;">
+            <span data-pvarrow="${_swPvId}-${i}" style="margin-right:5px;font-size:10px;display:inline-block;transition:transform .2s;">▶</span>${k||'—'}
+          </td>
+          ${restCells}
+        </tr>
+        <tr data-pvsub="${_swPvId}" data-pvi="${i}" style="display:none;">
+          <td colspan="13" style="padding:8px 10px 12px 26px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);">
+            <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">SC-wise — ${k}</div>
+            ${subHtml}
+          </td>
         </tr>`;
       }).filter(Boolean);
 
@@ -10620,12 +10741,14 @@ function renderReports(){
       `<div id="${uid2}_d${i}"${i>0?' style="display:none;"':''}>${c}</div>`
     ).join('');
     return`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">${btnHtml}</div>${divHtml}`;
-  })();}catch(e){_srcWise=`<div style="padding:12px;color:#f66;font-size:12px;">Source-wise error: ${e.message}</div>`;}
+  };
+  let _srcWise='';
+  try{_srcWise=buildSrcWiseAll();}catch(e){_srcWise=`<div style="padding:12px;color:#f66;font-size:12px;">Source-wise error: ${e.message}</div>`;}
   html+=rCard(r5bnum,'ETBR — Source Wise',_srcWise);
 
   // ── REPORT 6: Target vs Actuals ─────────────────────
   const r6num=isL3?'R6':'R6';
-  html+=rCard(r6num,'Target vs Actuals',buildTargetVsActual());
+  html+=rCard(r6num,'Target vs Actuals',buildTargetVsActual(isL3M?buildETBR_L3:null));
 
   // ── REPORTS 7 & 8: Corporate Report & Exchange Report ──────────────────────
   // buildPenetrationRpt: branch-wise penetration for a yes/no field
@@ -10644,11 +10767,21 @@ function renderReports(){
     function buildPenetrationRpt(fieldAliases,fieldLabel){
       const sources=[{data:SD[7]||[]},{data:SD[8]||[]}];
       const brMap={}; // branch → {retail,retailYes,coverage,coverageYes}
+      const scMap={}; // branch → SC Name → {retail,retailYes,coverage,coverageYes} — for 3M drill-down
+      const bump=(br,sc,field,isYes)=>{
+        if(!brMap[br])brMap[br]={retail:0,retailYes:0,coverage:0,coverageYes:0};
+        brMap[br][field]++;if(isYes)brMap[br][field+'Yes']++;
+        if(!scMap[br])scMap[br]={};
+        const scKey=sc||'Unknown';
+        if(!scMap[br][scKey])scMap[br][scKey]={retail:0,retailYes:0,coverage:0,coverageYes:0};
+        scMap[br][scKey][field]++;if(isYes)scMap[br][scKey][field+'Yes']++;
+      };
       for(const {data} of sources){
         if(!data||data.length<2)continue;
         const {h,hi}=hdr(data);
         const body=data.slice(hi+1);
         const brI2=(()=>{for(const k of['Branch Name','Branch']){const i=fce(h,k);if(i>=0)return i;}return fc(h,'Branch');})();
+        const scI2=(()=>{for(const k of['SC Name','SC']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
         const cnI2=(()=>{for(const k of['Customer Name','Customer']){const i=fce(h,k);if(i>=0)return i;}return -1;})();
         const stI2=(()=>{for(const k of['Allotment Status','Invoice Status','Status']){const i=fce(h,k);if(i>=0)return i;}return 24;})();
         const fldI=(()=>{for(const k of fieldAliases){const i=fce(h,k);if(i>=0)return i;}return -1;})();
@@ -10662,21 +10795,20 @@ function renderReports(){
           if((isL3||isL3M)&&uBranches.length&&brI2>=0&&!uBranches.includes(String(r[brI2]||'').trim().toUpperCase()))return;
           const br=brI2>=0?String(r[brI2]||'').trim():'Unknown';
           if(!br)return;
-          if(!brMap[br])brMap[br]={retail:0,retailYes:0,coverage:0,coverageYes:0};
+          const sc=scI2>=0?String(r[scI2]||'').trim():'';
           const fieldVal=fldI>=0?String(r[fldI]||'').trim().toLowerCase():'';
           const isYes=fieldVal==='yes';
           const st=String(r[stI2]||'').trim().toLowerCase();
           const isInvoiced=st.includes('invoic')||st.includes('retail');
           // Coverage = all allotted records (no date filter)
-          brMap[br].coverage++;
-          if(isYes)brMap[br].coverageYes++;
+          bump(br,sc,'coverage',isYes);
           // Retail = invoiced records filtered to selected month (by Invoice Done Date)
           if(isInvoiced){
             const invDv=ivdI2>=0?r[ivdI2]:null;
             if(invDv)anyInvDate=true;
             const inMon=ivdI2>=0?_pInMon(invDv):false;
             // If any rows have invoice dates, apply month filter; otherwise fall back to all invoiced rows
-            if(!invDv||inMon){brMap[br].retail++;if(isYes)brMap[br].retailYes++;}
+            if(!invDv||inMon)bump(br,sc,'retail',isYes);
           }
         });
         // If no invoice date was found in this source, re-count retail without date filter
@@ -10686,18 +10818,59 @@ function renderReports(){
             if(cnI2>=0&&!String(r[cnI2]||'').trim())return;
             if((isL3||isL3M)&&uBranches.length&&brI2>=0&&!uBranches.includes(String(r[brI2]||'').trim().toUpperCase()))return;
             const br=brI2>=0?String(r[brI2]||'').trim():'Unknown';if(!br)return;
+            const sc=scI2>=0?String(r[scI2]||'').trim():'';
             const st=String(r[stI2]||'').trim().toLowerCase();
             const isInvoiced=st.includes('invoic')||st.includes('retail');
             const fieldVal=fldI>=0?String(r[fldI]||'').trim().toLowerCase():'';
             const isYes=fieldVal==='yes';
-            if(isInvoiced){brMap[br].retail++;if(isYes)brMap[br].retailYes++;}
+            if(isInvoiced)bump(br,sc,'retail',isYes);
           });
         }
       }
       const branches=Object.keys(brMap).filter(k=>k&&k!=='Unknown'||brMap[k].coverage>0).sort((a,b)=>a.localeCompare(b));
       if(!branches.length)return{retailHtml:noDataDiv,coverageHtml:noDataDiv};
+      const canDrillCorp=isL3M;
+      // Renders one SC-wise mini-table (same columns) for a given branch + metric type — the
+      // Branch → SC-wise drill-down sub-content for 3M users.
+      const makeScTable=(br,type)=>{
+        const scData=scMap[br]||{};
+        const scKeys=Object.keys(scData).sort((a,b)=>a.localeCompare(b));
+        if(!scKeys.length)return`<div style="padding:10px;color:var(--text-dim);font-size:11px;">No SC data for this branch.</div>`;
+        let totTot=0,totYes=0;
+        const rows=scKeys.map((sc,ri)=>{
+          const v=scData[sc];
+          const tot=type==='retail'?v.retail:v.coverage;
+          const yes=type==='retail'?v.retailYes:v.coverageYes;
+          totTot+=tot;totYes+=yes;
+          const p=pct(yes,tot);
+          const pColor=yes>0?(yes/Math.max(tot,1)>=0.3?'#4ade80':'#60a5fa'):'var(--text-dim)';
+          return`<tr style="${ri%2?'background:rgba(255,255,255,.02);':''}">
+            <td style="${tdL}">${sc}</td>
+            <td style="${tdS}font-weight:700;color:var(--text-primary);">${tot||'—'}</td>
+            <td style="${tdS}color:#4ade80;font-weight:700;">${yes||'—'}</td>
+            <td style="${tdS}color:${pColor};font-weight:700;">${p}</td>
+          </tr>`;
+        }).join('');
+        const colLabel=type==='retail'?'Retail':'Coverage';
+        return`<div style="overflow-x:auto;"><table style="border-collapse:collapse;width:100%;min-width:320px;font-size:12px;">
+          <thead><tr>
+            <th style="${thS}text-align:left;">SC Name</th>
+            <th style="${thS}color:var(--text-primary);">${colLabel}</th>
+            <th style="${thS}color:#4ade80;">${fieldLabel} (Yes)</th>
+            <th style="${thS}color:#60a5fa;">Penetration %</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+          <tfoot><tr style="border-top:2px solid var(--border-strong);">
+            <td style="${tdL}color:var(--accent);font-family:var(--font-d);letter-spacing:.04em;">TOTAL</td>
+            <td style="${tdS}font-weight:700;color:var(--text-primary);">${totTot||'—'}</td>
+            <td style="${tdS}color:#4ade80;font-weight:700;">${totYes||'—'}</td>
+            <td style="${tdS}color:#60a5fa;font-weight:700;">${pct(totYes,totTot)}</td>
+          </tr></tfoot>
+        </table></div>`;
+      };
       const makeTable=(type)=>{
         let totTot=0,totYes=0;
+        const pvId=canDrillCorp?`corp_${type}_${Date.now()}_${Math.random().toString(36).slice(2,7)}`:null;
         const rows=branches.map((br,ri)=>{
           const v=brMap[br];
           const tot=type==='retail'?v.retail:v.coverage;
@@ -10705,11 +10878,22 @@ function renderReports(){
           totTot+=tot;totYes+=yes;
           const p=pct(yes,tot);
           const pColor=yes>0?(yes/Math.max(tot,1)>=0.3?'#4ade80':'#60a5fa'):'var(--text-dim)';
-          return`<tr style="${ri%2?'background:rgba(255,255,255,.02);':''}">
-            <td style="${tdL}">${br}</td>
-            <td style="${tdS}font-weight:700;color:var(--text-primary);">${tot||'—'}</td>
+          const rowStyle=ri%2?'background:rgba(255,255,255,.02);':'';
+          const restCells=`<td style="${tdS}font-weight:700;color:var(--text-primary);">${tot||'—'}</td>
             <td style="${tdS}color:#4ade80;font-weight:700;">${yes||'—'}</td>
-            <td style="${tdS}color:${pColor};font-weight:700;">${p}</td>
+            <td style="${tdS}color:${pColor};font-weight:700;">${p}</td>`;
+          if(!canDrillCorp){
+            return`<tr style="${rowStyle}"><td style="${tdL}">${br}</td>${restCells}</tr>`;
+          }
+          return`<tr data-pvrow="${pvId}" data-pvi="${ri}" onclick="window.__pvToggle('${pvId}',${ri})" style="cursor:pointer;${rowStyle}" title="Click to drill into SC-wise breakdown">
+            <td style="${tdL}"><span data-pvarrow="${pvId}-${ri}" style="margin-right:5px;font-size:10px;display:inline-block;transition:transform .2s;">▶</span>${br}</td>
+            ${restCells}
+          </tr>
+          <tr data-pvsub="${pvId}" data-pvi="${ri}" style="display:none;">
+            <td colspan="4" style="padding:8px 10px 12px 26px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);">
+              <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">SC-wise — ${br}</div>
+              ${makeScTable(br,type)}
+            </td>
           </tr>`;
         }).join('');
         const colLabel=type==='retail'?'Retail':'Coverage';
@@ -10752,7 +10936,10 @@ function renderReports(){
    ETBR — Branch-wise (Admin / L1 / L1A / L2)
    Same 13-column layout as L3 but rows = branches
 ══════════════════════════════════════════════════════════════ */
-function buildETBR_Branch(){
+// scDrillFn, when passed (3M users only — see renderReports' etbrHtml call site), is the
+// buildETBR_L3 closure from renderReports; calling scDrillFn(branchName) renders that branch's
+// SC-wise ETBR breakdown, reused as-is via its branchOverride parameter.
+function buildETBR_Branch(scDrillFn){
   const isAdmin=curUser&&curUser.isAdmin;
   const lvl=curUser?curUser.level:4;
   if(lvl===3||lvl==='3'||lvl==='3F')return'';// L3/L3F handled by buildETBR_L3
@@ -10966,6 +11153,7 @@ function buildETBR_Branch(){
   };
 
   let tE=0,tTD=0,tB=0,tR=0,tNC=0,tAg=0,tDm=0;
+  const _etbrPvId=scDrillFn?`etbrbr_${Date.now()}_${Math.random().toString(36).slice(2,7)}`:null;
   const rows=branches.map((br,i)=>{
     const eL=G(enqByBr,br),eQ=G(qlByBr,br),e=eL+eQ;
     // Booking = current-month Live RPO (rpoBookingByBr); enquiry uses all-time Leads+QL
@@ -10973,10 +11161,24 @@ function buildETBR_Branch(){
     const nc=G(ncByBr,br),ag=G(agByBr,br),dm=G(dmByBr,br);
     if(!e&&!td&&!b&&!r&&!nc&&!ag&&!dm)return null; // skip all-zero rows
     tE+=e;tTD+=td;tB+=b;tR+=r;tNC+=nc;tAg+=ag;tDm+=dm;
-    return`<tr style="${i%2?'background:rgba(255,255,255,.02);':''}">
-      ${cTdL(br)}${cTd(e||'—','#60a5fa')}${cTd(td||'—','#a78bfa')}${cTdBar(pct(td,e),'#a78bfa')}
+    const rowStyle=i%2?'background:rgba(255,255,255,.02);':'';
+    const restCells=`${cTd(e||'—','#60a5fa')}${cTd(td||'—','#a78bfa')}${cTdBar(pct(td,e),'#a78bfa')}
       ${cTd(b||'—','#34d399')}${cTdBar(pct(b,e),'#34d399')}${cTd(r||'—','#4caf6e')}${cTdBar(pct(r,e),'#4caf6e')}
-      ${cTdBar(pct(b,td),'#a78bfa')}${cTdBar(pct(r,b),'#34d399')}${cTd(nc||'—','#fb923c')}${cTd(ag||'—','#fbbf24')}${cTd(dm||'—','#f472b6')}
+      ${cTdBar(pct(b,td),'#a78bfa')}${cTdBar(pct(r,b),'#34d399')}${cTd(nc||'—','#fb923c')}${cTd(ag||'—','#fbbf24')}${cTd(dm||'—','#f472b6')}`;
+    if(!scDrillFn){
+      return`<tr style="${rowStyle}">${cTdL(br)}${restCells}</tr>`;
+    }
+    return`<tr data-pvrow="${_etbrPvId}" data-pvi="${i}" onclick="window.__pvToggle('${_etbrPvId}',${i})" style="cursor:pointer;${rowStyle}" title="Click to drill into SC-wise breakdown">
+      <td style="padding:4px 5px;text-align:left;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--text-primary);white-space:nowrap;">
+        <span data-pvarrow="${_etbrPvId}-${i}" style="margin-right:5px;font-size:10px;display:inline-block;transition:transform .2s;">▶</span>${br}
+      </td>
+      ${restCells}
+    </tr>
+    <tr data-pvsub="${_etbrPvId}" data-pvi="${i}" style="display:none;">
+      <td colspan="13" style="padding:8px 10px 12px 26px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">SC-wise — ${br}</div>
+        ${scDrillFn(br)}
+      </td>
     </tr>`;
   }).filter(Boolean);
   rows.push(`<tr style="border-top:2px solid var(--border-strong);">
@@ -11280,7 +11482,10 @@ window.vnaModelChange=function(uid){
    Targets are looked up from Target Sheet (SD[13]) by fuzzy name.
    3 sub-reports (tabs): Booking, Retail, Coverage
 ══════════════════════════════════════════════════════════════ */
-function buildTargetVsActual(){
+// scDrillFn, when passed (3M users only), is the buildETBR_L3 closure from renderReports;
+// calling scDrillFn(branchName) synchronously refreshes window.__etbrLastCall with that
+// branch's SC-wise actuals — used to build the Branch → SC-wise drill-down rows below.
+function buildTargetVsActual(scDrillFn){
   const lvl=curUser?curUser.level:4;
   const isL3=(lvl===3||lvl==='3'||lvl==='3F');
   const isL3M=(lvl==='3M');
@@ -11448,16 +11653,73 @@ function buildTargetVsActual(){
     <tfoot><tr style="border-top:2px solid var(--border-strong);">${totalRow}</tr></tfoot>
   </table></div>`;
 
+  // ── Branch → SC-wise drill-down (3M users only, Branch-mode rows) ──────────────
+  // Calls scDrillFn(branchName) — buildETBR_L3 with a branchOverride — which synchronously
+  // refreshes window.__etbrLastCall with that branch's SC-wise actuals (without touching the
+  // main window.__etbrActuals cache this whole report already read from). We then re-use the
+  // same tgtMap/findTgt/pctBar/tdS/thS helpers to build three mini SC-wise tables.
+  const canDrill=!!scDrillFn&&!isL3;
+  const _tvaSubCache={};
+  const _tvaBuildScRows=branchKey=>{
+    try{scDrillFn(branchKey);}catch(e){return`<div style="padding:10px;color:#f66;font-size:11px;">Drill-down error: ${e.message}</div>`;}
+    const lc=window.__etbrLastCall||{actuals:{},scList:[]};
+    const scActuals=lc.actuals||{};
+    const scKeys=(lc.scList&&lc.scList.length)?lc.scList:Object.keys(scActuals);
+    if(!scKeys.length)return`<div style="padding:10px;color:var(--text-dim);font-size:11px;">No SC data for this branch.</div>`;
+    const scTargets=scKeys.map(sc=>{
+      const {bkTgt,rtTgt}=findTgt(sc);
+      const {booking:bkAct=0,retail:rtAct=0,coverage:cvAct=0}=scActuals[sc]||{};
+      return{key:sc,bkTgt,rtTgt,bkAct,rtAct,cvAct};
+    }).filter(t=>t.bkTgt||t.rtTgt||t.bkAct||t.rtAct||t.cvAct).sort((a,b)=>a.key.localeCompare(b.key));
+    if(!scTargets.length)return`<div style="padding:10px;color:var(--text-dim);font-size:11px;">No target/actual data for this branch's SCs.</div>`;
+    const miniTable=(title,tgtKey,actKey,actLabel,color)=>{
+      let tt=0,ta=0;scTargets.forEach(t=>{tt+=t[tgtKey]||0;ta+=t[actKey]||0;});
+      const rows=scTargets.map((t,i)=>`<tr style="${i%2?'background:rgba(255,255,255,.02);':''}">
+        <td style="${tdS()}font-weight:600;">${t.key}</td>
+        <td style="${tdS('#60a5fa')}">${t[tgtKey]||'—'}</td>
+        <td style="${tdS(color)}">${t[actKey]||'—'}</td>
+        ${pctBar(t[actKey],t[tgtKey],color)}
+      </tr>`);
+      return`<div style="margin-bottom:10px;">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;">${title}</div>
+        ${makeTable(['SC Name',title.split(' ')[0]+' Target',actLabel,'Achievement'],rows,
+          `<td style="${tdS()}font-weight:700;">TOTAL</td><td style="${tdS('#60a5fa')}">${tt||'—'}</td><td style="${tdS(color)}">${ta||'—'}</td>${pctBar(ta,tt,'')}`)}
+      </div>`;
+    };
+    return miniTable('Booking Target vs Actual','bkTgt','bkAct','Actual Booking','#34d399')
+         + miniTable('Retail Target vs Actual','rtTgt','rtAct','Actual Retail','#4caf6e')
+         + miniTable('Retail Target vs Coverage','rtTgt','cvAct','Coverage','#fb923c');
+  };
+  const _tvaGetSub=branchKey=>{
+    if(_tvaSubCache[branchKey]===undefined)_tvaSubCache[branchKey]=_tvaBuildScRows(branchKey);
+    return _tvaSubCache[branchKey];
+  };
+  const _tvaPvId=canDrill?`tva_${Date.now()}_${Math.random().toString(36).slice(2,7)}`:null;
+  const _tvaRow=(tabId,i,key,cells)=>{
+    const rowStyle=i%2?'background:rgba(255,255,255,.02);':'';
+    if(!canDrill){
+      return`<tr style="${rowStyle}"><td style="${tdS()}font-weight:600;">${key}</td>${cells}</tr>`;
+    }
+    const pvId=`${_tvaPvId}_${tabId}`;
+    return`<tr data-pvrow="${pvId}" data-pvi="${i}" onclick="window.__pvToggle('${pvId}',${i})" style="cursor:pointer;${rowStyle}" title="Click to drill into SC-wise breakdown">
+      <td style="${tdS()}font-weight:600;"><span data-pvarrow="${pvId}-${i}" style="margin-right:5px;font-size:10px;display:inline-block;transition:transform .2s;">▶</span>${key}</td>
+      ${cells}
+    </tr>
+    <tr data-pvsub="${pvId}" data-pvi="${i}" style="display:none;">
+      <td colspan="4" style="padding:8px 10px 12px 26px;border-bottom:1px solid var(--border);background:rgba(255,255,255,.015);">
+        <div style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">SC-wise — ${key}</div>
+        ${_tvaGetSub(key)}
+      </td>
+    </tr>`;
+  };
+
   // ── Booking Target vs Actual ──
   let tBkTgt=0,tBkAct=0;
   const bkRows=targets.map((t,i)=>{
     tBkTgt+=t.bkTgt;tBkAct+=t.bkAct;
-    return`<tr style="${i%2?'background:rgba(255,255,255,.02);':''}">
-      <td style="${tdS()}font-weight:600;">${t.key}</td>
-      <td style="${tdS('#60a5fa')}">${t.bkTgt||'—'}</td>
+    return _tvaRow('bk',i,t.key,`<td style="${tdS('#60a5fa')}">${t.bkTgt||'—'}</td>
       <td style="${tdS('#34d399')}">${t.bkAct||'—'}</td>
-      ${pctBar(t.bkAct,t.bkTgt,'#34d399')}
-    </tr>`;
+      ${pctBar(t.bkAct,t.bkTgt,'#34d399')}`);
   });
   const bkHtml=makeTable([rowLabel,'Booking Target','Actual Booking','Achievement'],bkRows,
     `<td style="${tdS()}font-weight:700;">TOTAL</td>
@@ -11469,12 +11731,9 @@ function buildTargetVsActual(){
   let tRtTgt=0,tRtAct=0;
   const rtRows=targets.map((t,i)=>{
     tRtTgt+=t.rtTgt;tRtAct+=t.rtAct;
-    return`<tr style="${i%2?'background:rgba(255,255,255,.02);':''}">
-      <td style="${tdS()}font-weight:600;">${t.key}</td>
-      <td style="${tdS('#60a5fa')}">${t.rtTgt||'—'}</td>
+    return _tvaRow('rt',i,t.key,`<td style="${tdS('#60a5fa')}">${t.rtTgt||'—'}</td>
       <td style="${tdS('#4caf6e')}">${t.rtAct||'—'}</td>
-      ${pctBar(t.rtAct,t.rtTgt,'#4caf6e')}
-    </tr>`;
+      ${pctBar(t.rtAct,t.rtTgt,'#4caf6e')}`);
   });
   const rtHtml=makeTable([rowLabel,'Retail Target','Actual Retail','Achievement'],rtRows,
     `<td style="${tdS()}font-weight:700;">TOTAL</td>
@@ -11486,12 +11745,9 @@ function buildTargetVsActual(){
   let tCvAct=0;
   const cvRows=targets.map((t,i)=>{
     tCvAct+=t.cvAct;
-    return`<tr style="${i%2?'background:rgba(255,255,255,.02);':''}">
-      <td style="${tdS()}font-weight:600;">${t.key}</td>
-      <td style="${tdS('#60a5fa')}">${t.rtTgt||'—'}</td>
+    return _tvaRow('cv',i,t.key,`<td style="${tdS('#60a5fa')}">${t.rtTgt||'—'}</td>
       <td style="${tdS('#fb923c')}">${t.cvAct||'—'}</td>
-      ${pctBar(t.cvAct,t.rtTgt,'#fb923c')}
-    </tr>`;
+      ${pctBar(t.cvAct,t.rtTgt,'#fb923c')}`);
   });
   const cvHtml=makeTable([rowLabel,'Retail Target','Coverage','Coverage%'],cvRows,
     `<td style="${tdS()}font-weight:700;">TOTAL</td>
@@ -12024,28 +12280,51 @@ function renderBookingTrend(){
   const el=document.getElementById('btcContent');
   if(!el)return;
 
-  const rows=SD[2]||[];
+  // RPO Master is the full historical booking log (unlike Live RPO, which only holds current/
+  // active bookings) — it isn't part of the standard SD[] sheet set, so lazy-fetch & cache it.
+  if(!window._btcRpoLoaded){
+    if(!window._btcRpoLoading){
+      window._btcRpoLoading=true;
+      jFetch('RPO Master').then(j=>{
+        window._btcRpoData=(j&&j.length>=1)?j:[];
+        window._btcRpoLoaded=true;window._btcRpoLoading=false;
+        if(curTab===20)renderBookingTrend();
+      }).catch(()=>{
+        window._btcRpoData=[];window._btcRpoLoaded=true;window._btcRpoLoading=false;
+        if(curTab===20)renderBookingTrend();
+      });
+    }
+    el.innerHTML=`<div class="sb"><div class="sp"></div><strong>Loading RPO Master…</strong></div>`;
+    return;
+  }
+
+  const rows=window._btcRpoData||[];
   if(!rows.length){
     el.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text-muted);">
       <div style="font-size:32px;margin-bottom:10px;">📈</div>
-      <strong style="color:var(--text-primary);">No Live RPO data available yet.</strong>
-      <p style="font-size:12px;margin-top:6px;">Please open the <strong>Live RPO</strong> tab first so data is loaded, then come back here.</p>
+      <strong style="color:var(--text-primary);">No data found in "RPO Master".</strong>
+      <p style="font-size:12px;margin-top:6px;">Make sure a sheet tab named <strong>RPO Master</strong> exists with booking records.</p>
+      <button onclick="window._btcRpoLoaded=false;renderBookingTrend()" style="margin-top:10px;padding:6px 16px;background:var(--accent);color:var(--bg-deep);border:none;border-radius:6px;font-weight:700;cursor:pointer;">🔄 Retry</button>
     </div>`;
     return;
   }
 
-  // ── Header row detection (same convention as renderLiveRPO) ──
+  // ── Header row + flexible column detection ──
   let hi=0;
   for(let i=0;i<Math.min(3,rows.length);i++){
     if(!Array.isArray(rows[i]))continue;
     const r=rows[i].map(x=>String(x||'').toLowerCase()).join(' ');
-    if(r.includes('model')||r.includes('customer')||r.includes('booking')){hi=i;break;}
+    if(r.includes('model')||r.includes('customer')||r.includes('booking')||r.includes('branch')){hi=i;break;}
   }
   const h=rows[hi].map(x=>String(x||'').replace(/^﻿/,'').trim());
-  const dI=(()=>{for(const k of['Booking Date','BOOKING DATE','Date','DATE']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
-  const brI=(()=>{for(const k of['Branch Name','Branch','BRANCH']){const i=fc(h,k);if(i>=0)return i;}return -1;})();
+  const findCol=keys=>{for(const k of keys){const i=fc(h,k);if(i>=0)return i;}return -1;};
+  const dI =findCol(['Booking Date','BOOKING DATE','RPO Date','Order Date','Created Date','Date']);
+  const brI=findCol(['Branch Name','BRANCH NAME','Branch','BRANCH']);
+  const mdI=findCol(['Model','MODEL']);
+  const scI=findCol(['SC Name','SC NAME','SC']);
+  const stI=findCol(['Status','STATUS','Booking Status']);
   if(dI<0){
-    el.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text-muted);">Could not find a "Booking Date" column in Live RPO data.</div>`;
+    el.innerHTML=`<div style="padding:40px;text-align:center;color:var(--text-muted);">Could not find a "Booking Date" column in RPO Master.</div>`;
     return;
   }
 
@@ -12065,7 +12344,10 @@ function renderBookingTrend(){
     const d=new Date(s);return isNaN(d.getTime())?null:d;
   };
 
-  const BRANCHES=['All Branches','TEYNAMPET','AMBATTUR','ANNA NAGAR','PORUR','TRICHY','TANJORE','VELLORE'];
+  // ── Hard security scope — same branch restriction as everywhere else in the app ──
+  const uBranches=userBranches();
+  const ALL_BRANCHES=['TEYNAMPET','AMBATTUR','ANNA NAGAR','PORUR','TRICHY','TANJORE','VELLORE'];
+  const dropdownBranches=uBranches.length?uBranches:ALL_BRANCHES;
   const selBranch=window._btcBranch||'All Branches';
   const selMonths=window._btcMonths||12;
 
@@ -12074,22 +12356,33 @@ function renderBookingTrend(){
     if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
     const d=pD(r[dI]);
     if(!d||isNaN(d.getTime()))return;
-    parsed.push({d,br:brI>=0?String(r[brI]||'').trim().toUpperCase():''});
+    const br=brI>=0?String(r[brI]||'').trim().toUpperCase():'';
+    if(uBranches.length&&br&&!uBranches.includes(br))return; // hard security scope (L3/3F/3M)
+    parsed.push({
+      d,br,
+      model:mdI>=0?String(r[mdI]||'').trim():'',
+      sc:scI>=0?String(r[scI]||'').trim():'',
+      status:stI>=0?String(r[stI]||'').trim():''
+    });
   });
+  const scoped=selBranch!=='All Branches'?parsed.filter(p=>p.br===selBranch.toUpperCase()):parsed;
 
-  // ── Build month buckets for the selected range, ending this month ──
+  // ── 1) Monthly trend — build month buckets for the selected range, ending this month ──
   const now=new Date();
   const monthKeys=[];
   for(let i=selMonths-1;i>=0;i--){
     const dt=new Date(now.getFullYear(),now.getMonth()-i,1);
     monthKeys.push(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`);
   }
+  const monthKeySet=new Set(monthKeys);
   const MNAMES=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const counts=Object.fromEntries(monthKeys.map(k=>[k,0]));
-  parsed.forEach(p=>{
-    if(selBranch!=='All Branches'&&p.br!==selBranch.toUpperCase())return;
+  const inRange=[]; // rows within the selected month range — feeds charts 2-5 below
+  scoped.forEach(p=>{
     const k=`${p.d.getFullYear()}-${String(p.d.getMonth()+1).padStart(2,'0')}`;
-    if(k in counts)counts[k]++;
+    if(!monthKeySet.has(k))return;
+    counts[k]++;
+    inRange.push(p);
   });
   const labels=monthKeys.map(k=>{const[y,m]=k.split('-');return`${MNAMES[+m-1]} '${y.slice(2)}`;});
   const values=monthKeys.map(k=>counts[k]);
@@ -12097,15 +12390,46 @@ function renderBookingTrend(){
   const peakIdx=values.indexOf(Math.max(...values));
   const avg=(total/selMonths).toFixed(1);
 
-  const branchOpts=BRANCHES.map(b=>`<option value="${b}" ${b===selBranch?'selected':''}>${b}</option>`).join('');
+  // ── 2) Branch-wise totals (only meaningful with >1 branch in scope) ──
+  const brCounts={};
+  inRange.forEach(p=>{if(p.br)brCounts[p.br]=(brCounts[p.br]||0)+1;});
+  const brLabels=Object.keys(brCounts).sort((a,b)=>brCounts[b]-brCounts[a]);
+  const brValues=brLabels.map(b=>brCounts[b]);
+
+  // ── 3) Top models ──
+  const mdCounts={};
+  inRange.forEach(p=>{if(p.model)mdCounts[p.model]=(mdCounts[p.model]||0)+1;});
+  const mdLabels=Object.keys(mdCounts).sort((a,b)=>mdCounts[b]-mdCounts[a]).slice(0,8);
+  const mdValues=mdLabels.map(m=>mdCounts[m]);
+
+  // ── 4) SC leaderboard (top 8) ──
+  const scCounts={};
+  inRange.forEach(p=>{if(p.sc)scCounts[p.sc]=(scCounts[p.sc]||0)+1;});
+  const scLabels=Object.keys(scCounts).sort((a,b)=>scCounts[b]-scCounts[a]).slice(0,8);
+  const scValues=scLabels.map(s=>scCounts[s]);
+
+  // ── 5) Status breakdown ──
+  const stCounts={};
+  inRange.forEach(p=>{const s=p.status||'Unspecified';stCounts[s]=(stCounts[s]||0)+1;});
+  const stLabels=Object.keys(stCounts).sort((a,b)=>stCounts[b]-stCounts[a]);
+  const stValues=stLabels.map(s=>stCounts[s]);
+  const DONUT_COLORS=['#4caf6e','#60a5fa','#a78bfa','#fbbf24','#f87171','#34d399','#f472b6','#94a3b8'];
+
+  const branchOpts=['<option value="All Branches">All Branches</option>'+dropdownBranches.map(b=>`<option ${b===selBranch?'selected':''}>${b}</option>`).join('')].join('');
   const monthOpts=[6,12,24].map(m=>`<option value="${m}" ${m===selMonths?'selected':''}>Last ${m} months</option>`).join('');
+
+  const chartBox=(title,canvasId,data,height)=>`
+    <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:16px 14px 10px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${title}</div>
+      <canvas id="${canvasId}" data-chartdata='${JSON.stringify(data).replace(/'/g,'&#39;')}' style="width:100%;display:block;" height="${height||220}"></canvas>
+    </div>`;
 
   el.innerHTML=`
     <div style="padding:20px;">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:18px;">
         <div>
           <div style="font-size:15px;font-weight:700;color:var(--text-primary);letter-spacing:.02em;">📈 Booking Trend Chart</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Monthly booking volume — Live RPO, grouped by Booking Date</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">RPO Master — full booking history, grouped by Booking Date</div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <select id="btcBranchSel" onchange="window._btcBranch=this.value;renderBookingTrend();"
@@ -12128,13 +12452,26 @@ function renderBookingTrend(){
           <div style="font-size:22px;font-weight:700;color:var(--text-primary);margin-top:4px;">${avg}</div>
         </div>
       </div>
-      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:18px 14px 10px;">
+      <div style="background:var(--bg-surface);border:1px solid var(--border);border-radius:12px;padding:18px 14px 10px;margin-bottom:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">Monthly Trend</div>
         <canvas id="btcCanvas" data-chartdata='${JSON.stringify({labels,values}).replace(/'/g,'&#39;')}' style="width:100%;display:block;"></canvas>
       </div>
-      ${!parsed.length?'<div style="margin-top:14px;font-size:11px;color:var(--text-muted);">No valid booking dates were found in the Live RPO data.</div>':''}
+      ${!parsed.length?'<div style="margin-bottom:16px;font-size:11px;color:var(--text-muted);">No valid booking dates were found in RPO Master for the current scope.</div>':`
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">
+        ${brLabels.length>1?chartBox('Branch-wise Bookings','btcBranchCanvas',{labels:brLabels,values:brValues}):''}
+        ${mdLabels.length?chartBox('Top Models','btcModelCanvas',{labels:mdLabels,values:mdValues}):''}
+        ${scLabels.length?chartBox('SC Leaderboard (Top 8)','btcScCanvas',{labels:scLabels,values:scValues}):''}
+        ${stLabels.length?chartBox('Booking Status Breakdown','btcStatusCanvas',{labels:stLabels,values:stValues,colors:DONUT_COLORS}):''}
+      </div>`}
     </div>`;
 
-  requestAnimationFrame(drawBookingTrendChart);
+  requestAnimationFrame(()=>{
+    drawBookingTrendChart();
+    if(brLabels.length>1)drawBTCBarChart('btcBranchCanvas','#4caf6e');
+    if(mdLabels.length)drawBTCBarChart('btcModelCanvas','#60a5fa');
+    if(scLabels.length)drawBTCBarChart('btcScCanvas','#a78bfa');
+    if(stLabels.length)drawBTCDonutChart('btcStatusCanvas');
+  });
 }
 
 // Draws the booking-trend line chart on a plain <canvas> (no external chart library)
@@ -12202,7 +12539,110 @@ function drawBookingTrendChart(){
     ctx.fillText(l,xFor(i),H-8);
   });
 }
-window.addEventListener('resize',()=>{if(curTab===20)drawBookingTrendChart();});
+
+// Generic horizontal bar chart — used for Branch-wise / Top Models / SC Leaderboard cards.
+function drawBTCBarChart(canvasId,color){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  let data={};
+  try{data=JSON.parse(canvas.dataset.chartdata||'{}');}catch(e){data={};}
+  const labels=data.labels||[],values=data.values||[];
+  const ctx=canvas.getContext('2d');
+  const rowH=26,topPad=6;
+  const H=canvas.height=Math.max(60,labels.length*rowH+topPad*2);
+  const W=canvas.width=canvas.offsetWidth||600;
+  ctx.clearRect(0,0,W,H);
+  if(!values.length)return;
+  const maxV=Math.max(...values,1);
+  const labelW=Math.min(140,Math.max(70,W*0.28));
+  const valW=40;
+  const barX=labelW+8,barMaxW=W-labelW-valW-16;
+  ctx.font='10px monospace';ctx.textBaseline='middle';
+  labels.forEach((l,i)=>{
+    const y=topPad+i*rowH+rowH/2;
+    const v=values[i];
+    const w=Math.max(2,(v/maxV)*barMaxW);
+    // label (truncate if too long)
+    ctx.fillStyle='#c8ded0';ctx.textAlign='right';
+    let lbl=l;
+    while(ctx.measureText(lbl).width>labelW-6&&lbl.length>3){lbl=lbl.slice(0,-2)+'…';}
+    ctx.fillText(lbl,labelX(labelW),y);
+    // bar
+    ctx.fillStyle=color||'#4caf6e';
+    const bh=rowH*0.55;
+    roundRect(ctx,barX,y-bh/2,w,bh,4);
+    ctx.fill();
+    // value
+    ctx.fillStyle='#e6f4ea';ctx.textAlign='left';
+    ctx.fillText(String(v),barX+w+6,y);
+  });
+  function labelX(lw){return lw;}
+  function roundRect(c,x,y,w,h,r){
+    r=Math.min(r,h/2,Math.max(w,1)/2);
+    c.beginPath();
+    c.moveTo(x+r,y);
+    c.arcTo(x+w,y,x+w,y+h,r);
+    c.arcTo(x+w,y+h,x,y+h,r);
+    c.arcTo(x,y+h,x,y,r);
+    c.arcTo(x,y,x+w,y,r);
+    c.closePath();
+  }
+}
+
+// Donut chart — used for the Booking Status Breakdown card.
+function drawBTCDonutChart(canvasId){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas)return;
+  let data={};
+  try{data=JSON.parse(canvas.dataset.chartdata||'{}');}catch(e){data={};}
+  const labels=data.labels||[],values=data.values||[],colors=data.colors||['#4caf6e','#60a5fa','#a78bfa','#fbbf24','#f87171','#34d399','#f472b6','#94a3b8'];
+  const ctx=canvas.getContext('2d');
+  const legendRowH=16;
+  const H=canvas.height=Math.max(180,140+labels.length*legendRowH);
+  const W=canvas.width=canvas.offsetWidth||600;
+  ctx.clearRect(0,0,W,H);
+  const total=values.reduce((a,b)=>a+b,0);
+  if(!total)return;
+  const cx=W/2,cy=90,rOuter=64,rInner=38;
+  let start=-Math.PI/2;
+  values.forEach((v,i)=>{
+    const slice=(v/total)*Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,rOuter,start,start+slice);
+    ctx.closePath();
+    ctx.fillStyle=colors[i%colors.length];
+    ctx.fill();
+    start+=slice;
+  });
+  // punch the donut hole
+  ctx.globalCompositeOperation='destination-out';
+  ctx.beginPath();ctx.arc(cx,cy,rInner,0,Math.PI*2);ctx.fill();
+  ctx.globalCompositeOperation='source-over';
+  // center total
+  ctx.fillStyle='#e6f4ea';ctx.font='bold 15px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(String(total),cx,cy-6);
+  ctx.fillStyle='#7dab8a';ctx.font='8px monospace';
+  ctx.fillText('TOTAL',cx,cy+10);
+  // legend
+  ctx.font='10px monospace';ctx.textAlign='left';ctx.textBaseline='middle';
+  const legendTop=cy+rOuter+18;
+  labels.forEach((l,i)=>{
+    const y=legendTop+i*legendRowH;
+    ctx.fillStyle=colors[i%colors.length];
+    ctx.fillRect(14,y-5,10,10);
+    ctx.fillStyle='#c8ded0';
+    const pct=((values[i]/total)*100).toFixed(0);
+    ctx.fillText(`${l} — ${values[i]} (${pct}%)`,30,y);
+  });
+}
+
+window.addEventListener('resize',()=>{
+  if(curTab!==20)return;
+  drawBookingTrendChart();
+  ['btcBranchCanvas','btcModelCanvas','btcScCanvas'].forEach(id=>{if(document.getElementById(id))drawBTCBarChart(id);});
+  if(document.getElementById('btcStatusCanvas'))drawBTCDonutChart('btcStatusCanvas');
+});
 
 /* ══════════════════════════════════════════════════════════════
    ETBR Bar Chart (renders after DOM ready)
