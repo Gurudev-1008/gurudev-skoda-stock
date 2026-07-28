@@ -1291,20 +1291,51 @@ async function loadAll(){
       _leaseOptions=[...new Set(rows.slice(1).map(r=>String(r[0]||'').trim()).filter(Boolean))];
     }else{_leaseOptions=[];}
   }).catch(()=>{_leaseOptions=[];});
-  Promise.all(SHEETS.slice(7).map(async(sh,i)=>{
-    const sdIdx=7+i;
-    try{const j=await jFetch(sh);SD[sdIdx]=j.length>=1?j:[];}
-    catch{SD[sdIdx]=[];}
-    _p2Loaded.add(sdIdx);
-    _p2TryRender();
-  })).then(()=>{
+  // SHEETS.slice(7) is 12 sheets. Firing all of them via a single Promise.all means every page
+  // load/auto-refresh sends ~12 simultaneous requests to Apps Script — with several staff logged
+  // in at once that stacks up against Apps Script's simultaneous-execution quota (the whole web
+  // app runs under one script-owner identity), which was causing login timeouts ("Server
+  // temporarily unavailable") for everyone.
+  // Fixed-size sequential batches (tried first) caused a different problem: if any single sheet
+  // in a batch was slow, it blocked the *entire* batch — and therefore every later batch — for up
+  // to the full 25s jFetch timeout, which is why loads got slower and some tabs' data stopped
+  // arriving at all. A worker-pool instead caps concurrency WITHOUT serializing: a fixed number of
+  // workers pull the next sheet off a shared queue as soon as they finish their current one, so one
+  // slow sheet only ties up its own worker — the others keep going independently.
+  (async()=>{
+    const _p2Concurrency=4; // peak concurrent requests per user (vs. 12 originally / 3 in the slower batch attempt)
+    const _p2Indices=SHEETS.slice(7).map((_,i)=>7+i);
+    let _p2Cursor=0;
+    // Leads (10, ~900 rows) / QL Sheet (11, ~3000 rows) / TD Sheet (12, ~700 rows) feed the ETBR
+    // report's Enquiry & TD columns. QL Sheet in particular is large enough that a genuinely
+    // uncached read can itself take a while — Code.gs now caches these three for 5 minutes once a
+    // read succeeds (see doGet), so this longer timeout only matters for that first, uncached read
+    // in any given 5-minute window; everyone else within that window gets served from cache almost
+    // instantly regardless of this timeout. NOTE: an earlier version of this also retried once on
+    // an empty result, but that doubled the worst case and made loads noticeably slower without
+    // reliably fixing anything — no retry here; if the first attempt misses, the report shows
+    // "still loading" and self-corrects on the next auto-refresh once the cache is warm.
+    const _p2BigSheets=new Set([10,11,12]);
+    const _p2Worker=async()=>{
+      while(_p2Cursor<_p2Indices.length){
+        const sdIdx=_p2Indices[_p2Cursor++];
+        const sh=SHEETS[sdIdx];
+        const tmo=_p2BigSheets.has(sdIdx)?45000:25000;
+        let j=[];
+        try{j=await jFetch(sh,tmo);}catch{j=[];}
+        SD[sdIdx]=j.length>=1?j:[];
+        _p2Loaded.add(sdIdx);
+        _p2TryRender();
+      }
+    };
+    await Promise.all(Array.from({length:Math.min(_p2Concurrency,_p2Indices.length)},_p2Worker));
     // Final pass: re-render once all data is in
     if(curTab===7||curTab===8||curTab===10||curTab===12){try{renderTable();}catch(e){console.error(e);}}
     if(curTab===13){try{renderAnalytics();}catch(e){console.error(e);}}
     if(curTab===14){try{renderStockPlanning();}catch(e){console.error(e);}}
     if(curTab===9){try{renderReports();}catch(e){console.error(e);}}
     checkLevel3Warning(); // Allotment data now ready — show alert for Level 3 users on first load
-  });
+  })();
 }
 
 /* ═══ LOOKUPS ═══ */
@@ -1641,8 +1672,24 @@ function loginOK(user){
   }
   loadAll();
   loadNotifEmails(); // pre-warm email cache for all users so deallot notifications always work
-  if(arTimer)clearInterval(arTimer);
-  arTimer=setInterval(loadAll,5*60*1000);
+  if(arTimer)clearTimeout(arTimer);
+  _scheduleAutoRefresh();
+}
+// Self-rescheduling auto-refresh with jitter (±90s around a 10-minute base interval).
+// A plain setInterval(loadAll, N) means every open browser tab refreshes on the exact same clock
+// cadence relative to its own login time — with several staff logged in at once this synchronizes
+// everyone's ~19-sheet loadAll() burst into the same instant, which can exceed Apps Script's
+// simultaneous-execution quota and cause "Server temporarily unavailable" for anyone trying to
+// log in right then. Jitter spreads refreshes out over time; the longer 10-minute base interval
+// (was 5) halves the steady-state background request volume — this doesn't make any single
+// refresh faster, but reduces how often refreshes overlap with each other or with live logins.
+// Tradeoff: background data can now be up to ~11-12 minutes stale between refreshes (manual
+// refresh is still instant) — reconsider if that's too stale for live cross-branch coordination.
+function _scheduleAutoRefresh(){
+  if(arTimer)clearTimeout(arTimer);
+  const jitterMs=(Math.random()*180000)-90000; // -90s..+90s
+  const delay=Math.max(60000,10*60*1000+jitterMs);
+  arTimer=setTimeout(()=>{loadAll();_scheduleAutoRefresh();},delay);
 }
 
 function doLogout(){
@@ -1680,7 +1727,7 @@ function doLogout(){
   if(_luTimer){clearInterval(_luTimer);_luTimer=null;}
   if(_luRefTimer){clearInterval(_luRefTimer);_luRefTimer=null;}
   curUser=null;lClicks=0;_l3wShown=false;
-  if(arTimer){clearInterval(arTimer);arTimer=null;}
+  if(arTimer){clearTimeout(arTimer);arTimer=null;}
   // Only clear fields if not remembered — keep pre-filled if Remember Me is on
   if(localStorage.getItem('grd_rem')!=='1'){
     ['liU','liP'].forEach(id=>document.getElementById(id).value='');
@@ -3984,13 +4031,27 @@ function buildVinModelMap(){
   }
   const h=st[hi].map(x=>String(x||'').trim());
   const vinI=(()=>{for(const k of['VIN','VIN No','VIN NO','Vin No','VIN Number','Chassis','Chassis No']){const i=fc(h,k);if(i>=0)return i;}return 18;})();
-  const mdlI=(()=>{for(const k of['Model','MODEL']){const i=fc(h,k);if(i>=0)return i;}return 9;})();
+  const mdlI=findModelCol(h);
   st.slice(hi+1).forEach(r=>{
     const vin=String(r[vinI]||'').trim();
     const model=String(r[mdlI]||'').trim();
     if(vin&&model)map[vin]=model;
   });
   return map;
+}
+// Finds a genuine "Model" column, explicitly rejecting composite columns like "Model & Variant"
+// or "Model Code" that fc()'s substring fallback would otherwise match (since both contain the
+// word "model") and which would leak full variant text into what should be a short model name.
+function findModelCol(h){
+  const hl=h.map(x=>String(x||'').toLowerCase().trim());
+  // 1. Exact 'model' header only
+  let i=hl.findIndex(x=>x==='model');
+  if(i>=0)return i;
+  // 2. Header that starts with 'model' but isn't a composite (no '&', 'variant', or 'code')
+  i=hl.findIndex(x=>x.startsWith('model')&&!x.includes('variant')&&!x.includes('code')&&!x.includes('&'));
+  if(i>=0)return i;
+  // 3. Fixed fallback position (historical default column for Model in the Stock sheet)
+  return 9;
 }
 // Build VIN→{model,variant,colour} from Stock sheet (dynamic header detection)
 function buildVinDetailMap(){
@@ -4001,7 +4062,7 @@ function buildVinDetailMap(){
   for(let i=0;i<Math.min(3,st.length);i++){const r=st[i].map(x=>String(x||'').toLowerCase()).join(' ');if(r.includes('model')&&(r.includes('vin')||r.includes('status')||r.includes('colour')||r.includes('color'))){hi=i;break;}}
   const h=st[hi].map(x=>String(x||'').trim());
   const vinI =(()=>{for(const k of['VIN','VIN No','VIN NO','Vin No','VIN Number','Chassis','Chassis No']){const i=fc(h,k);if(i>=0)return i;}return 18;})();
-  const mdlI =(()=>{for(const k of['Model','MODEL']){const i=fc(h,k);if(i>=0)return i;}return 9;})();
+  const mdlI =findModelCol(h);
   const varI =(()=>{for(const k of['INTERNAL CODE','Internal Code','Variant','VARIANT','Var']){const i=fc(h,k);if(i>=0)return i;}return-1;})();
   const clrI =(()=>{for(const k of['Color','Colour','COLOR','COLOUR']){const i=fc(h,k);if(i>=0)return i;}return-1;})();
   // Model Code — same column used by specRows for variant resolution
