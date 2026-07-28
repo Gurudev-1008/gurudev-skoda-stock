@@ -1249,16 +1249,14 @@ async function loadAll(){
   document.getElementById('tH').innerHTML='';
   document.getElementById('tB').innerHTML='<tr><td colspan="20"><div class="sb"><div class="sp"></div><strong>Loading data…</strong></div></td></tr>';
 
-  // Phase 1a: Load the 3 most critical sheets first (Stock, Live RPO, Users)
-  // Keeping this as a smaller batch avoids overwhelming GAS with 7 simultaneous requests
-  await Promise.all([0,2,4].map(async i=>{
-    const sh=SHEETS[i];
-    try{const j=await jFetch(sh);SD[i]=j.length>=1?j:[];}
-    catch{SD[i]=[];}
-  }));
-
-  // Phase 1b: Load remaining core sheets (Allocation, Product Spec, Ageing Stock, Demo Stock)
-  await Promise.all([1,3,5,6].map(async i=>{
+  // Phase 1: Load the 7 core sheets (Stock, Live RPO, Users, Allocation, Product Spec,
+  // Ageing Stock, Demo Stock) needed before the first render. These used to go in two
+  // sequential waves (3 then 4) to avoid a 7-way burst, which cost an extra round-trip's
+  // worth of wait every load. Now that Code.gs caches each sheet server-side (20s TTL —
+  // see doGet in Code.gs), repeated/simultaneous requests for the same sheet across users
+  // are served from cache almost instantly, so firing all 7 in parallel is safe and cuts
+  // this phase roughly in half.
+  await Promise.all([0,1,2,3,4,5,6].map(async i=>{
     const sh=SHEETS[i];
     try{const j=await jFetch(sh);SD[i]=j.length>=1?j:[];}
     catch{SD[i]=[];}
@@ -1303,7 +1301,7 @@ async function loadAll(){
   // workers pull the next sheet off a shared queue as soon as they finish their current one, so one
   // slow sheet only ties up its own worker — the others keep going independently.
   (async()=>{
-    const _p2Concurrency=4; // peak concurrent requests per user (vs. 12 originally / 3 in the slower batch attempt)
+    const _p2Concurrency=6; // peak concurrent requests per user (vs. 12 originally / 3 in the slower batch attempt / 4 before caching was added). Server-side caching absorbs the extra concurrency, so this now moves 12 sheets in 2 waves instead of 3.
     const _p2Indices=SHEETS.slice(7).map((_,i)=>7+i);
     let _p2Cursor=0;
     // Leads (10, ~900 rows) / QL Sheet (11, ~3000 rows) / TD Sheet (12, ~700 rows) feed the ETBR
