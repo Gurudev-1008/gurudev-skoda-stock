@@ -1167,6 +1167,7 @@ let SD=Array.from({length:18},()=>[]); // sheetData SD[0-17]
 let specRows=[],vyMap={},freeMap={},freeBillingMap={},staffList=[];
 let curTab=0,isFree=false,sCol=-1,sAsc=true;
 let curUser=null,lClicks=0,lTimer=null,arTimer=null,_luTimer=null,_luRefTimer=null;
+let idleTimer=null,_idleLastReset=0;
 let _loginTime=0,_loginUserRow=-1,_loginLastLogColIdx=-1,_loginDurColIdx=-1;
 let _leaseOptions=null; // null=not yet fetched; []=fetched (empty); [...]=fetched with values
 // Record-count display: L3/L4 see only count; others see "X of Y records"
@@ -1672,7 +1673,28 @@ function loginOK(user){
   loadNotifEmails(); // pre-warm email cache for all users so deallot notifications always work
   if(arTimer)clearTimeout(arTimer);
   _scheduleAutoRefresh();
+  _idleLastReset=0;_resetIdleTimer(); // start the 10-minute inactivity clock for this session
 }
+
+// Idle auto-logout: if a logged-in user has no mouse/keyboard/touch activity for 10 minutes,
+// log them out automatically so an unattended, signed-in session doesn't stay open indefinitely.
+// mousemove can fire dozens of times/sec, so resets are throttled to at most once every 5s.
+function _resetIdleTimer(){
+  if(!curUser)return; // not logged in — nothing to time out
+  const now=Date.now();
+  if(now-_idleLastReset<5000)return;
+  _idleLastReset=now;
+  if(idleTimer)clearTimeout(idleTimer);
+  idleTimer=setTimeout(_idleLogout,10*60*1000);
+}
+function _idleLogout(){
+  if(!curUser)return;
+  doLogout();
+  alert('You have been logged out due to 10 minutes of inactivity.');
+}
+['mousemove','mousedown','keydown','scroll','touchstart'].forEach(evt=>{
+  document.addEventListener(evt,_resetIdleTimer,{passive:true});
+});
 // Self-rescheduling auto-refresh with jitter (±90s around a 10-minute base interval).
 // A plain setInterval(loadAll, N) means every open browser tab refreshes on the exact same clock
 // cadence relative to its own login time — with several staff logged in at once this synchronizes
@@ -1726,6 +1748,7 @@ function doLogout(){
   if(_luRefTimer){clearInterval(_luRefTimer);_luRefTimer=null;}
   curUser=null;lClicks=0;_l3wShown=false;
   if(arTimer){clearTimeout(arTimer);arTimer=null;}
+  if(idleTimer){clearTimeout(idleTimer);idleTimer=null;}
   // Only clear fields if not remembered — keep pre-filled if Remember Me is on
   if(localStorage.getItem('grd_rem')!=='1'){
     ['liU','liP'].forEach(id=>document.getElementById(id).value='');
