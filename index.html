@@ -1685,12 +1685,12 @@ function _resetIdleTimer(){
   if(now-_idleLastReset<5000)return;
   _idleLastReset=now;
   if(idleTimer)clearTimeout(idleTimer);
-  idleTimer=setTimeout(_idleLogout,10*60*1000);
+  idleTimer=setTimeout(_idleLogout,20*60*1000);
 }
 function _idleLogout(){
   if(!curUser)return;
   doLogout();
-  alert('You have been logged out due to 10 minutes of inactivity.');
+  alert('You have been logged out due to 20 minutes of inactivity.');
 }
 ['mousemove','mousedown','keydown','scroll','touchstart'].forEach(evt=>{
   document.addEventListener(evt,_resetIdleTimer,{passive:true});
