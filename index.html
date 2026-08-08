@@ -1065,8 +1065,8 @@ const CY=String(new Date().getFullYear());
 // Level-based tab access — tab indices each level can see
 // Tabs: 0=Stock,1=Allocation,2=LiveRPO,3=FreeStock,4=Manage,5=Ageing,6=Demo,7=Allotment,8=AG/DM Allotment,9=Reports,10=De-allotted
 const LEVEL_TABS={
-  1:  [0,1,2,3,5,6,7,8,9,10,11,12,17,18,19,20],        // All tabs except Manage, Analytics, Stock Planning (Admin only) + Tools
-  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,17,18,19,20],      // Same as L1 + Tools
+  1:  [0,1,2,3,5,6,7,8,9,10,11,12,13,14,17,18,19,20],        // All tabs except Manage (Admin only) + Tools — now incl. Analytics & Stock Planning
+  '1A':[0,1,2,3,5,6,7,8,9,10,11,12,13,14,17,18,19,20],      // Same as L1 + Tools
   2:  [2,3,5,6,7,8,9,10,11],                  // No Stock/Allocation/Manage — no Retail Finance
   '2F':[2,3,5,6,7,8,9,10,11,12],              // Same as L2 + Retail Finance (Retail + ROI sub-tabs only, no Allotment)
   3:  [2,3,5,6,7,8,9,10,11],                  // Same as L2 — branch pre-filled, no Retail Finance, no Stock Planning
@@ -7184,6 +7184,46 @@ function renderStockPlanning(){
   // (covers variants that appear in Product Spec but not yet in stock sheet)
   specRows.forEach(s=>{if(s.variant&&s.modelCode)vaToMC[nrm(s.variant)]=vaToMC[nrm(s.variant)]||s.modelCode;});
 
+  // ── Free count from Allocation sheet (SD[1]) ──────────────────────────────
+  // Shown as its own column (not merged into Stock's Free count) since Allocation is a
+  // separate sheet that may update on a different cadence — useful as a cross-check.
+  const allocFreeMap={}; // mcClKey(modelCode, colour) → count of Allocation rows with Status = Free
+  {
+    const allocData=SD[1]||[];
+    if(allocData.length>=2){
+      let alHi=0;
+      for(let i=0;i<Math.min(3,allocData.length);i++){
+        const r=allocData[i].map(x=>String(x||'').toLowerCase()).join(' ');
+        if(r.includes('model')&&(r.includes('status')||r.includes('code'))){alHi=i;break;}
+      }
+      const alH=allocData[alHi].map(x=>String(x||'').replace(/^﻿/,'').trim());
+      const alMCI=fc(alH,SC.modelCode);
+      const alClI=(()=>{for(const k of['Color','Colour','COLOR','COLOUR']){const i=fc(alH,k);if(i>=0)return i;}return -1;})();
+      const alBrI=(()=>{let i=fc(alH,'Branch Name');if(i>=0)return i;return fc(alH,'Branch');})();
+      let alStI=(()=>{for(const k of['Status','STATUS','Allotment Status','Stock Status','STOCK STATUS','Stage','STAGE','Vehicle Status']){const i=fc(alH,k);if(i>=0)return i;}return-1;})();
+      if(alStI<0){
+        for(let ci=0;ci<alH.length;ci++){
+          const vals=allocData.slice(alHi+1).map(r=>String(r[ci]||'').trim().toLowerCase()).filter(Boolean);
+          if(vals.some(v=>v.includes('free')||v.includes('vna')||v.includes('allot'))){alStI=ci;break;}
+        }
+      }
+      if(alMCI>=0&&alStI>=0){
+        allocData.slice(alHi+1).forEach(r=>{
+          if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+          const br=alBrI>=0?String(r[alBrI]||'').trim().toUpperCase():'';
+          if(brFilter&&br&&br!==brFilter)return;
+          const mc=String(r[alMCI]||'').trim();
+          if(!mc)return;
+          const st=String(r[alStI]||'').trim().toLowerCase();
+          if(st!=='free')return;
+          const cl=alClI>=0?String(r[alClI]||'').trim():'';
+          const key=mcClKey(mc,cl);
+          allocFreeMap[key]=(allocFreeMap[key]||0)+1;
+        });
+      }
+    }
+  }
+
   // ── VNA from Live RPO (SD[2]) ──
   // RPO doesn't have Model Code — resolve variant name → model code via vaToMC
   const vnaMap={}; // mcClKey(modelCode, colour) → count; rows with no colour stored under mcClKey(mc,'')
@@ -7293,7 +7333,7 @@ function renderStockPlanning(){
   // skipNoCl=true → colour-level call: only exact colour match, no no-colour fallback
   // skipNoCl=false (default) → variant/model-level call: add no-colour VNA once per mc
   const aggFor=(pairs, skipNoCl=false)=>{
-    const agg={...emptyStock(),vna:0,sales:0};
+    const agg={...emptyStock(),vna:0,sales:0,allocFree:0};
     const seenMCForNoCl=new Set(); // track mc already credited for no-colour VNA rows
     pairs.forEach(({mc,cl})=>{
       if(!mc)return;
@@ -7307,6 +7347,7 @@ function renderStockPlanning(){
         seenMCForNoCl.add(nrm(mc));
       }
       agg.sales+=(salesMap[k]||0);
+      agg.allocFree+=(allocFreeMap[k]||0);
     });
     return agg;
   };
@@ -7351,12 +7392,13 @@ function renderStockPlanning(){
       TD(fmt(avgSales))+
       TD(coverage!==null?fmtC(coverage)+' mo':'—',cls)+
       TD(planQty>0?'<strong style="color:#3b82f6">'+planQty+'</strong>':'—')+
-      TD(badge);
+      TD(badge)+
+      TD(agg.allocFree||0,agg.allocFree?'color:#22c55e;font-weight:600':'');
   };
 
   // ── Build table rows ──
   let tHTML='';
-  const NCOLS=14; // total columns
+  const NCOLS=15; // total columns
 
   Object.keys(hierarchy).sort().forEach(model=>{
     const variants=hierarchy[model];
@@ -7459,7 +7501,7 @@ function renderStockPlanning(){
     const mAgg=aggFor(mPairs);
     const mM=planMetrics(mAgg);
     const mB=cvgBadge(mM.coverage);
-    spExpRows.push({type:'model',label:model,colour:'',free:mAgg.free,allotted:mAgg.allotted,demo:mAgg.demo,ageing:mAgg.ageing,fprOthers:mAgg.fpr+mAgg.others,total:mM.total,vna:mAgg.vna,sales:mAgg.sales,avgSales:mM.avgSales,coverage:mM.coverage,planQty:mM.planQty,statusTxt:mB.badge});
+    spExpRows.push({type:'model',label:model,colour:'',free:mAgg.free,allotted:mAgg.allotted,demo:mAgg.demo,ageing:mAgg.ageing,fprOthers:mAgg.fpr+mAgg.others,total:mM.total,vna:mAgg.vna,sales:mAgg.sales,avgSales:mM.avgSales,coverage:mM.coverage,planQty:mM.planQty,statusTxt:mB.badge,allocFree:mAgg.allocFree});
     Object.keys(variants).sort().forEach(function(va){
       const vMC2=varMC[model+'|||'+va]||'';
       const cols=variants[va];
@@ -7467,12 +7509,12 @@ function renderStockPlanning(){
       const vAgg=aggFor(vPairs);
       const vM=planMetrics(vAgg);
       const vB=cvgBadge(vM.coverage);
-      spExpRows.push({type:'variant',label:va,colour:cols.length?cols.length+' colours':'—',free:vAgg.free,allotted:vAgg.allotted,demo:vAgg.demo,ageing:vAgg.ageing,fprOthers:vAgg.fpr+vAgg.others,total:vM.total,vna:vAgg.vna,sales:vAgg.sales,avgSales:vM.avgSales,coverage:vM.coverage,planQty:vM.planQty,statusTxt:vB.badge});
+      spExpRows.push({type:'variant',label:va,colour:cols.length?cols.length+' colours':'—',free:vAgg.free,allotted:vAgg.allotted,demo:vAgg.demo,ageing:vAgg.ageing,fprOthers:vAgg.fpr+vAgg.others,total:vM.total,vna:vAgg.vna,sales:vAgg.sales,avgSales:vM.avgSales,coverage:vM.coverage,planQty:vM.planQty,statusTxt:vB.badge,allocFree:vAgg.allocFree});
       [...cols].sort().forEach(function(cl){
         const cAgg=aggFor([{mc:vMC2,cl:cl}],true);
         const cM=planMetrics(cAgg);
         const cB=cvgBadge(cM.coverage);
-        spExpRows.push({type:'colour',label:va,colour:cl||'No colour',free:cAgg.free,allotted:cAgg.allotted,demo:cAgg.demo,ageing:cAgg.ageing,fprOthers:cAgg.fpr+cAgg.others,total:cM.total,vna:cAgg.vna,sales:cAgg.sales,avgSales:cM.avgSales,coverage:cM.coverage,planQty:cM.planQty,statusTxt:cB.badge});
+        spExpRows.push({type:'colour',label:va,colour:cl||'No colour',free:cAgg.free,allotted:cAgg.allotted,demo:cAgg.demo,ageing:cAgg.ageing,fprOthers:cAgg.fpr+cAgg.others,total:cM.total,vna:cAgg.vna,sales:cAgg.sales,avgSales:cM.avgSales,coverage:cM.coverage,planQty:cM.planQty,statusTxt:cB.badge,allocFree:cAgg.allocFree});
       });
     });
   });
@@ -7541,6 +7583,7 @@ function renderStockPlanning(){
             <th style="${TH_S}" title="(Total Stock − VNA) ÷ Avg Monthly Sales — VNA orders are committed demand that must be received from Skoda, reducing effective available stock">Coverage</th>
             <th style="${TH_S}" title="Units to order from Skoda = VNA + (2-month retail target) − Total Stock">Plan Qty</th>
             <th style="${TH_S}">Status</th>
+            <th style="${TH_S}" title="Free-status count from the Allocation sheet — cross-check against Stock's Free column">Free (Allocation)</th>
           </tr>
         </thead>
         <tbody>${tHTML}</tbody>
@@ -7592,6 +7635,7 @@ function _spBuildPDF(d,title){
       +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;">'+covStr+'</td>'
       +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.planQty>0?'color:#60a5fa;font-weight:700;':'color:#6b7280;')+'">'+planStr+'</td>'
       +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;font-size:9px;">'+statusStr+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.allocFree>0?'color:#4ade80;font-weight:600;':'')+'">'+String(r.allocFree||0)+'</td>'
       +'</tr>';
   });
   var dateStr=new Date().toLocaleDateString('en-IN');
@@ -7625,7 +7669,7 @@ function _spBuildPDF(d,title){
     +'<th style="text-align:left;min-width:130px">Variant</th>'
     +'<th>Colour</th><th>Free</th><th>Allot</th><th>Demo</th><th>Ageing</th><th>FPR/Oth</th>'
     +'<th>Total</th><th>VNA</th><th>Sales ('+period+'M)</th><th>Avg/Mo</th>'
-    +'<th>Coverage</th><th>Plan Qty</th><th>Status</th>'
+    +'<th>Coverage</th><th>Plan Qty</th><th>Status</th><th>Free (Alloc.)</th>'
     +'</tr></thead><tbody>'+bodyHtml+'</tbody></table>'
     +'<script>window.onload=function(){window.print();};</scr'+'ipt>'
     +'</body></html>';
@@ -10561,9 +10605,15 @@ function renderReports(){
         if(gI_direct>=0){
           grp=toIntSW(String(r[gI_direct]||'').trim());
         } else if(owI>=0){
-          // Resolve owner→branch via Users sheet map
-          const ow=String(r[owI]||'').trim().toLowerCase();
-          grp=ownerToBr[ow]||'';
+          // Resolve owner→branch via Users sheet map. Try the Zoho/Internal-name-normalised
+          // form first, then the raw name — ownerToBr is keyed by both Zoho and Internal names,
+          // but the raw owner string in Leads/QL/TD (e.g. "Manikandan S") may only match after
+          // normalisation (same fallback rowPassesBranch already uses below). Without this, any
+          // owner whose raw string didn't happen to already be a registered key silently dropped
+          // out of every branch's Enq/TD count.
+          const rawOw=String(r[owI]||'').trim();
+          const intOw=toIntSW(rawOw);
+          grp=ownerToBr[intOw.toLowerCase()]||ownerToBr[rawOw.toLowerCase()]||'';
         }
         if(isValidGrp(grp))out[grp]=(out[grp]||0)+1;
       });
@@ -10577,7 +10627,7 @@ function renderReports(){
           if(extraFn&&!extraFn(r,h))return;
           let grp='';
           if(gI_direct>=0)grp=toIntSW(String(r[gI_direct]||'').trim());
-          else if(owI>=0){const ow=String(r[owI]||'').trim().toLowerCase();grp=ownerToBr[ow]||'';}
+          else if(owI>=0){const rawOw2=String(r[owI]||'').trim();const intOw2=toIntSW(rawOw2);grp=ownerToBr[intOw2.toLowerCase()]||ownerToBr[rawOw2.toLowerCase()]||'';}
           if(isValidGrp(grp))out[grp]=(out[grp]||0)+1;
         });
       }
@@ -10585,9 +10635,12 @@ function renderReports(){
     };
 
     // ── Source sub-tab definitions ────────────────────
+    // Normalise before matching (strip spaces/hyphens/underscores) so "Walk in", "Walk-in",
+    // "Walk_In", "WALKIN" etc. — and the same for Tele — are all treated as one source.
+    const _normSrcSW=s=>String(s||'').toLowerCase().replace(/[\s\-_]/g,'');
     const srcDefs=[
-      {id:'wi',label:'Walk In',      match:s=>s.includes('walk')||s.includes('walkin')||s.includes('walk-in')||s.includes('showroom')},
-      {id:'ti',label:'Tele In',      match:s=>s.includes('tele')||s.includes('telein')||s.includes('tele-in')||s.includes('phone')||s.includes('call in')},
+      {id:'wi',label:'Walk In',      match:s=>{const n=_normSrcSW(s);return n.includes('walkin')||n.includes('showroom');}},
+      {id:'ti',label:'Tele In',      match:s=>{const n=_normSrcSW(s);return n.includes('telein')||n.includes('phone')||n.includes('callin');}},
     ];
 
     // ── Shared styling (identical to ETBR Overall) ───
