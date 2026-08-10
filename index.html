@@ -1050,7 +1050,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
 <script>
 /* ═══ CONFIG ═══ */
 const API   = 'https://script.google.com/macros/s/AKfycbyOD9UX2Ztba-JriJzk3dylhLm03WLPFk2c5LLEQ8Z8O1_CipAxO6mWe71WkuW5Wv2m/exec';
-const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users','Agein_Stock','Demo_stock','Allotment','AG/DM Allotment','De-Allot_Master','Leads','QL Sheet','TD Sheet','Target Sheet','Retail_Master','Tab Access','ROI','App_Settings','Exshowroom Price'];
+const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users','Agein_Stock','Demo_stock','Allotment','AG/DM Allotment','De-Allot_Master','Leads','QL Sheet','TD Sheet','Target Sheet','Retail_Master','Tab Access','ROI','App_Settings','Exshowroom Price','OpenPL'];
 // SD indices: 0=Stock,1=Alloc,2=LiveRPO,3=ProdSpec,4=Users,5=AgeinStock,6=DemoStock,
 //             7=Allotment,8=AG/DM Allot,9=DeAllot,10=Leads,11=QL,12=TD,13=TargetSheet,
 //             14=Retail_Master,15=Tab Access,16=ROI,17=App_Settings
@@ -1270,7 +1270,7 @@ async function loadAll(){
 
   // Phase 2: Load remaining sheets (7+) in background
   // Each sheet re-renders the current tab as soon as its data arrives (no waiting for all sheets)
-  const _p2Deps={7:[7,8],10:[9],12:[7,8,14,16],13:[14],14:[14]}; // tab → sdIdx(s) it needs
+  const _p2Deps={7:[7,8],10:[9],12:[7,8,14,16],13:[14],14:[14,19]}; // tab → sdIdx(s) it needs
   const _p2Loaded=new Set();
   const _p2TryRender=()=>{
     if(curTab===7&&_p2Loaded.has(7)&&_p2Loaded.has(8)){try{renderTable();}catch(e){console.error(e);}}
@@ -1279,7 +1279,7 @@ async function loadAll(){
     else if(curTab===10&&_p2Loaded.has(9)){try{renderTable();}catch(e){console.error(e);}}
     else if(curTab===12&&(_p2Loaded.has(7)||_p2Loaded.has(14)||_p2Loaded.has(16))){try{renderTable();}catch(e){console.error(e);}}
     else if(curTab===13&&_p2Loaded.has(14)){try{renderAnalytics();}catch(e){console.error(e);}}
-    else if(curTab===14&&_p2Loaded.has(14)){try{renderStockPlanning();}catch(e){console.error(e);}}
+    else if(curTab===14&&(_p2Loaded.has(14)||_p2Loaded.has(19))){try{renderStockPlanning();}catch(e){console.error(e);}}
     // Reports tab depends on many Phase-2 sheets (Leads, QL, TD, Target Sheet, etc.) —
     // re-render as each one lands so R-cards (e.g. R6 Target vs Actual) don't stay blank.
     else if(curTab===9){try{renderReports();}catch(e){console.error(e);}}
@@ -7224,6 +7224,50 @@ function renderStockPlanning(){
     }
   }
 
+  // ── Open Pool Stock presence check (SD[19] — OpenPL sheet) ────────────────
+  // OpenPL lists specific line items available in the open pool. Confirmed via screenshots
+  // that OpenPL's own "Model Code" column uses a different code format than Product Spec's
+  // Model Code (e.g. "S_ST1ATOB"), so Model Code can't be used as the join key here. OpenPL's
+  // "MODEL" column instead holds the full variant name (e.g. "Slavia Prestige 1.0 TSI AT"),
+  // which matches Stock Planning's Variant label exactly — so match on Variant name + Exterior
+  // Colour text instead. Presence-only: a Model/Variant row shows "Yes" if ANY of its colours
+  // has at least one matching OpenPL row.
+  const openPoolSet=new Set(); // nrm(variantName)+'|||'+nrm(exteriorColour)
+  {
+    const opData=SD[19]||[];
+    if(opData.length>=2){
+      let opHi=0;
+      for(let i=0;i<Math.min(5,opData.length);i++){
+        const r=opData[i].map(x=>String(x||'').toLowerCase()).join(' ');
+        if(r.includes('model')&&(r.includes('exterior')||r.includes('colour')||r.includes('color')||r.includes('grade'))){opHi=i;break;}
+      }
+      const opH=opData[opHi].map(x=>String(x||'').replace(/^﻿/,'').trim());
+      // "MODEL" column — exact header match only (must not pick up "Model Code" or
+      // "Model Code+EXTERIOR COLOR", both of which also contain "model").
+      const opMdI=opH.findIndex(x=>String(x||'').trim().toLowerCase()==='model');
+      // Colour — "EXTERIOR COLOR" is this sheet's actual column name, so check that first
+      // (and its variants) before falling back to a plain Color/Colour header.
+      const opClI=(()=>{
+        for(const k of['Exterior Color','Exterior Colour','EXTERIOR COLOR','EXTERIOR COLOUR','Color','Colour','COLOR','COLOUR']){
+          const i=fc(opH,k);if(i>=0)return i;
+        }
+        return -1;
+      })();
+      const opBrI=(()=>{let i=fc(opH,'Branch Name');if(i>=0)return i;return fc(opH,'Branch');})();
+      if(opMdI>=0){
+        opData.slice(opHi+1).forEach(r=>{
+          if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+          const br=opBrI>=0?String(r[opBrI]||'').trim().toUpperCase():'';
+          if(brFilter&&br&&br!==brFilter)return;
+          const md=String(r[opMdI]||'').trim();
+          if(!md)return;
+          const cl=opClI>=0?String(r[opClI]||'').trim():'';
+          openPoolSet.add(nrm(md)+'|||'+nrm(cl));
+        });
+      }
+    }
+  }
+
   // ── VNA from Live RPO (SD[2]) ──
   // RPO doesn't have Model Code — resolve variant name → model code via vaToMC
   const vnaMap={}; // mcClKey(modelCode, colour) → count; rows with no colour stored under mcClKey(mc,'')
@@ -7333,9 +7377,9 @@ function renderStockPlanning(){
   // skipNoCl=true → colour-level call: only exact colour match, no no-colour fallback
   // skipNoCl=false (default) → variant/model-level call: add no-colour VNA once per mc
   const aggFor=(pairs, skipNoCl=false)=>{
-    const agg={...emptyStock(),vna:0,sales:0,allocFree:0};
+    const agg={...emptyStock(),vna:0,sales:0,allocFree:0,openPool:false};
     const seenMCForNoCl=new Set(); // track mc already credited for no-colour VNA rows
-    pairs.forEach(({mc,cl})=>{
+    pairs.forEach(({mc,cl,va})=>{
       if(!mc)return;
       const k=mcClKey(mc,cl);
       addStock(agg,stockMap[k]||emptyStock());
@@ -7348,6 +7392,8 @@ function renderStockPlanning(){
       }
       agg.sales+=(salesMap[k]||0);
       agg.allocFree+=(allocFreeMap[k]||0);
+      // Open Pool — matched by Variant name + Colour (see openPoolSet build above), not Model Code
+      if(va&&openPoolSet.has(nrm(va)+'|||'+nrm(cl)))agg.openPool=true;
     });
     return agg;
   };
@@ -7393,12 +7439,13 @@ function renderStockPlanning(){
       TD(coverage!==null?fmtC(coverage)+' mo':'—',cls)+
       TD(planQty>0?'<strong style="color:#3b82f6">'+planQty+'</strong>':'—')+
       TD(badge)+
-      TD(agg.allocFree||0,agg.allocFree?'color:#22c55e;font-weight:600':'');
+      TD(agg.allocFree||0,agg.allocFree?'color:#22c55e;font-weight:600':'')+
+      TD(agg.openPool?'Yes':'No',agg.openPool?'color:#22c55e;font-weight:700':'color:var(--text-dim)');
   };
 
   // ── Build table rows ──
   let tHTML='';
-  const NCOLS=15; // total columns
+  const NCOLS=16; // total columns
 
   Object.keys(hierarchy).sort().forEach(model=>{
     const variants=hierarchy[model];
@@ -7409,7 +7456,7 @@ function renderStockPlanning(){
     Object.keys(variants).forEach(va=>{
       const mc=varMC[`${model}|||${va}`]||'';
       const cls=variants[va];
-      (cls.length?cls:['']).forEach(cl=>mPairs.push({mc,cl}));
+      (cls.length?cls:['']).forEach(cl=>mPairs.push({mc,cl,va}));
     });
     const mAgg=aggFor(mPairs);
     const{total:mTot,coverage:mCov,planQty:mPQ,avgSales:mAvg}=planMetrics(mAgg);
@@ -7435,7 +7482,7 @@ function renderStockPlanning(){
 
       // Variant-level aggregate
       const vMC=varMC[`${model}|||${va}`]||'';
-      const vPairs=(cols.length?cols:['']).map(cl=>({mc:vMC,cl}));
+      const vPairs=(cols.length?cols:['']).map(cl=>({mc:vMC,cl,va}));
       const vAgg=aggFor(vPairs);
       const{total:vTot,coverage:vCov,planQty:vPQ,avgSales:vAvg}=planMetrics(vAgg);
       const{cls:vCls,badge:vBdg}=cvgBadge(vCov);
@@ -7450,7 +7497,7 @@ function renderStockPlanning(){
 
       // Colour rows
       [...cols].sort().forEach(cl=>{
-        const cAgg=aggFor([{mc:vMC,cl}], true); // colour level: exact match only, no no-colour fallback
+        const cAgg=aggFor([{mc:vMC,cl,va}], true); // colour level: exact match only, no no-colour fallback
         tHTML+=`<tr style="background:var(--bg-deep,var(--bg-surface))">
           ${TDL('<span style="margin-left:36px;width:8px;height:8px;border-radius:50%;display:inline-block;background:'+hue(cl)+';margin-right:6px;vertical-align:middle"></span><span style="font-size:11px;color:var(--text-muted)">'+(cl||'No colour')+'</span>','padding-left:44px')}
           ${TDL('&nbsp;')}
@@ -7496,25 +7543,25 @@ function renderStockPlanning(){
     Object.keys(variants).forEach(function(va){
       const mc=varMC[model+'|||'+va]||'';
       const cls=variants[va];
-      (cls.length?cls:['']).forEach(function(cl){mPairs.push({mc:mc,cl:cl});});
+      (cls.length?cls:['']).forEach(function(cl){mPairs.push({mc:mc,cl:cl,va:va});});
     });
     const mAgg=aggFor(mPairs);
     const mM=planMetrics(mAgg);
     const mB=cvgBadge(mM.coverage);
-    spExpRows.push({type:'model',label:model,colour:'',free:mAgg.free,allotted:mAgg.allotted,demo:mAgg.demo,ageing:mAgg.ageing,fprOthers:mAgg.fpr+mAgg.others,total:mM.total,vna:mAgg.vna,sales:mAgg.sales,avgSales:mM.avgSales,coverage:mM.coverage,planQty:mM.planQty,statusTxt:mB.badge,allocFree:mAgg.allocFree});
+    spExpRows.push({type:'model',label:model,colour:'',free:mAgg.free,allotted:mAgg.allotted,demo:mAgg.demo,ageing:mAgg.ageing,fprOthers:mAgg.fpr+mAgg.others,total:mM.total,vna:mAgg.vna,sales:mAgg.sales,avgSales:mM.avgSales,coverage:mM.coverage,planQty:mM.planQty,statusTxt:mB.badge,allocFree:mAgg.allocFree,openPool:mAgg.openPool});
     Object.keys(variants).sort().forEach(function(va){
       const vMC2=varMC[model+'|||'+va]||'';
       const cols=variants[va];
-      const vPairs=(cols.length?cols:['']).map(function(cl){return{mc:vMC2,cl:cl};});
+      const vPairs=(cols.length?cols:['']).map(function(cl){return{mc:vMC2,cl:cl,va:va};});
       const vAgg=aggFor(vPairs);
       const vM=planMetrics(vAgg);
       const vB=cvgBadge(vM.coverage);
-      spExpRows.push({type:'variant',label:va,colour:cols.length?cols.length+' colours':'—',free:vAgg.free,allotted:vAgg.allotted,demo:vAgg.demo,ageing:vAgg.ageing,fprOthers:vAgg.fpr+vAgg.others,total:vM.total,vna:vAgg.vna,sales:vAgg.sales,avgSales:vM.avgSales,coverage:vM.coverage,planQty:vM.planQty,statusTxt:vB.badge,allocFree:vAgg.allocFree});
+      spExpRows.push({type:'variant',label:va,colour:cols.length?cols.length+' colours':'—',free:vAgg.free,allotted:vAgg.allotted,demo:vAgg.demo,ageing:vAgg.ageing,fprOthers:vAgg.fpr+vAgg.others,total:vM.total,vna:vAgg.vna,sales:vAgg.sales,avgSales:vM.avgSales,coverage:vM.coverage,planQty:vM.planQty,statusTxt:vB.badge,allocFree:vAgg.allocFree,openPool:vAgg.openPool});
       [...cols].sort().forEach(function(cl){
-        const cAgg=aggFor([{mc:vMC2,cl:cl}],true);
+        const cAgg=aggFor([{mc:vMC2,cl:cl,va:va}],true);
         const cM=planMetrics(cAgg);
         const cB=cvgBadge(cM.coverage);
-        spExpRows.push({type:'colour',label:va,colour:cl||'No colour',free:cAgg.free,allotted:cAgg.allotted,demo:cAgg.demo,ageing:cAgg.ageing,fprOthers:cAgg.fpr+cAgg.others,total:cM.total,vna:cAgg.vna,sales:cAgg.sales,avgSales:cM.avgSales,coverage:cM.coverage,planQty:cM.planQty,statusTxt:cB.badge,allocFree:cAgg.allocFree});
+        spExpRows.push({type:'colour',label:va,colour:cl||'No colour',free:cAgg.free,allotted:cAgg.allotted,demo:cAgg.demo,ageing:cAgg.ageing,fprOthers:cAgg.fpr+cAgg.others,total:cM.total,vna:cAgg.vna,sales:cAgg.sales,avgSales:cM.avgSales,coverage:cM.coverage,planQty:cM.planQty,statusTxt:cB.badge,allocFree:cAgg.allocFree,openPool:cAgg.openPool});
       });
     });
   });
@@ -7584,6 +7631,7 @@ function renderStockPlanning(){
             <th style="${TH_S}" title="Units to order from Skoda = VNA + (2-month retail target) − Total Stock">Plan Qty</th>
             <th style="${TH_S}">Status</th>
             <th style="${TH_S}" title="Free-status count from the Allocation sheet — cross-check against Stock's Free column">Free (Allocation)</th>
+            <th style="${TH_S}" title="Yes if this Model Code + Colour is present in the OpenPL sheet">Open Pool Stock</th>
           </tr>
         </thead>
         <tbody>${tHTML}</tbody>
@@ -7636,6 +7684,7 @@ function _spBuildPDF(d,title){
       +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.planQty>0?'color:#60a5fa;font-weight:700;':'color:#6b7280;')+'">'+planStr+'</td>'
       +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;font-size:9px;">'+statusStr+'</td>'
       +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.allocFree>0?'color:#4ade80;font-weight:600;':'')+'">'+String(r.allocFree||0)+'</td>'
+      +'<td style="padding:4px 6px;border:1px solid #334155;text-align:center;'+(r.openPool?'color:#4ade80;font-weight:700;':'color:#6b7280;')+'">'+(r.openPool?'Yes':'No')+'</td>'
       +'</tr>';
   });
   var dateStr=new Date().toLocaleDateString('en-IN');
@@ -7669,7 +7718,7 @@ function _spBuildPDF(d,title){
     +'<th style="text-align:left;min-width:130px">Variant</th>'
     +'<th>Colour</th><th>Free</th><th>Allot</th><th>Demo</th><th>Ageing</th><th>FPR/Oth</th>'
     +'<th>Total</th><th>VNA</th><th>Sales ('+period+'M)</th><th>Avg/Mo</th>'
-    +'<th>Coverage</th><th>Plan Qty</th><th>Status</th><th>Free (Alloc.)</th>'
+    +'<th>Coverage</th><th>Plan Qty</th><th>Status</th><th>Free (Alloc.)</th><th>Open Pool</th>'
     +'</tr></thead><tbody>'+bodyHtml+'</tbody></table>'
     +'<script>window.onload=function(){window.print();};</scr'+'ipt>'
     +'</body></html>';
