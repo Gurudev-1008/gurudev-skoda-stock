@@ -1050,7 +1050,7 @@ td.col-frz-last,th.col-frz-last{box-shadow:4px 0 8px rgba(0,0,0,.35);}
 <script>
 /* ═══ CONFIG ═══ */
 const API   = 'https://script.google.com/macros/s/AKfycbyOD9UX2Ztba-JriJzk3dylhLm03WLPFk2c5LLEQ8Z8O1_CipAxO6mWe71WkuW5Wv2m/exec';
-const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users','Agein_Stock','Demo_stock','Allotment','AG/DM Allotment','De-Allot_Master','Leads','QL Sheet','TD Sheet','Target Sheet','Retail_Master','Tab Access','ROI','App_Settings','Exshowroom Price','OpenPL'];
+const SHEETS= ['Stock','Allocation','Live RPO','Product Spec','Users','Agein_Stock','Demo_stock','Allotment','AG/DM Allotment','De-Allot_Master','Leads','QL Sheet','TD Sheet','Target Sheet','Retail_Master','Tab Access','ROI','App_Settings','Exshowroom Price','OpenPL','Branch Code'];
 // SD indices: 0=Stock,1=Alloc,2=LiveRPO,3=ProdSpec,4=Users,5=AgeinStock,6=DemoStock,
 //             7=Allotment,8=AG/DM Allot,9=DeAllot,10=Leads,11=QL,12=TD,13=TargetSheet,
 //             14=Retail_Master,15=Tab Access,16=ROI,17=App_Settings
@@ -10226,7 +10226,7 @@ function renderReports(){
     const curDate={y:_curY,m:_curM};
     const rawLeads  =rawOwnerCount(SD[10]||[],['Lead Owner','LeadOwner','Owner','Salesperson','SC Name'],_uBranch,null);
     const rawQLAll  =rawOwnerCount(SD[11]||[],['Qualified Leads Owner','QL Owner','Owner','Salesperson','SC Name'],_uBranch,null);
-    const rawTD     =rawOwnerCount(SD[12]||[],['Test Drive Owner','TD Owner','Activity Owner','Owner','Salesperson','SC Name'],_uBranch,null,['Lead Source (Lead)','Lead Source','LeadSource'],['Lead Source (Qualified)']);
+    const rawTD     =rawOwnerCount(SD[12]||[],['Test Drive Owner','TD Owner','Activity Owner','Owner','Salesperson','SC Name'],_uBranch,null,['Lead Source (Lead)','Lead Source','LeadSource'],['Lead Source (Qualified Leads)','Lead Source (Qualified)','Lead Source(Qualified Leads)']);
     const leadsCount  =zohoToSC(rawLeads);
     const qlAllCount  =zohoToSC(rawQLAll);
     const tdCount     =zohoToSC(rawTD);
@@ -10533,8 +10533,14 @@ function renderReports(){
     // ── Build zohoMap (zoho_lower→internalName) + ownerToBr (name_lower→branch) from SD[4] ─
     // zohoMap is used to normalise raw SC names from sheets to one canonical internal name
     // (same approach as ETBR Overall) so duplicate rows like "ARAVIND TEYNAMPET" / "ARAVIND_TEY" merge
-    const zohoMapSW={};  // zoho_lower → internalName
-    const ownerToBr={};  // name_lower → branch (for branch-fallback filtering)
+    // Robust name key: collapses non-breaking/zero-width/double spaces to one, trims, lowercases,
+    // and drops a single trailing period — CRM exports (Zoho) commonly carry these artifacts and
+    // they were previously causing exact-match lookups to silently miss (e.g. a name matching in
+    // the Users sheet but failing to resolve when read from Leads/QL/TD, dropping those rows out
+    // of every branch's Enquiry/TD count without any visible error).
+    const _nmNorm=s=>String(s||'').replace(/[ ​‌‍﻿]/g,' ').replace(/\s+/g,' ').trim().toLowerCase().replace(/\.+$/,'');
+    const zohoMapSW={};  // nmNorm(zoho) → internalName
+    const ownerToBr={};  // nmNorm(name) → branch (for branch-fallback filtering)
     {
       const ud=SD[4]||[];
       if(ud.length>=2){
@@ -10544,7 +10550,7 @@ function renderReports(){
         const uBI=cI(uH,brCN);
         // Helper: register both underscore and space variants so "Ganesh Ann" ↔ "Ganesh_Ann" both resolve
       const regMap=(map,key,val)=>{
-        const kl=key.toLowerCase();
+        const kl=_nmNorm(key);
         map[kl]=val;
         const swapped=kl.includes('_')?kl.replace(/_/g,' '):kl.replace(/ /g,'_');
         if(swapped!==kl)map[swapped]=val;
@@ -10566,11 +10572,53 @@ function renderReports(){
     // Normalise any raw name to canonical internal name — tries swapped underscore/space variant on miss
     const toIntSW=name=>{
       const n=String(name||'').trim();if(!n)return n;
-      const nl=n.toLowerCase();
+      const nl=_nmNorm(n);
       if(zohoMapSW[nl])return zohoMapSW[nl];
       const sw=nl.includes('_')?nl.replace(/_/g,' '):nl.replace(/ /g,'_');
       return zohoMapSW[sw]||n;
     };
+
+    // Last-resort fuzzy owner→branch fallback — for names that still don't match exactly (e.g.
+    // token order differs, or a separator character not covered by the whitespace/underscore
+    // normalisation above). Splits both names into word tokens and requires at least 2 matching
+    // tokens (or all tokens, for single-word names) resolving to exactly one branch, so it won't
+    // silently misattribute a genuinely unregistered name to the wrong branch.
+    const _ownerToBrTokens=Object.keys(ownerToBr).map(k=>({tokens:k.split(/[\s_]+/).filter(t=>t.length>=2),br:ownerToBr[k]}));
+    const fuzzyOwnerBranch=rawName=>{
+      const tok=_nmNorm(rawName).split(/[\s_]+/).filter(t=>t.length>=2);
+      if(!tok.length)return '';
+      const need=Math.min(2,tok.length);
+      const brSet=new Set();
+      for(const e of _ownerToBrTokens){
+        let score=0;for(const t of tok)if(e.tokens.includes(t))score++;
+        if(score>=need)brSet.add(e.br);
+      }
+      return brSet.size===1?[...brSet][0]:'';
+    };
+
+    // ── Dealer Code → Branch map (SD[20] — "Branch Code" sheet) ──────────────
+    // Confirmed via a pivot-table cross-check of Leads/QL that each row's "Dealer Code" maps
+    // 1:1 to one branch — a far more reliable branch signal than owner-name matching, which
+    // kept failing for some branches (e.g. Anna Nagar/Tanjore) despite correct Users-sheet data.
+    // Tried ahead of the owner-name fallback below; owner-name stays as a backstop for rows/
+    // sheets that don't carry a Dealer Code.
+    const dealerCodeToBranch={}; // nmNorm(dealerCode) → BRANCH (uppercase)
+    {
+      const bcData=SD[20]||[];
+      if(bcData.length>=2){
+        const{h:bcH,hi:bcHi}=gHI(bcData);
+        const bcDcI=cI(bcH,['Dealer Code','DealerCode','Dealer_Code']);
+        const bcBrI=cI(bcH,['Branch Name','Branch','BRANCH']);
+        if(bcDcI>=0&&bcBrI>=0){
+          bcData.slice(bcHi+1).forEach(r=>{
+            if(!Array.isArray(r)||!r.some(c=>String(c||'').trim()))return;
+            const dc=String(r[bcDcI]||'').trim();
+            const br=String(r[bcBrI]||'').trim().toUpperCase();
+            if(dc&&br)dealerCodeToBranch[_nmNorm(dc)]=br;
+          });
+        }
+      }
+    }
 
     const _scMode=isL3||(branchOverride!=null); // true = group by SC (genuine L3, or a 3M drill-down into one branch)
     const _uBranches=branchOverride!=null?[String(branchOverride).trim().toUpperCase()]:uBranches;
@@ -10612,9 +10660,14 @@ function renderReports(){
       }
       // Fallback owner column (for non-L3 when Branch col absent from Leads/TD)
       const owI=(useOwnerMap&&!_scMode&&gI_direct<0)?cI(h,scCN):-1;
+      // Dealer Code column — most reliable branch signal for Leads/QL/TD (see dealerCodeToBranch
+      // build above). Tried ahead of the owner-name fallback per-row.
+      const _hasDCMap=Object.keys(dealerCodeToBranch).length>0;
+      const dcI=(!_scMode&&_hasDCMap&&gI_direct<0)?cI(h,['Dealer Code','DealerCode','Dealer_Code']):-1;
 
       // When branch-scoped (L3/3F/3M) and no Branch col in data, resolve SC→branch via ownerToBr for filtering
       const scFallbackI=((_scMode||isL3M)&&brF&&bFI<0)?cI(h,scCN):-1;
+      const dcFallbackI=((_scMode||isL3M)&&brF&&bFI<0&&_hasDCMap)?cI(h,['Dealer Code','DealerCode','Dealer_Code']):-1;
       // Normalise branch string: uppercase, strip spaces/underscores/hyphens for loose comparison
       const normBr=s=>s.toUpperCase().replace(/[\s_\-\.]/g,'');
       const brFNSet=new Set(_uBranches.map(normBr));
@@ -10622,12 +10675,19 @@ function renderReports(){
       const rowPassesBranch=(r)=>{
         if(!brF)return true;
         if(bFI>=0){const b=String(r[bFI]||'').trim().toUpperCase();return b&&brMatch(b);}
+        // Dealer Code — try first (most reliable); only fall through to owner-name if this row's
+        // code isn't in the map (e.g. a genuinely new/unmapped dealer code).
+        if(dcFallbackI>=0){
+          const dc=String(r[dcFallbackI]||'').trim();
+          const dcBr=dc?dealerCodeToBranch[_nmNorm(dc)]:'';
+          if(dcBr)return brMatch(dcBr);
+        }
         // No branch col — normalise to internal name first, then look up branch
         if(scFallbackI>=0){
           const raw=String(r[scFallbackI]||'').trim();
           if(!raw)return false; // no SC name → exclude when branch filter active
           const intName=toIntSW(raw);
-          const br=ownerToBr[intName.toLowerCase()]||ownerToBr[raw.toLowerCase()]||'';
+          const br=ownerToBr[_nmNorm(intName)]||ownerToBr[_nmNorm(raw)]||fuzzyOwnerBranch(raw)||'';
           return br?brMatch(br):false; // unresolvable SC → exclude (don't bleed into other branches)
         }
         return true; // can't determine → include
@@ -10653,16 +10713,20 @@ function renderReports(){
         let grp='';
         if(gI_direct>=0){
           grp=toIntSW(String(r[gI_direct]||'').trim());
-        } else if(owI>=0){
-          // Resolve owner→branch via Users sheet map. Try the Zoho/Internal-name-normalised
-          // form first, then the raw name — ownerToBr is keyed by both Zoho and Internal names,
-          // but the raw owner string in Leads/QL/TD (e.g. "Manikandan S") may only match after
-          // normalisation (same fallback rowPassesBranch already uses below). Without this, any
-          // owner whose raw string didn't happen to already be a registered key silently dropped
-          // out of every branch's Enq/TD count.
-          const rawOw=String(r[owI]||'').trim();
-          const intOw=toIntSW(rawOw);
-          grp=ownerToBr[intOw.toLowerCase()]||ownerToBr[rawOw.toLowerCase()]||'';
+        } else {
+          // Dealer Code is the most reliable branch signal for Leads/QL/TD — try it first.
+          if(dcI>=0){
+            const dc=String(r[dcI]||'').trim();
+            if(dc)grp=dealerCodeToBranch[_nmNorm(dc)]||'';
+          }
+          // Fall back to owner→branch resolution only if Dealer Code didn't resolve this row.
+          // ownerToBr is keyed by both Zoho and Internal names; try the normalised form first,
+          // then raw, then a token-based fuzzy match as a last resort.
+          if(!grp&&owI>=0){
+            const rawOw=String(r[owI]||'').trim();
+            const intOw=toIntSW(rawOw);
+            grp=ownerToBr[_nmNorm(intOw)]||ownerToBr[_nmNorm(rawOw)]||fuzzyOwnerBranch(rawOw)||'';
+          }
         }
         if(isValidGrp(grp))out[grp]=(out[grp]||0)+1;
       });
@@ -10675,8 +10739,12 @@ function renderReports(){
           if(!rowPassesBranch(r))return;
           if(extraFn&&!extraFn(r,h))return;
           let grp='';
-          if(gI_direct>=0)grp=toIntSW(String(r[gI_direct]||'').trim());
-          else if(owI>=0){const rawOw2=String(r[owI]||'').trim();const intOw2=toIntSW(rawOw2);grp=ownerToBr[intOw2.toLowerCase()]||ownerToBr[rawOw2.toLowerCase()]||'';}
+          if(gI_direct>=0){
+            grp=toIntSW(String(r[gI_direct]||'').trim());
+          } else {
+            if(dcI>=0){const dc2=String(r[dcI]||'').trim();if(dc2)grp=dealerCodeToBranch[_nmNorm(dc2)]||'';}
+            if(!grp&&owI>=0){const rawOw2=String(r[owI]||'').trim();const intOw2=toIntSW(rawOw2);grp=ownerToBr[_nmNorm(intOw2)]||ownerToBr[_nmNorm(rawOw2)]||fuzzyOwnerBranch(rawOw2)||'';}
+          }
           if(isValidGrp(grp))out[grp]=(out[grp]||0)+1;
         });
       }
@@ -10717,8 +10785,8 @@ function renderReports(){
       // Merge QL Sheet enquiries (same source filter) into enqM
       const qlEnqM=cnt(QLD,['Lead Source','LeadSource','Source','Enquiry Source'],matchFn,null,null,null,true);
       Object.keys(qlEnqM).forEach(k=>{enqM[k]=(enqM[k]||0)+qlEnqM[k];});
-      // TD — TD sheet, "Lead Source (Lead)" primary; "Lead Source (Qualified)" fallback if blank
-      const tdM =cnt(TDD,['Lead Source (Lead)','Lead Source','LeadSource','Source'],matchFn,null,null,null,true,['Lead Source (Qualified)']);
+      // TD — TD sheet, "Lead Source (Lead)" primary; "Lead Source (Qualified Leads)" fallback if blank
+      const tdM =cnt(TDD,['Lead Source (Lead)','Lead Source','LeadSource','Source'],matchFn,null,null,null,true,['Lead Source (Qualified Leads)','Lead Source (Qualified)','Lead Source(Qualified Leads)']);
       // BKG — Live RPO, Source col (Column V), CURRENT MONTH
       const bkgM=cnt(RD,['Source','Lead Source','Enquiry Source'],matchFn,'curmon',bkgDateCols,null,false);
 
